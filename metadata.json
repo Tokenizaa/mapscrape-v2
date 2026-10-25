@@ -1,0 +1,6 @@
+{
+  "name": "MapScrape",
+  "description": "Pesquisa, extração direta e exportação CSV de fichas de estabelecimentos no Google Maps.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
