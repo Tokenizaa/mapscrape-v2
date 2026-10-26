@@ -128,8 +128,8 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     const photoUrls: string[] = [];
     const seenPhotos = new Set<string>();
     const addPhoto = (candidate: string): void => {
-      const src = (candidate || '').trim().split(/\\s+/)[0];
-      if (!src.startsWith('http') || /cleardot\\.gif|gstatic\\.com\\/images\\/branding/i.test(src)) return;
+      const src = (candidate || '').trim().split(/\s+/)[0];
+      if (!src.startsWith('http') || /cleardot\.gif|gstatic\.com\/images\/branding/i.test(src)) return;
       // Ignore tiny UI icons and avatars; retain Google-hosted business/gallery media.
       if (/=s(\d{1,2}|\d{1,2}-c)$/.test(src)) return;
       if (!seenPhotos.has(src)) { seenPhotos.add(src); photoUrls.push(src); }
@@ -141,20 +141,20 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
           addPhoto(image.currentSrc || image.src || attr(el, 'src'));
           addPhoto(attr(el, 'data-src'));
           const srcset = attr(el, 'srcset');
-          if (srcset) srcset.split(',').forEach((part) => addPhoto(part.trim().split(/\\s+/)[0]));
+          if (srcset) srcset.split(',').forEach((part) => addPhoto(part.trim().split(/\s+/)[0]));
         });
       } catch {}
     }
 
     // Collect social profile links only when they are actual links rendered in the Maps sheet.
-    const socialHosts = /(^|\\.)((instagram\\.com)|(facebook\\.com)|(fb\\.com)|(tiktok\\.com)|(youtube\\.com)|(youtu\\.be)|(linkedin\\.com)|(x\\.com)|(twitter\\.com)|(pinterest\\.com)|(threads\\.net)|(wa\\.me)|(whatsapp\\.com)$/i;
+    const socialHosts = /(^|\.)((instagram\.com)|(facebook\.com)|(fb\.com)|(tiktok\.com)|(youtube\.com)|(youtu\.be)|(linkedin\.com)|(x\.com)|(twitter\.com)|(pinterest\.com)|(threads\.net)|(wa\.me)|(whatsapp\.com)$/i;
     const socialUrls: string[] = [];
     const seenSocial = new Set<string>();
     document.querySelectorAll('a[href]').forEach((anchor) => {
       const href = attr(anchor, 'href');
       try {
         const url = new URL(href, window.location.href);
-        const host = url.hostname.toLowerCase().replace(/^www\\./, '');
+        const host = url.hostname.toLowerCase().replace(/^www\./, '');
         if (socialHosts.test(host) && !seenSocial.has(url.href)) {
           seenSocial.add(url.href);
           socialUrls.push(url.href);
