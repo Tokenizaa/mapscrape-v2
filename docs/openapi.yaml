@@ -32,6 +32,79 @@ paths:
                   timestamp: { type: string, format: date-time }
         '503':
           description: Banco indisponível
+  /api/v1/provisioning/credentials:
+    post:
+      security:
+        - provisioningToken: []
+      summary: Emitir uma credencial individual de consumidor (exibida uma única vez)
+      description: Requer autorização bootstrap mantida apenas em secrets de infraestrutura confiáveis. A chave retornada deve ser gravada diretamente no provedor do consumidor.
+      parameters:
+        - in: header
+          name: X-MapScrape-Provisioning-Token
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [consumerName, consumerProject]
+              properties:
+                consumerName: { type: string, minLength: 1, maxLength: 120 }
+                consumerProject: { type: string, minLength: 1, maxLength: 200 }
+      responses:
+        '201':
+          description: Credencial criada; apiKey só é retornada nesta resposta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      credentialId: { type: string }
+                      apiKey: { type: string }
+                      revealOnce: { type: boolean, const: true }
+        '401':
+          description: Token de provisionamento ausente ou inválido
+        '409':
+          description: O projeto já possui uma credencial ativa
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+    get:
+      security:
+        - provisioningToken: []
+      summary: Listar metadados de credenciais
+      parameters:
+        - in: header
+          name: X-MapScrape-Provisioning-Token
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Lista sem valores secretos
+        '401':
+          description: Token de provisionamento ausente ou inválido
+  /api/v1/provisioning/credentials/{id}:
+    delete:
+      security:
+        - provisioningToken: []
+      summary: Revogar uma credencial individual
+      parameters:
+        - in: header
+          name: X-MapScrape-Provisioning-Token
+          required: true
+          schema: { type: string }
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Credencial revogada
+        '401':
+          description: Token de provisionamento ausente ou inválido
+        '404':
+          description: Credencial ativa não encontrada
   /api/v1/leads:
     get:
       summary: Pesquisa paginada de leads
@@ -165,6 +238,10 @@ paths:
           description: Coleta não encontrada
 components:
   securitySchemes:
+    provisioningToken:
+      type: apiKey
+      in: header
+      name: X-MapScrape-Provisioning-Token
     bearerAuth:
       type: http
       scheme: bearer
