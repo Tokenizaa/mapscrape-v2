@@ -167,27 +167,20 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
   });
 }
 
-export async function placeExistsByUrl(url: string, jobId?: string): Promise<boolean> {
-  if (!url) return false;
+export async function placeExistsByUrl(url: string, _jobId?: string): Promise<boolean> {
+  if (!url || !url.trim()) return false;
   const db = getDb();
-  // Strip tracking parameters to compare canonical place URL
-  const cleanUrl = url.split('?')[0];
-  
-  if (jobId) {
-    const res = await db.execute({
-      sql: `SELECT id FROM places WHERE maps_url LIKE ? AND job_id = ? LIMIT 1`,
-      args: [`${cleanUrl}%`, jobId],
-    });
-    return res.rows.length > 0;
-  } else {
-    const res = await db.execute({
-      sql: `SELECT id FROM places WHERE maps_url LIKE ? LIMIT 1`,
-      args: [`${cleanUrl}%`],
-    });
-    return res.rows.length > 0;
-  }
-}
 
+  // Deduplicate globally, not only inside the current search. Google Maps
+  // often appends tracking/query parameters to the same place URL.
+  const cleanUrl = url.trim().split('?')[0].replace(/\/$/, '');
+  if (!cleanUrl) return false;
+  const res = await db.execute({
+    sql: `SELECT id FROM places WHERE maps_url = ? OR maps_url LIKE ? LIMIT 1`,
+    args: [cleanUrl, `${cleanUrl}%`],
+  });
+  return res.rows.length > 0;
+}
 export async function getPlaces(options: {
   jobId?: string;
   query?: string;
