@@ -14,15 +14,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          bun-version: latest
+          node-version: '20'
       - name: Install dependencies
-        run: bun install --frozen-lockfile
-      - name: TypeScript validation
-        run: bun run lint
-      - name: Unit tests
-        run: bun run test
+        run: npm install --frozen-lockfile
+      - name: TypeScript typecheck
+        run: npm run lint
+      - name: Run unit tests
+        run: npm run test
+      - name: Lint staged files
+        run: npm run lint
       - name: Production frontend build
-        run: bun run build
+        run: npm run build
+      - name: npm audit
+        run: npm audit --audit-level=high

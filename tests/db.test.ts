@@ -12,6 +12,7 @@ describe('SQLite Database Operations', () => {
   it('creates and retrieves a search job', async () => {
     const job: ScrapeJob = {
       id: testJobId,
+      user_id: "dev-user-1",
       segment: 'Cafés Especiais',
       location: 'Curitiba, PR',
       limit_requested: 10,
@@ -39,6 +40,7 @@ describe('SQLite Database Operations', () => {
     const place: PlaceRecord = {
       id: `p_${Date.now()}`,
       job_id: testJobId,
+      user_id: "dev-user-1",
       name: 'Lucca Cafés Especiais',
       category: 'Cafeteria',
       address: 'Alameda Pres. Taunay, 40 - Batel, Curitiba - PR',

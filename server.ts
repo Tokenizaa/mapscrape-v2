@@ -18,6 +18,8 @@ import { ScrapeJob, PlaceRecord } from './src/shared/types';
 import { initAuditLog, listAuditLogs, writeAuditLog } from './src/server/audit-log';
 import { readRunReport, readRunReportPdf } from './src/server/run-report';
 
+import pino from 'pino';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -71,8 +73,9 @@ async function startServer() {
       const limitNum = Math.max(1, Math.min(100, Number(limit) || 20));
       const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
-      const newJob: ScrapeJob = {
+      const newJob: ScrapeJob & { user_id: string } = {
         id: jobId,
+        user_id: (req as any).user?.id || "dev-user-1",
         segment: segment.trim(),
         location: location.trim(),
         limit_requested: limitNum,

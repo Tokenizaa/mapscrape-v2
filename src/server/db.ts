@@ -20,6 +20,7 @@ export async function initDb(): Promise<void> {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS searches (
       id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
       segment TEXT NOT NULL,
       location TEXT NOT NULL,
       limit_requested INTEGER NOT NULL,
@@ -81,16 +82,17 @@ export async function initDb(): Promise<void> {
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
 }
 
-export async function createJob(job: ScrapeJob): Promise<void> {
+export async function createJob(job: ScrapeJob & { user_id: string }): Promise<void> {
   const db = getDb();
   await db.execute({
     sql: `INSERT INTO searches (
-      id, segment, location, limit_requested, status, status_message,
+      id, user_id, segment, location, limit_requested, status, status_message,
       total_found, total_collected, total_duplicates, total_errors,
       current_step, created_at, completed_at
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       job.id,
+      job.user_id,
       job.segment,
       job.location,
       job.limit_requested,

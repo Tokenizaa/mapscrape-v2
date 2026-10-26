@@ -28,6 +28,7 @@ export type JobStatus = 'running' | 'completed' | 'partial' | 'stopped' | 'faile
 
 export interface ScrapeJob {
   id: string;
+  user_id: string;
   segment: string;
   location: string;
   limit_requested: number;

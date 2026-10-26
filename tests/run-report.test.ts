@@ -11,6 +11,7 @@ describe('Per-run evidence report', () => {
     const id = `report_test_${Date.now()}`;
     const baseline = await countPlaces();
     const job: ScrapeJob = {
+      user_id: "dev-user-1",
       id,
       segment: 'Teste automatizado',
       location: 'Cidade de teste',

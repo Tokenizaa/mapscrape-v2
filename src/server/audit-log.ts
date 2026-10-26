@@ -13,6 +13,31 @@ export interface AuditEvent {
   metadata: string;
 }
 
+/**
+ * Sensitive fields that should be redacted from audit logs for LGPD compliance
+ */
+const SENSITIVE_FIELDS = new Set([
+  'segment', 'location', 'phone', 'website', 'cpf', 'cnpj', 'email',
+  'password', 'token', 'creditCard', 'bankAccount',
+]);
+
+/**
+ * Sanitizes metadata by redacting sensitive fields for LGPD compliance.
+ * Removes or masks values of sensitive keys to prevent data leakage in logs.
+ */
+function sanitizeMetadata(metadata: Record<string, unknown>): Record<string, unknown> {
+  const sanitized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(metadata)) {
+    const lowerKey = key.toLowerCase();
+    if (SENSITIVE_FIELDS.has(lowerKey)) {
+      sanitized[key] = '[REDACIONADO]';
+    } else {
+      sanitized[key] = value;
+    }
+  }
+  return sanitized;
+}
+
 export async function initAuditLog(): Promise<void> {
   const db = getDb();
   await db.execute(`
@@ -41,7 +66,8 @@ export async function writeAuditLog(input: {
 }): Promise<void> {
   const db = getDb();
   const createdAt = new Date().toISOString();
-  const metadata = JSON.stringify(input.metadata ?? {});
+  const sanitizedMetadata = sanitizeMetadata(input.metadata ?? {});
+  const metadata = JSON.stringify(sanitizedMetadata);
   await db.execute({
     sql: 'INSERT INTO audit_logs (id, created_at, level, category, event, message, job_id, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
     args: [
