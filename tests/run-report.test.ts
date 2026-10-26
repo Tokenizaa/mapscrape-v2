@@ -1,4 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import fs from 'node:fs/promises';
 import { countPlaces, createJob, insertPlace, initDb, updateJobProgress } from '../src/server/db';
 import { readRunReport, writeRunReport } from '../src/server/run-report';
 import { ScrapeJob, PlaceRecord } from '../src/shared/types';
@@ -37,7 +38,7 @@ describe('Per-run evidence report', () => {
       opening_hours: '',
       business_status: '',
       latitude: '',
-      longitude: 'maps_url_missing',
+      longitude: '',
       maps_url: `https://www.google.com/maps/place/${id}`,
       description: '',
       services_attributes: '',
@@ -46,7 +47,7 @@ describe('Per-run evidence report', () => {
     await insertPlace(place);
     await updateJobProgress(id, { status: 'completed', completed_at: new Date().toISOString() });
 
-    const reportPath = await writeRunReport(id, baseline);
+    const reportPath = await writeRunReport(id, baseline, false);
     expect(reportPath).toContain(`${id}.json`);
     const report = await readRunReport(id) as any;
     expect(report).not.toBeNull();
@@ -54,5 +55,6 @@ describe('Per-run evidence report', () => {
     expect(report.database.total_after).toBeGreaterThanOrEqual(report.database.total_before + 1);
     expect(report.database.records_saved_by_run).toBe(1);
     expect(report.data_quality.saved_records[0].missing_fields).toContain('address');
+    await fs.unlink(reportPath);
   });
 });
