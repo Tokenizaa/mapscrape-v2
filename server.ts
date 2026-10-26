@@ -27,7 +27,7 @@ async function safeWriteAuditLog(input: Parameters<typeof writeAuditLog>[0]): Pr
   try { await writeAuditLog(input); } catch (error) { console.error('Audit log write failed:', error); }
 }
 
-async function startServer() {
+export async function createApp() {
   await initDb();
   await initAuditLog();
   await safeWriteAuditLog({ category: 'server', event: 'server.start', message: 'Servidor iniciado e banco inicializado.' });
@@ -368,7 +368,7 @@ async function startServer() {
     });
     app.use(vite.middlewares);
     console.log('Vite middleware attached in development mode.');
-  } else {
+  } else if (!process.env.VERCEL) {
     const distPath = path.resolve(__dirname, 'dist');
     app.use(express.static(distPath));
     app.get('*', (_req, res) => {
@@ -376,12 +376,17 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`MapScrape server running on http://0.0.0.0:${PORT}`);
-  });
+  return app;
 }
 
-startServer().catch((err) => {
-  console.error('Fatal server startup error:', err);
-  process.exit(1);
-});
+if (!process.env.VERCEL) {
+  createApp().then((app) => {
+    const PORT = Number(process.env.PORT) || 3000;
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`MapScrape server running on http://0.0.0.0:${PORT}`);
+    });
+  }).catch((err) => {
+    console.error('Fatal server startup error:', err);
+    process.exit(1);
+  });
+}
