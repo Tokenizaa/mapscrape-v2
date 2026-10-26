@@ -363,7 +363,12 @@ export async function runScraperJob(
           const candidates = [feed, ...Array.from(feed.querySelectorAll('*'))] as HTMLElement[];
           const target = candidates
             .filter((el) => el.clientHeight > 100 && el.scrollHeight > el.clientHeight + 20)
-            .sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0] || feed;
+            .sort((a, b) => {
+              const aCanScroll = a.scrollTop < a.scrollHeight - a.clientHeight - 2 ? 1 : 0;
+              const bCanScroll = b.scrollTop < b.scrollHeight - b.clientHeight - 2 ? 1 : 0;
+              if (aCanScroll !== bCanScroll) return bCanScroll - aCanScroll;
+              return (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight);
+            })[0] || feed;
           return Math.abs(target.scrollTop - beforeTop) > 2;
         }, scrollTarget.beforeTop);
         scrollMoved = wheelMoved;
@@ -378,7 +383,12 @@ export async function runScraperJob(
             const candidates = [feed, ...Array.from(feed.querySelectorAll('*'))] as HTMLElement[];
             const target = candidates
               .filter((el) => el.clientHeight > 100 && el.scrollHeight > el.clientHeight + 20)
-              .sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0] || feed;
+              .sort((a, b) => {
+              const aCanScroll = a.scrollTop < a.scrollHeight - a.clientHeight - 2 ? 1 : 0;
+              const bCanScroll = b.scrollTop < b.scrollHeight - b.clientHeight - 2 ? 1 : 0;
+              if (aCanScroll !== bCanScroll) return bCanScroll - aCanScroll;
+              return (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight);
+            })[0] || feed;
             target.scrollTop = Math.min(target.scrollHeight, target.scrollTop + Math.max(600, target.clientHeight * 0.8));
             target.dispatchEvent(new Event('scroll', { bubbles: true }));
           });
@@ -406,7 +416,12 @@ export async function runScraperJob(
         const candidates = feed ? [feed, ...Array.from(feed.querySelectorAll('*'))] as HTMLElement[] : [];
         const target = candidates
           .filter((el) => el.clientHeight > 100 && el.scrollHeight > el.clientHeight + 20)
-          .sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0];
+          .sort((a, b) => {
+              const aCanScroll = a.scrollTop < a.scrollHeight - a.clientHeight - 2 ? 1 : 0;
+              const bCanScroll = b.scrollTop < b.scrollHeight - b.clientHeight - 2 ? 1 : 0;
+              if (aCanScroll !== bCanScroll) return bCanScroll - aCanScroll;
+              return (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight);
+            })[0];
         return {
           scrollTop: target?.scrollTop ?? 0,
           scrollHeight: target?.scrollHeight ?? 0,
