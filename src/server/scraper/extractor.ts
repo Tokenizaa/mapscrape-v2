@@ -393,8 +393,18 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       .find((node) => /plus code/i.test(node.getAttribute('aria-label') || ''));
     const plus_code = plusCodeNode?.getAttribute('aria-label')?.replace(/^plus code:\s*/i, '') || '';
 
-    // Do not mislabel the first gallery photo as a logo/avatar.
+    // Use the explicitly labelled business profile image as the logo/cover image
+    // when Maps exposes it; never substitute a reviewer avatar.
     let logo_url = '';
+    const businessProfileImage = Array.from(document.querySelectorAll('button[aria-label^="Photo of"] img'))
+      .find((img) => {
+        const label = img.parentElement?.getAttribute('aria-label') || img.closest('button')?.getAttribute('aria-label') || '';
+        return !!name && label.toLowerCase().includes(name.toLowerCase());
+      }) as HTMLImageElement | undefined;
+    if (businessProfileImage) {
+      const source = businessProfileImage.currentSrc || businessProfileImage.src || '';
+      if (source.startsWith('http') && !/w\d{1,2}-h\d{1,2}|br100|avatar/i.test(source)) logo_url = source;
+    }
     for (const selector of selectors.logo) {
       try {
         const el = document.querySelector(selector) as HTMLImageElement | null;
