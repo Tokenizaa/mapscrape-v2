@@ -87,7 +87,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       `Nota: ${selectedPlace.rating || 'Não informada'}`,
       `Avaliações: ${selectedPlace.review_count || 'Não informado'}`,
       `Ficha Maps: ${selectedPlace.maps_url || 'Não informada'}`,
-    ].join('\\n');
+    ].join('\n');
     try {
       await navigator.clipboard.writeText(content);
       setCopied(true);
