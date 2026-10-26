@@ -15,7 +15,7 @@ import {
 import { SELECTORS } from './selectors';
 
 /**
- * Extracts the 15 specified fields from a Google Maps place page.
+ * Extracts the 16 tracked fields from a Google Maps place page.
  * Uses structured DOM inspection and robust fallbacks.
  * If a field is missing, leaves it empty without halting.
  */
@@ -124,7 +124,7 @@ export async function extractPlaceDetails(
       services_attributes: services_attributes,
       currentUrl: window.location.href
     };
-  }, SELECTORS.place);`);
+  }, SELECTORS.place);
 
   const finalUrl = raw.currentUrl || targetUrl;
   const coords = extractCoordinates(finalUrl);
