@@ -89,7 +89,7 @@ export async function createJob(job: ScrapeJob & { user_id: string }): Promise<v
       id, user_id, segment, location, limit_requested, status, status_message,
       total_found, total_collected, total_duplicates, total_errors,
       current_step, created_at, completed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       job.id,
       job.user_id,
