@@ -15,12 +15,15 @@ import {
 import { runScraperJob, stopScrapeJob, isJobRunning } from './src/server/scraper/runner';
 import { generateCsv } from './src/server/scraper/csv';
 import { ScrapeJob, PlaceRecord } from './src/shared/types';
+import { initAuditLog, listAuditLogs, writeAuditLog } from './src/server/audit-log';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function startServer() {
   await initDb();
+  await initAuditLog();
+  await writeAuditLog({ category: 'server', event: 'server.start', message: 'Servidor iniciado e banco inicializado.' });
   console.log('SQLite database initialized.');
 
   const app = express();
@@ -79,12 +82,14 @@ async function startServer() {
       };
 
       await createJob(newJob);
+      await writeAuditLog({ category: 'scraper', event: 'job.started', message: 'Coleta iniciada.', jobId, metadata: { segment: segment.trim(), location: location.trim(), limit: limitNum } });
 
       // Start asynchronous scraping
       runScraperJob(jobId, segment, location, limitNum, (updatedJob) => {
         broadcastJobUpdate(updatedJob);
-      }).catch((err) => {
+      }).catch(async (err) => {
         console.error('Job error:', err);
+        await writeAuditLog({ level: 'error', category: 'scraper', event: 'job.unhandled_error', message: err?.message || 'Erro não tratado na tarefa.', jobId, metadata: { stack: String(err?.stack || '').slice(0, 5000) } }).catch(() => {});
       });
 
       return res.json({
@@ -227,6 +232,47 @@ async function startServer() {
     } catch (err: any) {
       console.error('Export error:', err);
       return res.status(500).json({ error: err.message || 'Erro ao exportar CSV.' });
+    }
+  });
+
+  // 10. Structured audit log query
+  app.get('/api/logs', async (req: Request, res: Response) => {
+    try {
+      const result = await listAuditLogs({
+        limit: req.query.limit ? Number(req.query.limit) : 100,
+        offset: req.query.offset ? Number(req.query.offset) : 0,
+        level: req.query.level ? String(req.query.level) : undefined,
+        category: req.query.category ? String(req.query.category) : undefined,
+        jobId: req.query.jobId ? String(req.query.jobId) : undefined,
+        query: req.query.query ? String(req.query.query) : undefined,
+      });
+      return res.json(result);
+    } catch (err: any) {
+      await writeAuditLog({ level: 'error', category: 'api', event: 'logs.query_failed', message: err?.message || 'Falha ao consultar logs.' }).catch(() => {});
+      return res.status(500).json({ error: err.message || 'Erro ao consultar logs.' });
+    }
+  });
+
+  // Download newline-delimited JSON, easy to attach to GitHub issues or commit as evidence.
+  app.get('/api/logs/export', async (req: Request, res: Response) => {
+    try {
+      const result = await listAuditLogs({
+        limit: 500,
+        offset: 0,
+        level: req.query.level ? String(req.query.level) : undefined,
+        category: req.query.category ? String(req.query.category) : undefined,
+        jobId: req.query.jobId ? String(req.query.jobId) : undefined,
+        query: req.query.query ? String(req.query.query) : undefined,
+      });
+      const body = result.logs.map((log) => JSON.stringify({
+        ...log,
+        metadata: (() => { try { return JSON.parse(log.metadata || '{}'); } catch { return log.metadata; } })(),
+      })).join('\\n') + (result.logs.length ? '\\n' : '');
+      res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="mapscrape-audit-${new Date().toISOString().slice(0, 10)}.jsonl"`);
+      return res.send(body);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Erro ao exportar logs.' });
     }
   });
 
