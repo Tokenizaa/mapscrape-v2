@@ -19,6 +19,7 @@ import { initAuditLog, listAuditLogs, writeAuditLog } from './src/server/audit-l
 import { readRunReport, readRunReportPdf } from './src/server/run-report';
 
 import pino from 'pino';
+import { waitUntil } from '@vercel/functions';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -92,13 +93,14 @@ export async function createApp() {
       await createJob(newJob);
       await safeWriteAuditLog({ category: 'scraper', event: 'job.started', message: 'Coleta iniciada.', jobId, metadata: { segment: segment.trim(), location: location.trim(), limit: limitNum } });
 
-      // Start asynchronous scraping
-      runScraperJob(jobId, segment, location, limitNum, (updatedJob) => {
+      // Keep the scrape alive after the HTTP response on Vercel.
+      const scrapePromise = runScraperJob(jobId, segment, location, limitNum, (updatedJob) => {
         broadcastJobUpdate(updatedJob);
       }).catch(async (err) => {
         console.error('Job error:', err);
         await safeWriteAuditLog({ level: 'error', category: 'scraper', event: 'job.unhandled_error', message: err?.message || 'Erro não tratado na tarefa.', jobId, metadata: { stack: String(err?.stack || '').slice(0, 5000) } }).catch(() => {});
       });
+      if (process.env.VERCEL) waitUntil(scrapePromise);
 
       return res.json({
         success: true,
