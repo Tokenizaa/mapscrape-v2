@@ -26,14 +26,18 @@ Você está trabalhando no repositório do projeto consumidor. Integre-o à API 
 14. Escreva testes para cliente, paginação, erros, autenticação e UI. Use fixtures nos testes automatizados; não crie registros fictícios na base de produção.
 15. Execute testes, lint, verificação de tipos e build disponíveis. Corrija as falhas causadas pela integração e reporte qualquer dependência externa não validada.
 
-### Configuração
+### Provisionamento automatizado
 
-Solicite ao responsável pela implantação:
-- URL-base real do MapScrape para o ambiente.
-- Chave de API emitida/configurada pelo operador.
-- Ambiente de destino (desenvolvimento ou produção).
+Não peça ao usuário para copiar uma chave MapScrape para o chat ou para o código. Primeiro identifique o provedor do projeto e use `scripts/provision-consumer.mjs` do repositório MapScrape, executado no ambiente seguro do consumidor.
 
-Se algum valor estiver ausente, implemente a integração por configuração, mas não declare que a chamada real está validada.
+O ambiente de execução deve receber estes secrets por mecanismo autorizado de organização/CI:
+- `MAPSCRAPE_BASE_URL`: URL de produção confirmada.
+- `MAPSCRAPE_PROVISIONING_TOKEN`: autorização bootstrap, compartilhada apenas com agentes/CI confiáveis.
+- `CONSUMER_NAME` e `CONSUMER_PROJECT`: identificação estável do projeto.
+- `TARGET_PROVIDER=vercel` ou `TARGET_PROVIDER=cloudflare`.
+- Token do provedor com permissão mínima para gravar secrets no projeto de destino.
+
+O instalador emite uma chave exclusiva, grava diretamente `MAPSCRAPE_API_KEY` no provedor, verifica a API e não imprime o segredo. Se não houver bootstrap token ou permissão do provedor, pare e explique qual autorização de infraestrutura está ausente; não solicite que a chave de API seja colada no chat. Não declare a integração validada sem o teste real.
 
 ### Cliente TypeScript de referência
 
