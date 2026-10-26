@@ -114,7 +114,14 @@ export async function runScraperJob(
     await page.evaluateOnNewDocument(() => {
       (window as any).__name = (f: any) => f;
       (globalThis as any).__name = (f: any) => f;
+      // Keep browser language aligned with the search URL so accessible labels
+      // are more predictable, while the extractor still supports other locales.
+      try {
+        Object.defineProperty(navigator, 'language', { configurable: true, get: () => 'pt-BR' });
+        Object.defineProperty(navigator, 'languages', { configurable: true, get: () => ['pt-BR', 'pt', 'en'] });
+      } catch {}
     });
+    await page.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' });
     await page.setViewport({ width: 1366, height: 768 });
     const fullQuery = `${segment.trim()} ${location.trim()}`.trim();
     const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(fullQuery)}?hl=pt-BR`;
@@ -537,9 +544,17 @@ export async function runScraperJob(
 
         const placeRecord = await extractPlaceDetails(page, jobId, item.url);
 
+        // Reject structurally broken detail pages rather than persisting a blank
+        // or unrelated record after a Google Maps UI change.
         // Fallback for name if h1 was blank
         if (!placeRecord.name && item.previewName) {
           placeRecord.name = item.previewName;
+        }
+        if (!placeRecord.name.trim()) {
+          throw new Error('A ficha abriu, mas o nome do estabelecimento não foi identificado; registro não salvo.');
+        }
+        if (!placeRecord.maps_url.includes('/maps/place/')) {
+          placeRecord.maps_url = item.url;
         }
 
         // Persist immediately to SQLite
