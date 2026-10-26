@@ -40,7 +40,7 @@ function hasStaticApiKey(value: string): boolean {
 }
 
 async function authenticatedConsumer(req: Request): Promise<{ id: string; consumer_project: string } | null> {
-  const match = /^Bearer\\s+(.+)$/i.exec(req.header('authorization') || '');
+  const match = /^Bearer\s+(.+)$/i.exec(req.header('authorization') || '');
   if (!match) return null;
   const supplied = match[1];
   if (hasStaticApiKey(supplied)) return { id: 'static-key', consumer_project: 'operator-static-key' };
