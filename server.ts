@@ -267,7 +267,7 @@ async function startServer() {
       const body = result.logs.map((log) => JSON.stringify({
         ...log,
         metadata: (() => { try { return JSON.parse(log.metadata || '{}'); } catch { return log.metadata; } })(),
-      })).join('\\n') + (result.logs.length ? '\\n' : '');
+      })).join('\n') + (result.logs.length ? '\n' : '');
       res.setHeader('Content-Type', 'application/x-ndjson; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="mapscrape-audit-${new Date().toISOString().slice(0, 10)}.jsonl"`);
       return res.send(body);
