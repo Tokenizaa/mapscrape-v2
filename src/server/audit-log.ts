@@ -78,8 +78,10 @@ export async function listAuditLogs(options: {
   }
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
   const count = await db.execute({ sql: `SELECT COUNT(*) AS count FROM audit_logs ${clause}`, args });
-  const limit = Math.max(1, Math.min(500, Math.floor(options.limit ?? 100)));
-  const offset = Math.max(0, Math.floor(options.offset ?? 0));
+  const requestedLimit = Number(options.limit ?? 100);
+  const requestedOffset = Number(options.offset ?? 0);
+  const limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(500, Math.floor(requestedLimit))) : 100;
+  const offset = Number.isFinite(requestedOffset) ? Math.max(0, Math.floor(requestedOffset)) : 0;
   const result = await db.execute({
     sql: `SELECT * FROM audit_logs ${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     args: [...args, limit, offset],
