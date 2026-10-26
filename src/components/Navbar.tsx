@@ -45,6 +45,11 @@ export const Navbar: React.FC<NavbarProps> = ({
       label: '4. Histórico',
       icon: History,
     },
+    {
+      id: 'logs' as ScreenTab,
+      label: '5. Logs',
+      icon: ScrollText,
+    },
   ];
 
   return (
