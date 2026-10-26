@@ -36,7 +36,7 @@ export default function App() {
   const [pageSize, setPageSize] = useState<number>(25);
   const [isLoadingPlaces, setIsLoadingPlaces] = useState<boolean>(false);
 
-  const eventSourceRef = useRef<EventSource | null>(null);
+  const progressPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Load past searches history
   const loadHistory = useCallback(async () => {
@@ -85,48 +85,53 @@ export default function App() {
     loadPlaces();
   }, [loadHistory, loadPlaces]);
 
-  // Real-time EventSource listener for active job
+  // Poll persistent job state. Serverless instances do not share in-memory SSE clients.
   const subscribeToJobStream = useCallback((jobId: string) => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-    }
+    if (progressPollRef.current) clearInterval(progressPollRef.current);
 
-    const es = new EventSource(`/api/scrape/stream/${jobId}`);
-    eventSourceRef.current = es;
-
-    es.onmessage = (event) => {
+    let consecutiveErrors = 0;
+    const pollStatus = async () => {
       try {
-        const updatedJob: ScrapeJob = JSON.parse(event.data);
-        setCurrentJob(updatedJob);
-
-        if (updatedJob.status === 'running') {
-          setIsScraping(true);
-        } else {
-          setIsScraping(false);
-          es.close();
-          eventSourceRef.current = null;
-          loadHistory();
+        const res = await fetch(`/api/scrape/status/${encodeURIComponent(jobId)}`, {
+          headers: { Accept: 'application/json' },
+          cache: 'no-store',
+        });
+        if (!res.ok) {
+          const body = await res.text();
+          throw new Error(`HTTP ${res.status}: ${body.slice(0, 160)}`);
         }
 
-        // Refresh places in background if new items were collected
-        loadPlaces();
+        const updatedJob = await res.json() as ScrapeJob & { isRunning?: boolean };
+        consecutiveErrors = 0;
+        setCurrentJob(updatedJob);
+        setIsScraping(updatedJob.status === 'running');
+        await loadHistory();
+        await loadPlaces();
+
+        if (updatedJob.status !== 'running') {
+          if (progressPollRef.current) clearInterval(progressPollRef.current);
+          progressPollRef.current = null;
+        }
       } catch (err) {
-        console.error('SSE parse error:', err);
+        consecutiveErrors++;
+        console.error('Falha ao consultar progresso da coleta:', err);
+        if (consecutiveErrors >= 5) {
+          if (progressPollRef.current) clearInterval(progressPollRef.current);
+          progressPollRef.current = null;
+          setIsScraping(false);
+          await loadHistory();
+        }
       }
     };
 
-    es.onerror = () => {
-      es.close();
-      eventSourceRef.current = null;
-    };
+    void pollStatus();
+    progressPollRef.current = setInterval(() => { void pollStatus(); }, 2000);
   }, [loadHistory, loadPlaces]);
 
-  // Clean up SSE on unmount
+  // Clean up progress polling on unmount
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
+      if (progressPollRef.current) clearInterval(progressPollRef.current);
     };
   }, []);
 
