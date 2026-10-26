@@ -323,6 +323,9 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     }
     readReviews();
 
+    // Expand the list of review topic/category chips before capturing labels/counts.
+    clickByText(/^(?:View \\d+ more Topics|Ver \\d+ tópicos? a mais|Ver mais tópicos|Mais tópicos|Ver mais temas)$/i);
+    await new Promise((resolve) => setTimeout(resolve, 100));
     // Capture the topic chips and their review counts independently of review text.
     const review_topics = Array.from(document.querySelectorAll('[role="radio"],[role="checkbox"]'))
       .map((node) => ({
