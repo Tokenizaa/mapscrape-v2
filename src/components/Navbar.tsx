@@ -1,7 +1,7 @@
 import React from 'react';
-import { Search, Table2, FileDown, History, MapPin } from 'lucide-react';
+import { Search, Table2, FileDown, History, MapPin, ClipboardList } from 'lucide-react';
 
-export type ScreenTab = 'search' | 'results' | 'export' | 'history';
+export type ScreenTab = 'search' | 'results' | 'export' | 'history' | 'logs';
 
 interface NavbarProps {
   currentTab: ScreenTab;
@@ -44,6 +44,11 @@ export const Navbar: React.FC<NavbarProps> = ({
       id: 'history' as ScreenTab,
       label: '4. Histórico',
       icon: History,
+    },
+    {
+      id: 'logs' as ScreenTab,
+      label: 'Logs e auditoria',
+      icon: ClipboardList,
     },
   ];
 
