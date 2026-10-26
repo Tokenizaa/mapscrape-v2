@@ -116,10 +116,6 @@ export async function runScraperJob(
       (globalThis as any).__name = (f: any) => f;
     });
     await page.setViewport({ width: 1366, height: 768 });
-    await page.setUserAgent(
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-    );
-
     const fullQuery = `${segment.trim()} ${location.trim()}`.trim();
     const searchUrl = `https://www.google.com/maps/search/${encodeURIComponent(fullQuery)}?hl=pt-BR`;
 
@@ -387,7 +383,7 @@ export async function runScraperJob(
       const existingPlace = await findPlaceByUrl(item.url);
       if (existingPlace) {
         totalDuplicates++;
-        await safeAudit({ category: 'scraper', event: 'place.duplicate_skipped', message: 'Ficha já existe no momento da persistência; ignorada para evitar duplicação.', jobId, metadata: { mapsUrl: item.url, previewName, existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'duplicate_detected_before_insert' } });
+        await safeAudit({ category: 'scraper', event: 'place.duplicate_skipped', message: 'Ficha já existe no momento da persistência; ignorada para evitar duplicação.', jobId, metadata: { mapsUrl: item.url, previewName: item.previewName || previewTitle, existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'duplicate_detected_before_insert' } });
         await emitProgress(
           `[${placeNum}/${itemsToProcess.length}] Duplicado ignorado: ${previewTitle}`
         );
