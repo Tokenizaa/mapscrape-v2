@@ -53,7 +53,7 @@ export async function createApp() {
 
   // Safe production diagnostic uses the same normalized WebSocket URL as the scraper.
   app.get('/api/health/browser', async (_req: Request, res: Response) => {
-    let endpoint: string;
+    let endpoint: string | undefined;
     try {
       const { getBrowserWSEndpoint, getBrowserEndpointDiagnostic } = await import('./src/server/browserless-endpoint');
       endpoint = getBrowserWSEndpoint();
@@ -68,7 +68,7 @@ export async function createApp() {
       let diagnostic: Record<string, string | boolean | number> = {};
       try {
         const { getBrowserEndpointDiagnostic } = await import('./src/server/browserless-endpoint');
-        if (endpoint!) diagnostic = getBrowserEndpointDiagnostic(endpoint);
+        if (endpoint) diagnostic = getBrowserEndpointDiagnostic(endpoint);
       } catch {
         const configured = process.env.BROWSER_WS_ENDPOINT?.trim();
         if (!configured) {
