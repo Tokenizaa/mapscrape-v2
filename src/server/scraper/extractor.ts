@@ -314,7 +314,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     reviewContainer = findReviewContainer();
     const expandVisibleReviews = () => {
       document.querySelectorAll('.jftiEf button').forEach((button) => {
-        if (/see more|mais|ver mais|plus/i.test(button.innerText || button.getAttribute('aria-label') || '')) {
+        if (/see more|mais|ver mais|plus/i.test(button.textContent || button.getAttribute('aria-label') || '')) {
           (button as HTMLElement).click();
         }
       });
