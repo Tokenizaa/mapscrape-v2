@@ -165,3 +165,12 @@ export async function readRunReport(jobId: string): Promise<unknown | null> {
     return null;
   }
 }
+
+export async function readRunReportPdf(jobId: string): Promise<Buffer | null> {
+  if (!/^[a-zA-Z0-9_-]{1,160}$/.test(jobId)) return null;
+  try {
+    return await fs.readFile(path.join(reportDirectory, jobId + '.pdf'));
+  } catch {
+    return null;
+  }
+}
