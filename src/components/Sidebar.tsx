@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Table2, FileDown, History, ClipboardList, MapPin, StopCircle, Database, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Search, Table2, FileDown, History, ClipboardList, MapPin, StopCircle, Database, CheckCircle2, AlertCircle, BookOpen, ExternalLink } from 'lucide-react';
 import { ScrapeJob } from '../shared/types';
 
 export type ScreenTab = 'search' | 'results' | 'export' | 'history' | 'logs';
@@ -159,6 +159,24 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             );
           })}
+
+          <div className="px-3 pt-6 pb-2 text-[11px] font-semibold tracking-wider text-zinc-400 uppercase">
+            Desenvolvedores
+          </div>
+          <a
+            href="/docs/"
+            aria-label="Abrir API e documentação"
+            className="w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-base font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900/50 transition-all group"
+            onClick={onCloseMobile}
+          >
+            <span className="flex items-center gap-3">
+              <span className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-400 group-hover:text-emerald-400 transition-colors">
+                <BookOpen className="w-4 h-4" />
+              </span>
+              <span>API & Documentação</span>
+            </span>
+            <ExternalLink className="w-3.5 h-3.5 text-zinc-500" />
+          </a>
         </div>
 
         {/* Live Scraper Status Widget */}
