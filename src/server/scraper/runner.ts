@@ -373,8 +373,8 @@ export async function runScraperJob(
       await new Promise((r) => setTimeout(r, 600));
     }
 
-    const finalStatus = handle.cancelled ? 'stopped' : 'completed';
     const hadPartialFailures = totalErrors > 0 || discoveredUrls.length < limitRequested;
+    const finalStatus = handle.cancelled ? 'stopped' : hadPartialFailures ? 'partial' : 'completed';
     const statusMsg = handle.cancelled
       ? `Coleta interrompida. ${totalCollected} registros salvos; ${totalErrors} falhas.`
       : hadPartialFailures
@@ -387,14 +387,22 @@ export async function runScraperJob(
       completed_at: new Date().toISOString(),
     });
   } catch (error: any) {
-    totalErrors++;
     const errMsg = error.message || 'Erro inesperado durante a coleta.';
     console.error('Scraper fatal error:', error);
-    await emitProgress(`Erro na coleta: ${errMsg}`, {
-      status: 'failed',
-      status_message: errMsg,
-      completed_at: new Date().toISOString(),
-    });
+    if (handle.cancelled) {
+      await emitProgress('Coleta interrompida pelo usuário.', {
+        status: 'stopped',
+        status_message: `Coleta interrompida. ${totalCollected} registros salvos antes do encerramento.`,
+        completed_at: new Date().toISOString(),
+      });
+    } else {
+      totalErrors++;
+      await emitProgress(`Erro na coleta: ${errMsg}`, {
+        status: 'failed',
+        status_message: errMsg,
+        completed_at: new Date().toISOString(),
+      });
+    }
   } finally {
     activeJobs.delete(jobId);
     if (browser) {
