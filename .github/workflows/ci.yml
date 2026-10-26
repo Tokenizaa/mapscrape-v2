@@ -9,6 +9,7 @@ on:
 
 # Cancel obsolete validation runs for the same branch/PR to conserve free CI minutes.
 # Validate the synchronized lockfile on main after automated dependency updates.
+# Recheck the patched undici dependency tree.
 concurrency:
   group: mapscrape-ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
