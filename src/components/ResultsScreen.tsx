@@ -934,13 +934,13 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
                                 ) : vUrl.startsWith('http') && /\.(mp4|webm|ogg)(?:$|[?#])/i.test(vUrl) ? (
                                   <video key={vIdx} src={vUrl} controls preload="metadata" className="w-full rounded-xl border border-zinc-800 bg-black" />
                                 ) : (
-                                  <div key={vIdx} className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+                                  <a href={selectedPlace.maps_url} target="_blank" rel="noopener noreferrer" key={vIdx} className="flex items-center gap-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 hover:bg-indigo-500/10">
                                     <PlayCircle className="h-8 w-8 shrink-0 text-indigo-400" />
                                     <div className="min-w-0">
-                                      <p className="text-sm font-semibold text-zinc-200">Vídeo identificado na ficha</p>
-                                      <p className="text-xs text-zinc-500 break-words">{vUrl.startsWith('http') ? vUrl : 'O Maps indica mídia de vídeo, mas não expõe uma URL direta reproduzível.'}</p>
+                                      <p className="text-sm font-semibold text-zinc-200">Reproduzir vídeo na ficha do Maps</p>
+                                      <p className="text-xs text-zinc-500 break-words">{vUrl.startsWith('http') ? vUrl : 'O Google Maps não expõe uma URL de vídeo direta; abrir a galeria original.'}</p>
                                     </div>
-                                  </div>
+                                  </a>
                                 );
                               })}
                             </div>
