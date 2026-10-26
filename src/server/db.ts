@@ -103,7 +103,58 @@ export async function initDb(): Promise<void> {
   }
 
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);`);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS api_credentials (
+      id TEXT PRIMARY KEY,
+      consumer_name TEXT NOT NULL,
+      consumer_project TEXT NOT NULL UNIQUE,
+      key_hash TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'active',
+      created_at TEXT NOT NULL,
+      last_used_at TEXT,
+      revoked_at TEXT
+    );
+  `);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_api_credentials_status ON api_credentials (status);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
+}
+
+export async function createApiCredential(input: {
+  id: string; consumerName: string; consumerProject: string; keyHash: string; createdAt: string;
+}): Promise<void> {
+  const db = getDb();
+  await db.execute({
+    sql: `INSERT INTO api_credentials (id, consumer_name, consumer_project, key_hash, status, created_at)
+          VALUES (?, ?, ?, ?, 'active', ?)`,
+    args: [input.id, input.consumerName, input.consumerProject, input.keyHash, input.createdAt],
+  });
+}
+
+export async function findActiveApiCredential(keyHash: string): Promise<{ id: string; consumer_project: string } | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `SELECT id, consumer_project FROM api_credentials WHERE key_hash = ? AND status = 'active' LIMIT 1`,
+    args: [keyHash],
+  });
+  if (!result.rows.length) return null;
+  const row = result.rows[0] as unknown as { id: string; consumer_project: string };
+  await db.execute({ sql: `UPDATE api_credentials SET last_used_at = ? WHERE id = ?`, args: [new Date().toISOString(), row.id] });
+  return row;
+}
+
+export async function revokeApiCredential(id: string): Promise<boolean> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `UPDATE api_credentials SET status = 'revoked', revoked_at = ? WHERE id = ? AND status = 'active'`,
+    args: [new Date().toISOString(), id],
+  });
+  return Number(result.rowsAffected || 0) > 0;
+}
+
+export async function listApiCredentials(): Promise<Array<{ id: string; consumer_name: string; consumer_project: string; status: string; created_at: string; last_used_at: string | null; revoked_at: string | null }>> {
+  const db = getDb();
+  const result = await db.execute(`SELECT id, consumer_name, consumer_project, status, created_at, last_used_at, revoked_at FROM api_credentials ORDER BY created_at DESC`);
+  return result.rows as unknown as Array<{ id: string; consumer_name: string; consumer_project: string; status: string; created_at: string; last_used_at: string | null; revoked_at: string | null }>;
 }
 
 export async function createJob(job: ScrapeJob & { user_id: string }): Promise<void> {
