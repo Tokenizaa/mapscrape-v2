@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Search, ExternalLink, FileDown, ChevronLeft, ChevronRight, Filter, MapPin, Phone, Globe, Star, Clock3, X, Building2, CalendarClock, Copy, Check } from 'lucide-react';
+import { Search, ExternalLink, FileDown, ChevronLeft, ChevronRight, Filter, MapPin, Phone, Globe, Star, Clock3, X, Building2, Copy, Check } from 'lucide-react';
 import { PlaceRecord, ScrapeJob } from '../shared/types';
 
 interface ResultsScreenProps {
