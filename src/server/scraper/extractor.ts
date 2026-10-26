@@ -26,17 +26,17 @@ export async function extractPlaceDetails(
 ): Promise<PlaceRecord> {
   // Extract raw details inside the browser context
   const raw: any = await page.evaluate((selectors) => {
-    if (typeof window.__name === 'undefined') {
-      window.__name = function(f) { return f; };
+    if (typeof (window as any).__name === 'undefined') {
+      (window as any).__name = function(f: any) { return f; };
     }
-    if (typeof globalThis.__name === 'undefined') {
-      globalThis.__name = function(f) { return f; };
+    if (typeof (globalThis as any).__name === 'undefined') {
+      (globalThis as any).__name = function(f: any) { return f; };
     }
 
-    function getTextBySelectors(selectors) {
+    function getTextBySelectors(selectors: string[]) {
       for (var i = 0; i < selectors.length; i++) {
         try {
-          var el = document.querySelector(selectors[i]);
+          var el = document.querySelector(selectors[i]) as HTMLElement | null;
           if (el && el.innerText && el.innerText.trim()) {
             return el.innerText.trim();
           }
@@ -45,7 +45,7 @@ export async function extractPlaceDetails(
       return '';
     }
 
-    function getAttrBySelectors(selectors, attr) {
+    function getAttrBySelectors(selectors: string[], attr: string) {
       for (var i = 0; i < selectors.length; i++) {
         try {
           var el = document.querySelector(selectors[i]);
@@ -105,7 +105,7 @@ export async function extractPlaceDetails(
     // 10. Services & Attributes
     var serviceEls = Array.from(document.querySelectorAll(selectors.services.join(', ')));
     var services_attributes = serviceEls
-      .map(function(el) { return el.innerText.trim(); })
+      .map(function(el) { return (el as HTMLElement).innerText.trim(); })
       .filter(Boolean)
       .join(' · ');
 
