@@ -188,6 +188,10 @@ export async function runScraperJob(
       }
 
       const directStatus = totalCollected === 0 && totalDuplicates > 0 ? 'partial' : 'completed';
+      const directMessage = totalCollected === 1
+        ? 'Coleta concluída com sucesso (resultado único direto).'
+        : 'A ficha encontrada já estava salva. Nenhum dado novo foi adicionado à base.';
+      await safeAudit({ level: directStatus === 'partial' ? 'warn' : 'info', category: 'scraper', event: 'job.finished', message: directMessage, jobId, metadata: { status: directStatus, totalFound, totalCollected, totalDuplicates, totalErrors, databaseCountBefore: baselineCount } });
       await emitProgress('Coleta finalizada.', {
         status: directStatus,
         status_message: totalCollected === 1
