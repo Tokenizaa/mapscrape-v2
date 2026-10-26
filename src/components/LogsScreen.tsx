@@ -116,7 +116,10 @@ export const LogsScreen: React.FC = () => {
         <label className="flex-1 text-xs font-medium text-zinc-600">ID da pesquisa (opcional)
           <input value={jobId} onChange={(e) => setJobId(e.target.value)} placeholder="job_..." className="mt-1 block w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-normal outline-none focus:border-zinc-400 focus:bg-white" />
         </label>
-        <button onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}`; }} disabled={!jobId.trim()} className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40">Baixar relatório JSON da pesquisa</button>
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}`; }} disabled={!jobId.trim()} className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40">Baixar JSON</button>
+          <button onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}/pdf`; }} disabled={!jobId.trim()} className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40">Baixar PDF</button>
+        </div>
       </div>
 
       <div className="flex items-center justify-between mb-3 text-xs text-zinc-500">
