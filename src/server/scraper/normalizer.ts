@@ -15,7 +15,7 @@ export function normalizeAddress(raw: string | null | undefined): string {
   if (!raw) return '';
   let cleaned = cleanText(raw);
   // Remove "Endereço: " or "Address: " prefix if present from aria-label
-  cleaned = cleaned.replace(/^(endereço|address):\s*/i, '');
+  cleaned = cleaned.replace(/^(endereço|address|adresse|dirección):\s*/i, '');
   return cleaned.trim();
 }
 
@@ -23,7 +23,7 @@ export function normalizePhone(raw: string | null | undefined): string {
   if (!raw) return '';
   let cleaned = cleanText(raw);
   // Remove "Telefone: " or "Phone: " prefix if present from aria-label
-  cleaned = cleaned.replace(/^(telefone|phone):\s*/i, '');
+  cleaned = cleaned.replace(/^(telefone|phone|téléphone|teléfono):\s*/i, '');
   // Remove icon remnants
   cleaned = cleaned.replace(/^[\s]+/, '');
   return cleaned.trim();
@@ -33,7 +33,7 @@ export function normalizeWebsite(raw: string | null | undefined): string {
   if (!raw) return '';
   let cleaned = cleanText(raw);
   // Remove "Website: " or "Site: " prefix
-  cleaned = cleaned.replace(/^(website|site):\s*/i, '');
+  cleaned = cleaned.replace(/^(website|site|sito web|sitio web):\s*/i, '');
   cleaned = cleaned.replace(/^[\s]+/, '');
   return cleaned.trim();
 }
@@ -78,22 +78,20 @@ export function normalizePriceRange(raw: string | null | undefined): string {
 
 export function normalizeBusinessStatus(raw: string | null | undefined): string {
   if (!raw) return '';
-  const cleaned = cleanText(raw);
-  // Identify common Google Maps status strings
-  if (/aberto/i.test(cleaned)) {
-    if (/fecha\s+às/i.test(cleaned) || /fecha\s+em/i.test(cleaned)) {
-      return cleaned;
-    }
-    return 'Aberto';
-  }
-  if (/fechado\s+permanentemente/i.test(cleaned)) {
-    return 'Fechado permanentemente';
-  }
-  if (/fechado\s+temporariamente/i.test(cleaned)) {
+  const cleaned = cleanText(raw).replace(/\s+/g, ' ').trim();
+  // Maps may render a different language despite the requested pt-BR locale.
+  if (/temporarily closed|fermé temporairement|cerrado temporalmente|fechado temporariamente/i.test(cleaned)) {
     return 'Fechado temporariamente';
   }
-  if (/fechado/i.test(cleaned)) {
-    return cleaned;
+  if (/permanently closed|fermé définitivement|cerrado permanentemente|fechado permanentemente/i.test(cleaned)) {
+    return 'Fechado permanentemente';
+  }
+  if (/\b(open|ouvert|abierto|aberta|aberto)\b/i.test(cleaned)) {
+    const next = cleaned.match(/(?:closes|closing|ferme|fermera|fecha)\s+(?:at|à|a|às|as)?\s*([\d: h.]+)/i);
+    return next ? `Aberto · fecha às ${next[1].trim()}` : 'Aberto';
+  }
+  if (/\b(closed|fermé|fermée|cerrado|cerrada|fechado|fechada)\b/i.test(cleaned)) {
+    return 'Fechado';
   }
   return cleaned;
 }
