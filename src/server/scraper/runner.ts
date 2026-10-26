@@ -27,8 +27,8 @@ function missingFields(place: PlaceRecord): string[] {
     }
     if (field === 'additional_attributes') {
       try {
-        const parsed = JSON.parse(value) as { about_text?: string; labeled_attributes?: unknown[] };
-        return !parsed.about_text?.trim() && !(parsed.labeled_attributes?.length);
+        const parsed = JSON.parse(value) as { about_text?: string; sections?: unknown[]; labeled_attributes?: unknown[] };
+        return !parsed.about_text?.trim() && !(parsed.sections?.length) && !(parsed.labeled_attributes?.length);
       } catch { return true; }
     }
     return false;
@@ -68,7 +68,7 @@ function mergePlaceRecords(existing: PlaceRecord, fresh: PlaceRecord): PlaceReco
   const oldMedia = parseJsonArray(existing.media_items);
   const freshAttributes = parseJsonObject(fresh.additional_attributes);
   const oldAttributes = parseJsonObject(existing.additional_attributes);
-  const hasFreshAttributes = Boolean(freshAttributes.about_text?.trim() || freshAttributes.labeled_attributes?.length);
+  const hasFreshAttributes = Boolean(freshAttributes.about_text?.trim() || freshAttributes.sections?.length || freshAttributes.labeled_attributes?.length);
 
   return {
     ...existing,
