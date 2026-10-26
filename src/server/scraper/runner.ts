@@ -36,6 +36,74 @@ function missingFields(place: PlaceRecord): string[] {
 }
 
 
+const ENRICHMENT_FIELDS: (keyof PlaceRecord)[] = [
+  'review_count', 'opening_hours', 'reviews', 'review_topics', 'additional_attributes', 'media_items',
+];
+
+function needsEnrichment(place: PlaceRecord): boolean {
+  const missing = missingFields(place);
+  return ENRICHMENT_FIELDS.some((field) => missing.includes(field));
+}
+
+function parseJsonArray(value?: string): any[] {
+  try { const parsed = JSON.parse(value || '[]'); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+}
+
+function parseJsonObject(value?: string): Record<string, any> {
+  try { const parsed = JSON.parse(value || '{}'); return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}; } catch { return {}; }
+}
+
+function mergeDelimited(oldValue?: string, newValue?: string): string {
+  return Array.from(new Set([...(oldValue || '').split(' | '), ...(newValue || '').split(' | ')]
+    .map((value) => value.trim()).filter(Boolean))).join(' | ');
+}
+
+/** Preserve existing facts when the new public page does not expose a value. */
+function mergePlaceRecords(existing: PlaceRecord, fresh: PlaceRecord): PlaceRecord {
+  const freshReviews = parseJsonArray(fresh.reviews);
+  const oldReviews = parseJsonArray(existing.reviews);
+  const freshTopics = parseJsonArray(fresh.review_topics);
+  const oldTopics = parseJsonArray(existing.review_topics);
+  const freshMedia = parseJsonArray(fresh.media_items);
+  const oldMedia = parseJsonArray(existing.media_items);
+  const freshAttributes = parseJsonObject(fresh.additional_attributes);
+  const oldAttributes = parseJsonObject(existing.additional_attributes);
+  const hasFreshAttributes = Boolean(freshAttributes.about_text?.trim() || freshAttributes.labeled_attributes?.length);
+
+  return {
+    ...existing,
+    ...fresh,
+    id: existing.id,
+    job_id: existing.job_id,
+    name: fresh.name || existing.name,
+    category: fresh.category || existing.category,
+    address: fresh.address || existing.address,
+    phone: fresh.phone || existing.phone,
+    website: fresh.website || existing.website,
+    rating: fresh.rating || existing.rating,
+    review_count: fresh.review_count || existing.review_count,
+    price_range: fresh.price_range || existing.price_range,
+    opening_hours: fresh.opening_hours || existing.opening_hours,
+    business_status: fresh.business_status || existing.business_status,
+    latitude: fresh.latitude || existing.latitude,
+    longitude: fresh.longitude || existing.longitude,
+    maps_url: fresh.maps_url || existing.maps_url,
+    description: fresh.description || existing.description,
+    services_attributes: fresh.services_attributes || existing.services_attributes,
+    photos: mergeDelimited(existing.photos, fresh.photos),
+    videos: mergeDelimited(existing.videos, fresh.videos),
+    logo_url: fresh.logo_url || existing.logo_url,
+    social_links: mergeDelimited(existing.social_links, fresh.social_links),
+    reviews: JSON.stringify(freshReviews.length ? freshReviews : oldReviews),
+    review_topics: JSON.stringify(freshTopics.length ? freshTopics : oldTopics),
+    additional_attributes: JSON.stringify(hasFreshAttributes ? freshAttributes : oldAttributes),
+    media_items: JSON.stringify(freshMedia.length ? freshMedia : oldMedia),
+    plus_code: fresh.plus_code || existing.plus_code,
+    collected_at: fresh.collected_at || existing.collected_at || new Date().toISOString(),
+  };
+}
+
+
 export function isJobRunning(jobId: string): boolean {
   return activeJobs.has(jobId);
 }
@@ -225,14 +293,27 @@ export async function runScraperJob(
       }
       const existingDirectPlace = await findPlaceByUrl(currentUrl);
       if (existingDirectPlace) {
-        totalDuplicates = 1;
-        await safeAudit({
-          category: 'scraper',
-          event: 'place.duplicate_skipped',
-          message: 'Ficha direta já existe na base; nenhum registro novo foi criado.',
-          jobId,
-          metadata: { mapsUrl: currentUrl, previewName: placeRecord.name, existingPlaceId: existingDirectPlace.id, existingName: existingDirectPlace.name, existingJobId: existingDirectPlace.job_id, existingCollectedAt: existingDirectPlace.collected_at, reason: 'canonical_maps_url_exists' },
-        });
+        if (needsEnrichment(existingDirectPlace)) {
+          const merged = mergePlaceRecords(existingDirectPlace, placeRecord);
+          await updatePlace(existingDirectPlace.id, merged);
+          totalCollected = 1;
+          await safeAudit({
+            category: 'scraper',
+            event: 'place.enriched',
+            message: 'Ficha direta existente atualizada com campos públicos adicionais.',
+            jobId,
+            metadata: { placeId: existingDirectPlace.id, name: merged.name, reviewsCaptured: parseJsonArray(placeRecord.reviews).length, topicsCaptured: parseJsonArray(placeRecord.review_topics).length, mediaCaptured: parseJsonArray(placeRecord.media_items).length, missingFields: missingFields(merged) },
+          });
+        } else {
+          totalDuplicates = 1;
+          await safeAudit({
+            category: 'scraper',
+            event: 'place.duplicate_skipped',
+            message: 'Ficha direta já existe e os campos de enriquecimento estão preenchidos; ignorada.',
+            jobId,
+            metadata: { mapsUrl: currentUrl, previewName: placeRecord.name, existingPlaceId: existingDirectPlace.id, existingName: existingDirectPlace.name, existingJobId: existingDirectPlace.job_id, existingCollectedAt: existingDirectPlace.collected_at, reason: 'duplicate_already_enriched' },
+          });
+        }
       } else {
         await insertPlace(placeRecord);
         totalCollected = 1;
@@ -591,60 +672,13 @@ export async function runScraperJob(
         // database lookup or progress update can fail just like extraction.
         const existingPlace = await findPlaceByUrl(item.url);
         if (existingPlace) {
-          // Legacy rows may predate full review/media extraction. Enrich those
-          // records in place instead of permanently skipping them as duplicates.
-          const needsEnrichment = ['review_count', 'opening_hours', 'reviews', 'review_topics', 'additional_attributes', 'media_items']
-            .some((field) => missingFields(existingPlace).includes(field as keyof PlaceRecord));
-          if (needsEnrichment) {
+          if (needsEnrichment(existingPlace)) {
             await emitProgress(`[${placeNum}/${itemsToProcess.length}] Atualizando ficha existente: ${existingPlace.name}...`);
             await page.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
             await page.waitForSelector('h1', { timeout: 12000 }).catch(() => {});
             await new Promise((resolve) => setTimeout(resolve, 700));
             const fresh = await extractPlaceDetails(page, jobId, item.url);
-            const mergeDelimited = (oldValue?: string, newValue?: string) =>
-              Array.from(new Set([...(oldValue || '').split(' | '), ...(newValue || '').split(' | ')]
-                .map((value) => value.trim()).filter(Boolean)).values()).join(' | ');
-            const freshReviews = (() => { try { return JSON.parse(fresh.reviews || '[]'); } catch { return []; } })();
-            const oldReviews = (() => { try { return JSON.parse(existingPlace.reviews || '[]'); } catch { return []; } })();
-            const freshTopics = (() => { try { return JSON.parse(fresh.review_topics || '[]'); } catch { return []; } })();
-            const oldTopics = (() => { try { return JSON.parse(existingPlace.review_topics || '[]'); } catch { return []; } })();
-            const freshMedia = (() => { try { return JSON.parse(fresh.media_items || '[]'); } catch { return []; } })();
-            const oldMedia = (() => { try { return JSON.parse(existingPlace.media_items || '[]'); } catch { return []; } })();
-            const freshAttributes = (() => { try { return JSON.parse(fresh.additional_attributes || '{}'); } catch { return {}; } })();
-            const oldAttributes = (() => { try { return JSON.parse(existingPlace.additional_attributes || '{}'); } catch { return {}; } })();
-            const merged: PlaceRecord = {
-              ...existingPlace,
-              ...fresh,
-              id: existingPlace.id,
-              job_id: existingPlace.job_id,
-              name: fresh.name || existingPlace.name,
-              category: fresh.category || existingPlace.category,
-              address: fresh.address || existingPlace.address,
-              phone: fresh.phone || existingPlace.phone,
-              website: fresh.website || existingPlace.website,
-              rating: fresh.rating || existingPlace.rating,
-              review_count: fresh.review_count || existingPlace.review_count,
-              price_range: fresh.price_range || existingPlace.price_range,
-              opening_hours: fresh.opening_hours || existingPlace.opening_hours,
-              business_status: fresh.business_status || existingPlace.business_status,
-              latitude: fresh.latitude || existingPlace.latitude,
-              longitude: fresh.longitude || existingPlace.longitude,
-              maps_url: fresh.maps_url || existingPlace.maps_url,
-              description: fresh.description || existingPlace.description,
-              services_attributes: fresh.services_attributes || existingPlace.services_attributes,
-              photos: mergeDelimited(existingPlace.photos, fresh.photos),
-              videos: mergeDelimited(existingPlace.videos, fresh.videos),
-              logo_url: fresh.logo_url || existingPlace.logo_url,
-              social_links: mergeDelimited(existingPlace.social_links, fresh.social_links),
-              reviews: JSON.stringify(freshReviews.length ? freshReviews : oldReviews),
-              review_topics: JSON.stringify(freshTopics.length ? freshTopics : oldTopics),
-              additional_attributes: JSON.stringify(
-                freshAttributes.about_text || freshAttributes.labeled_attributes?.length ? freshAttributes : oldAttributes
-              ),
-              media_items: JSON.stringify(freshMedia.length ? freshMedia : oldMedia),
-              plus_code: fresh.plus_code || existingPlace.plus_code,
-              collected_at: fresh.collected_at || new Date().toISOString(),
-            };
+            const merged = mergePlaceRecords(existingPlace, fresh);
             await updatePlace(existingPlace.id, merged);
             totalCollected++;
             await safeAudit({
@@ -652,7 +686,7 @@ export async function runScraperJob(
               event: 'place.enriched',
               message: 'Ficha existente atualizada com campos públicos adicionais.',
               jobId,
-              metadata: { placeId: existingPlace.id, name: merged.name, reviewCount: merged.review_count, reviewsCaptured: freshReviews.length, topicsCaptured: freshTopics.length, mediaCaptured: freshMedia.length, missingFields: missingFields(merged) },
+              metadata: { placeId: existingPlace.id, name: merged.name, reviewCount: merged.review_count, reviewsCaptured: parseJsonArray(fresh.reviews).length, topicsCaptured: parseJsonArray(fresh.review_topics).length, mediaCaptured: parseJsonArray(fresh.media_items).length, missingFields: missingFields(merged) },
             });
             await emitProgress(`[${placeNum}/${itemsToProcess.length}] Ficha enriquecida: ${merged.name}`);
             continue;
