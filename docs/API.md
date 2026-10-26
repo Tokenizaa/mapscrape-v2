@@ -11,7 +11,22 @@ Authorization: Bearer <MAPSCRAPE_API_KEY>
 Accept: application/json
 ```
 
-No servidor MapScrape, configure `MAPSCRAPE_API_KEYS` como uma lista separada por vírgulas de segredos fortes, cada um com pelo menos 32 caracteres. Exemplo de geração local: `openssl rand -hex 32`. Configure o valor no gerenciador de secrets do ambiente de deploy. Nunca coloque a chave em código frontend, query string, logs ou repositório.
+A API aceita chaves legadas em `MAPSCRAPE_API_KEYS` e credenciais individuais emitidas pelo provisionador. Credenciais individuais são armazenadas no banco somente como hash SHA-256 e podem ser revogadas; a chave completa é exibida uma única vez na resposta de emissão.
+
+Nunca coloque chaves em código frontend, query string, logs ou repositório.
+
+## Provisionamento automatizado de consumidores
+
+O endpoint de provisionamento usa uma credencial bootstrap separada: `MAPSCRAPE_PROVISIONING_TOKEN`. Ela deve existir apenas em secrets de infraestrutura/CI autorizados, nunca no navegador nem no repositório. Essa autorização inicial é configurada uma vez por organização/ambiente confiável; depois, cada projeto recebe sua própria `MAPSCRAPE_API_KEY`.
+
+- `POST /api/v1/provisioning/credentials` — emite uma credencial individual. Cabeçalho `X-MapScrape-Provisioning-Token`; JSON `{ "consumerName": "Nome do produto", "consumerProject": "org/repo-ou-id-estavel" }`. Retorna `201` com `credentialId` e `apiKey` uma única vez. Repetir para um projeto com credencial ativa retorna `409`.
+- `GET /api/v1/provisioning/credentials` — lista metadados sem revelar chaves.
+- `DELETE /api/v1/provisioning/credentials/{credentialId}` — revoga a credencial imediatamente.
+- `scripts/provision-consumer.mjs` — emite a chave, grava-a diretamente em Vercel Production ou Cloudflare Worker Secret e valida uma chamada de leitura. Não imprime nem salva a chave em arquivo.
+
+Execute o instalador no ambiente seguro do projeto consumidor com `MAPSCRAPE_BASE_URL`, `MAPSCRAPE_PROVISIONING_TOKEN`, `CONSUMER_NAME`, `CONSUMER_PROJECT` e `TARGET_PROVIDER`. Para Vercel, forneça `VERCEL_TOKEN`, `VERCEL_PROJECT_ID` e opcionalmente `VERCEL_TEAM_ID`. Para Cloudflare, forneça `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_WORKER_NAME`.
+
+A chave bootstrap continua sendo uma autorização administrativa compartilhada: distribua-a somente como secret de organização/CI para agentes confiáveis. O instalador não elimina a necessidade dessa autorização inicial.
 
 ## Endpoints
 
@@ -128,7 +143,7 @@ Requer autenticação. Retorna os leads persistidos para uma coleta, com a mesma
 - `500`: falha ao consultar ou iniciar a operação.
 - `503 api_not_configured`: `MAPSCRAPE_API_KEYS` não foi configurada no servidor; ou dependência indisponível no endpoint de saúde.
 
-A versão atual não implementa ainda limites de consumo por cliente, cadastro individual/revogação de chaves por consumidor, nem endpoint dedicado para consulta de reviews/mídias: esses dados vêm dentro do registro completo. Não trate tais capacidades como existentes.
+A versão atual oferece cadastro/revogação de credenciais individuais e trilha de auditoria da emissão/revogação. Ainda não há quotas de consumo por consumidor nem endpoint dedicado para reviews/mídias: esses dados vêm dentro do registro completo. Não trate quotas por consumidor como existentes.
 
 ## Exemplo cURL
 
