@@ -283,11 +283,6 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
           }
           return '';
         };
-        // Expand truncated review bodies before reading them.
-        const seeMore = Array.from(card.querySelectorAll('button')).find((button) =>
-          /see more|mais|ver mais|plus/i.test(button.innerText || button.getAttribute('aria-label') || '')
-        );
-        if (seeMore) (seeMore as HTMLElement).click();
         const media = [
           ...Array.from(card.querySelectorAll('img'))
             .map((img) => ({ type: 'image', url: (img as HTMLImageElement).currentSrc || (img as HTMLImageElement).src, alt: img.getAttribute('alt') || '' }))
@@ -317,9 +312,18 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       });
     };
     reviewContainer = findReviewContainer();
+    const expandVisibleReviews = () => {
+      document.querySelectorAll('.jftiEf button').forEach((button) => {
+        if (/see more|mais|ver mais|plus/i.test(button.innerText || button.getAttribute('aria-label') || '')) {
+          (button as HTMLElement).click();
+        }
+      });
+    };
     let lastCount = -1;
     let stagnant = 0;
     for (let iteration = 0; iteration < 80; iteration++) {
+      expandVisibleReviews();
+      await new Promise((resolve) => setTimeout(resolve, 35));
       readReviews();
       if (reviews.length === lastCount) stagnant += 1;
       else stagnant = 0;
@@ -330,6 +334,8 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       else window.scrollTo(0, document.body.scrollHeight);
       await new Promise((resolve) => setTimeout(resolve, 120));
     }
+    expandVisibleReviews();
+    await new Promise((resolve) => setTimeout(resolve, 35));
     readReviews();
 
     // Expand the list of review topic/category chips before capturing labels/counts.
@@ -354,7 +360,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     const aboutTabClicked = clickByText(/^(?:About(?:\s|$)|Sobre(?:\s|$)|Informações(?:\s|$))/i);
     await new Promise((resolve) => setTimeout(resolve, 180));
     const aboutText = ((document.querySelector('div[role="main"]') as HTMLElement | null)?.innerText || '')
-      .split('\n').map((line) => line.trim()).filter(Boolean).slice(-180).join('\n');
+      .split('\n').map((line) => line.trim()).filter(Boolean).slice(0, 300).join('\n');
     const additional_attributes = {
       about_text: aboutTabClicked ? aboutText.slice(0, 18000) : '',
       sections: aboutTabClicked ? Array.from(document.querySelectorAll('div[role="main"] h2, div[role="main"] h3'))
