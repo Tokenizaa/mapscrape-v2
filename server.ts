@@ -27,7 +27,7 @@ const __dirname = path.dirname(__filename);
 function hasValidApiKey(req: Request): boolean {
   const configured = (process.env.MAPSCRAPE_API_KEYS || '').split(',').map((value) => value.trim()).filter(Boolean);
   const header = req.header('authorization') || '';
-  const match = /^Bearer\\s+(.+)$/i.exec(header);
+  const match = /^Bearer\s+(.+)$/i.exec(header);
   if (!match || configured.length === 0) return false;
   const supplied = Buffer.from(match[1], 'utf8');
   return configured.some((candidate) => {
