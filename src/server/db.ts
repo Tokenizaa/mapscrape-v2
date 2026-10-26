@@ -221,6 +221,26 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
   });
 }
 
+/** Update an existing place row in place so a new scrape can enrich old records without duplicating them. */
+export async function updatePlace(id: string, place: PlaceRecord): Promise<void> {
+  const db = getDb();
+  await db.execute({
+    sql: `UPDATE places SET
+      name = ?, category = ?, address = ?, phone = ?, website = ?, rating = ?, review_count = ?,
+      price_range = ?, opening_hours = ?, business_status = ?, latitude = ?, longitude = ?, maps_url = ?,
+      description = ?, services_attributes = ?, photos = ?, videos = ?, logo_url = ?, social_links = ?,
+      reviews = ?, review_topics = ?, additional_attributes = ?, media_items = ?, plus_code = ?, collected_at = ?
+      WHERE id = ?`,
+    args: [
+      place.name, place.category, place.address, place.phone, place.website, place.rating, place.review_count,
+      place.price_range, place.opening_hours, place.business_status, place.latitude, place.longitude, place.maps_url,
+      place.description, place.services_attributes, place.photos || '', place.videos || '', place.logo_url || '',
+      place.social_links || '', place.reviews || '[]', place.review_topics || '[]', place.additional_attributes || '{}',
+      place.media_items || '[]', place.plus_code || '', place.collected_at, id,
+    ],
+  });
+}
+
 export async function findPlaceByUrl(url: string): Promise<PlaceRecord | null> {
   if (!url || !url.trim()) return null;
   const db = getDb();
