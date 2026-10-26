@@ -253,14 +253,17 @@ export async function runScraperJob(
     while (discoveredUrls.length < limitRequested && scrollAttempts < maxScrollAttempts && stagnantRounds < 8 && !handle.cancelled) {
       scrollAttempts++;
 
-      // If Maps has changed result ordering and the old checkpoint never appears,
-      // fall back to ordinary global deduplication rather than blocking the run.
-      if (!resumeReached && scrollAttempts >= 12) {
+      // Search ordering can change. Give deep histories time to reach the checkpoint;
+      // if it is still absent, restart candidate evaluation on the current feed and
+      // rely on global URL deduplication instead of silently returning zero results.
+      if (!resumeReached && scrollAttempts >= Math.min(maxScrollAttempts, 40)) {
         resumeReached = true;
         resumeFallbackUsed = true;
+        seenUrlsInRun.clear();
+        stagnantRounds = 0;
         await safeAudit({
           level: 'warn', category: 'scraper', event: 'results.resume_checkpoint_missing',
-          message: 'O último resultado salvo não reapareceu nas primeiras 12 rolagens; retomada automática desativada para esta execução.',
+          message: 'O último resultado salvo não reapareceu após 40 rolagens; retomada por checkpoint desativada e deduplicação global aplicada.',
           jobId, metadata: { checkpointUrl: resumeUrl, scrollAttempts },
         });
       }
@@ -359,10 +362,24 @@ export async function runScraperJob(
         return false;
       }, SELECTORS.feed);
 
-      if (newUniqueLinksInBatch === 0) stagnantRounds++;
-      else stagnantRounds = 0;
+      if (newUniqueLinksInBatch === 0 && resumeReached) stagnantRounds++;
+      else if (newUniqueLinksInBatch > 0) stagnantRounds = 0;
 
       if (isEndOfList && newUniqueLinksInBatch === 0) {
+        if (!resumeReached) {
+          // The checkpoint may have disappeared because Maps reordered/limited results.
+          // Re-evaluate the currently visible URLs in normal dedupe mode before ending.
+          resumeReached = true;
+          resumeFallbackUsed = true;
+          seenUrlsInRun.clear();
+          stagnantRounds = 0;
+          await safeAudit({
+            level: 'warn', category: 'scraper', event: 'results.resume_checkpoint_missing',
+            message: 'A lista terminou antes de reencontrar o ponto salvo; reavaliando resultados com deduplicação global.',
+            jobId, metadata: { checkpointUrl: resumeUrl, scrollAttempts },
+          });
+          continue;
+        }
         reachedEndOfList = true;
         break;
       }
@@ -400,7 +417,7 @@ export async function runScraperJob(
         // Mouse wheel triggers Maps' own scroll handlers and works when the feed
         // uses a nested/virtualized scroll container.
         await page.mouse.move(scrollTarget.x, scrollTarget.y);
-        await page.mouse.wheel({ deltaY: 650 });
+        await page.mouse.wheel({ deltaY: resumeReached ? 650 : 1300 });
         await new Promise((resolve) => setTimeout(resolve, 350));
         const wheelMoved = await page.evaluate((beforeTop) => {
           const feed = document.querySelector('div[role="feed"]') as HTMLElement | null;
