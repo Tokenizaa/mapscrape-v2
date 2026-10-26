@@ -16,6 +16,7 @@ import { runScraperJob, stopScrapeJob, isJobRunning } from './src/server/scraper
 import { generateCsv } from './src/server/scraper/csv';
 import { ScrapeJob, PlaceRecord } from './src/shared/types';
 import { initAuditLog, listAuditLogs, writeAuditLog } from './src/server/audit-log';
+import { readRunReport } from './src/server/run-report';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -238,6 +239,19 @@ async function startServer() {
     } catch (err: any) {
       console.error('Export error:', err);
       return res.status(500).json({ error: err.message || 'Erro ao exportar CSV.' });
+    }
+  });
+
+  // Download the JSON evidence report generated for a collection run.
+  app.get('/api/reports/:jobId', async (req: Request, res: Response) => {
+    try {
+      const report = await readRunReport(String(req.params.jobId || ''));
+      if (!report) return res.status(404).json({ error: 'Relatório ainda não existe para esta pesquisa.' });
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      res.setHeader('Content-Disposition', `attachment; filename="mapscrape-report-${String(req.params.jobId).replace(/[^a-zA-Z0-9_-]/g, '_')}.json"`);
+      return res.json(report);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Erro ao carregar relatório.' });
     }
   });
 
