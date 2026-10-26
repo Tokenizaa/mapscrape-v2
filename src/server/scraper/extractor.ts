@@ -12,6 +12,7 @@ import {
   normalizeBusinessStatus,
   extractCoordinates,
 } from './normalizer';
+import { SELECTORS } from './selectors';
 
 /**
  * Extracts the 15 specified fields from a Google Maps place page.
@@ -24,7 +25,7 @@ export async function extractPlaceDetails(
   targetUrl: string
 ): Promise<PlaceRecord> {
   // Extract raw details inside the browser context
-  const raw: any = await page.evaluate(`(() => {
+  const raw: any = await page.evaluate((selectors) => {
     if (typeof window.__name === 'undefined') {
       window.__name = function(f) { return f; };
     }
@@ -58,92 +59,51 @@ export async function extractPlaceDetails(
     }
 
     // 1. Name
-    var name = getTextBySelectors([
-      'h1.DUwDvf',
-      'h1.fontHeadlineLarge',
-      'div[role="main"] h1',
-      'h1'
-    ]);
+    var name = getTextBySelectors(selectors.title);
 
     // 2. Category
-    var category = getTextBySelectors([
-      'button[jsaction*="pane.rating.category"]',
-      'button.DkEaL',
-      'span.Y0A0hc',
-      'button[jsaction*="category"]'
-    ]);
+    var category = getTextBySelectors(selectors.category);
 
     // 3. Rating & Review Count
-    var ratingEl = document.querySelector('div.F7nice span[aria-hidden="true"], span.ceNzKf, div.fontDisplayLarge');
-    var rating = ratingEl ? ratingEl.innerText.trim() : '';
+    var rating = getTextBySelectors(selectors.rating);
+    if (!rating) rating = getAttrBySelectors(selectors.rating, 'aria-label');
 
-    var review_count = '';
-    var reviewEl = document.querySelector('span[aria-label*="avalia"], span[aria-label*="reviews"], div.F7nice > span:nth-child(2)');
-    if (reviewEl) {
-      var rText = reviewEl.innerText ? reviewEl.innerText.trim() : (reviewEl.getAttribute('aria-label') || '');
-      if (rText && rText !== rating) {
-        review_count = rText;
-      }
-    }
+    var review_count = getTextBySelectors(selectors.reviews);
+    if (!review_count) review_count = getAttrBySelectors(selectors.reviews, 'aria-label');
+    if (review_count === rating) review_count = '';
 
     // 4. Price range
-    var price_range = getAttrBySelectors(['span[aria-label*="Preço:"]', 'span[aria-label*="Price:"]'], 'aria-label') ||
-      getTextBySelectors(['span.mgr77e', 'span[aria-label*="Preço"]']);
+    var price_range = getAttrBySelectors(selectors.priceRange, 'aria-label') ||
+      getTextBySelectors(selectors.priceRange);
 
     // 5. Address
-    var address = '';
-    var addressBtn = document.querySelector('button[data-item-id="address"], [data-item-id="address"]');
-    if (addressBtn) {
-      address = addressBtn.getAttribute('aria-label') || addressBtn.innerText;
-    } else {
-      var aEl = document.querySelector('button[aria-label*="Endereço:"]');
-      if (aEl) address = aEl.getAttribute('aria-label') || aEl.innerText;
-    }
+    var address = getAttrBySelectors(selectors.address, 'aria-label') ||
+      getTextBySelectors(selectors.address);
 
     // 6. Website
-    var website = '';
-    var websiteEl = document.querySelector('a[data-item-id="authority"], [data-item-id="authority"]');
-    if (websiteEl) {
-      website = websiteEl.getAttribute('href') || websiteEl.innerText;
-    } else {
-      var wEl = document.querySelector('a[aria-label*="Website:"], a[aria-label*="Site:"]');
-      if (wEl) website = wEl.getAttribute('href') || wEl.innerText;
-    }
+    var website = getAttrBySelectors(selectors.website, 'href') ||
+      getAttrBySelectors(selectors.website, 'aria-label') ||
+      getTextBySelectors(selectors.website);
 
     // 7. Phone
-    var phone = '';
-    var phoneBtn = document.querySelector('button[data-item-id^="phone:"], [data-item-id^="phone:"]');
-    if (phoneBtn) {
-      phone = phoneBtn.getAttribute('aria-label') || phoneBtn.innerText;
-    } else {
-      var pEl = document.querySelector('button[aria-label*="Telefone:"], button[aria-label*="Phone:"]');
-      if (pEl) phone = pEl.getAttribute('aria-label') || pEl.innerText;
-    }
+    var phone = getAttrBySelectors(selectors.phone, 'aria-label') ||
+      getTextBySelectors(selectors.phone);
 
     // 8. Hours and Business status
     var business_status = '';
     var opening_hours = '';
 
-    var statusEl = document.querySelector('span.ZDu9vd span:first-child, div.OM3Cfd span:first-child, span.o0Svhf');
-    if (statusEl) {
-      business_status = statusEl.innerText.trim();
-    }
+    business_status = getTextBySelectors(selectors.businessStatus) ||
+      getAttrBySelectors(selectors.businessStatus, 'aria-label');
 
-    var hoursContainer = document.querySelector('div[aria-label*="Horário"], div.t39EBf, table.eKjhbv, div.OM3Cfd');
-    if (hoursContainer) {
-      opening_hours = hoursContainer.getAttribute('aria-label') || hoursContainer.innerText.trim();
-    }
+    opening_hours = getAttrBySelectors(selectors.hours, 'aria-label') ||
+      getTextBySelectors(selectors.hours);
 
     // 9. Description
-    var description = getTextBySelectors([
-      'div.PYvSYb',
-      'div.WeS02d',
-      'div.bJzME.Hu9e2e div.loref',
-      'div.w70O2e'
-    ]);
+    var description = getTextBySelectors(selectors.description);
 
     // 10. Services & Attributes
-    var serviceEls = Array.from(document.querySelectorAll('div.E0dtEd, div.dr4qPd, div.LTs0Rc, div[aria-label*="Serviços"]'));
+    var serviceEls = Array.from(document.querySelectorAll(selectors.services.join(', ')));
     var services_attributes = serviceEls
       .map(function(el) { return el.innerText.trim(); })
       .filter(Boolean)
@@ -164,7 +124,7 @@ export async function extractPlaceDetails(
       services_attributes: services_attributes,
       currentUrl: window.location.href
     };
-  })()`);
+  }, SELECTORS.place);`);
 
   const finalUrl = raw.currentUrl || targetUrl;
   const coords = extractCoordinates(finalUrl);
