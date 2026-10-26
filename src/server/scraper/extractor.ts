@@ -348,6 +348,39 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
         .slice(0, 200),
     };
 
+    // Close any review dialog and inspect the public gallery. Collect thumbnails
+    // as actual image data; keep video cards typed even when Maps hides the
+    // underlying stream URL and only exposes a playable item in its own viewer.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    clickByText(/^See photos$|^Ver fotos$|^Ver todas as fotos$|^Fotos$/i);
+    await new Promise((resolve) => setTimeout(resolve, 220));
+    let galleryContainer = (document.querySelector('[role="dialog"]') as HTMLElement | null) || findReviewContainer();
+    let previousGalleryCount = -1;
+    let galleryStagnant = 0;
+    for (let iteration = 0; iteration < 50; iteration++) {
+      const before = photoUrls.length;
+      document.querySelectorAll('[role="dialog"] img, div[role="main"] img[src*="googleusercontent.com"]').forEach((node) => {
+        const image = node as HTMLImageElement;
+        addPhoto(image.currentSrc || image.src || attr(node, 'src'));
+        addPhoto(attr(node, 'data-src'));
+      });
+      document.querySelectorAll('[role="dialog"] video, [role="dialog"] [data-video-url], [role="dialog"] button[aria-label*="video"], [role="dialog"] button[aria-label*="vídeo"]').forEach((node) => {
+        const media = node as HTMLVideoElement;
+        const source = media.currentSrc || media.src || attr(node, 'src') || attr(node, 'data-video-url');
+        const label = attr(node, 'aria-label') || (node as HTMLElement).innerText || 'Vídeo na galeria do Google Maps';
+        if (source.startsWith('http') && !seenVideos.has(source)) { seenVideos.add(source); videoUrls.push(source); }
+        else if (!source && !seenVideos.has(label)) { seenVideos.add(label); videoUrls.push(label); }
+      });
+      if (photoUrls.length === previousGalleryCount && photoUrls.length === before) galleryStagnant += 1;
+      else galleryStagnant = 0;
+      if (galleryStagnant >= 4) break;
+      previousGalleryCount = photoUrls.length;
+      if (!galleryContainer) galleryContainer = document.querySelector('[role="dialog"]') as HTMLElement | null;
+      if (galleryContainer) galleryContainer.scrollTop = galleryContainer.scrollHeight;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
     // Build typed media entries so the UI can render photos as images and video
     // items with a playable preview where the public page exposes a source.
     const media_items = [
