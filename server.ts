@@ -18,10 +18,41 @@ import { initAuditLog, listAuditLogs, writeAuditLog } from './src/server/audit-l
 import { readRunReport, readRunReportPdf } from './src/server/run-report';
 
 import pino from 'pino';
+import { timingSafeEqual } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+function hasValidApiKey(req: Request): boolean {
+  const configured = (process.env.MAPSCRAPE_API_KEYS || '').split(',').map((value) => value.trim()).filter(Boolean);
+  const header = req.header('authorization') || '';
+  const match = /^Bearer\\s+(.+)$/i.exec(header);
+  if (!match || configured.length === 0) return false;
+  const supplied = Buffer.from(match[1], 'utf8');
+  return configured.some((candidate) => {
+    const expected = Buffer.from(candidate, 'utf8');
+    return supplied.length === expected.length && timingSafeEqual(supplied, expected);
+  });
+}
+
+function apiLead(record: PlaceRecord): Record<string, unknown> {
+  const parse = (value: unknown, fallback: unknown) => {
+    if (typeof value !== 'string' || !value.trim()) return fallback;
+    try { return JSON.parse(value); } catch { return value; }
+  };
+  return {
+    ...record,
+    photos: typeof record.photos === 'string' ? record.photos.split(' | ').filter(Boolean) : [],
+    videos: typeof record.videos === 'string' ? record.videos.split(' | ').filter(Boolean) : [],
+    reviews: parse(record.reviews, []),
+    review_topics: parse(record.review_topics, []),
+    additional_attributes: parse(record.additional_attributes, {}),
+    media_items: parse(record.media_items, []),
+    services_attributes: parse(record.services_attributes, {}),
+    social_links: typeof record.social_links === 'string' ? record.social_links.split(' | ').filter(Boolean) : [],
+  };
+}
 
 async function safeWriteAuditLog(input: Parameters<typeof writeAuditLog>[0]): Promise<void> {
   try { await writeAuditLog(input); } catch (error) { console.error('Audit log write failed:', error); }
@@ -411,6 +442,108 @@ export async function createApp() {
       return res.send(body);
     } catch (err: any) {
       return res.status(500).json({ error: err.message || 'Erro ao exportar logs.' });
+    }
+  });
+
+  // --- Stable machine-to-machine API v1 ---
+  // Configure MAPSCRAPE_API_KEYS as a comma-separated list of independently generated secrets (32+ chars each).
+  // Keep this setting server-side only. Legacy UI routes remain compatible.
+  app.get('/api/v1/health', async (_req: Request, res: Response) => {
+    try {
+      const { countPlaces } = await import('./src/server/db');
+      return res.json({ status: 'ok', service: 'mapscrape-api', apiVersion: 'v1', database: 'connected', totalLeads: await countPlaces(), timestamp: new Date().toISOString() });
+    } catch {
+      return res.status(503).json({ status: 'degraded', service: 'mapscrape-api', apiVersion: 'v1', database: 'unavailable' });
+    }
+  });
+
+  app.use('/api/v1', (req: Request, res: Response, next) => {
+    if (req.path === '/health' && req.method === 'GET') return next();
+    if (!(process.env.MAPSCRAPE_API_KEYS || '').split(',').some((key) => key.trim())) {
+      return res.status(503).json({ error: 'api_not_configured', message: 'MAPSCRAPE_API_KEYS não está configurada no servidor.' });
+    }
+    if (!hasValidApiKey(req)) return res.status(401).json({ error: 'unauthorized', message: 'Informe uma chave válida no cabeçalho Authorization: Bearer.' });
+    res.setHeader('Cache-Control', 'no-store');
+    return next();
+  });
+
+  app.get('/api/v1/leads', async (req: Request, res: Response) => {
+    try {
+      const limit = Number(req.query.limit ?? 50);
+      const offset = Number(req.query.offset ?? 0);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0) {
+        return res.status(422).json({ error: 'invalid_pagination', message: 'limit deve ser inteiro entre 1 e 100 e offset deve ser inteiro >= 0.' });
+      }
+      const result = await getPlaces({
+        jobId: req.query.jobId ? String(req.query.jobId) : undefined,
+        query: req.query.query ? String(req.query.query) : undefined,
+        sortBy: req.query.sortBy ? String(req.query.sortBy) : undefined,
+        sortOrder: req.query.sortOrder === 'asc' ? 'asc' : 'desc',
+        offset, limit,
+      });
+      return res.json({ data: result.places.map(apiLead), pagination: { total: result.total, limit, offset, hasMore: offset + result.places.length < result.total } });
+    } catch (error) {
+      return res.status(500).json({ error: 'lead_query_failed', message: error instanceof Error ? error.message : 'Falha ao consultar leads.' });
+    }
+  });
+
+  app.get('/api/v1/leads/:id', async (req: Request, res: Response) => {
+    try {
+      const records = await getPlacesByIds([String(req.params.id)]);
+      if (!records.length) return res.status(404).json({ error: 'lead_not_found', message: 'Lead não encontrado.' });
+      return res.json({ data: apiLead(records[0]) });
+    } catch (error) {
+      return res.status(500).json({ error: 'lead_query_failed', message: error instanceof Error ? error.message : 'Falha ao consultar lead.' });
+    }
+  });
+
+  app.post('/api/v1/jobs', async (req: Request, res: Response) => {
+    try {
+      const segment = typeof req.body?.segment === 'string' ? req.body.segment.trim() : '';
+      const location = typeof req.body?.location === 'string' ? req.body.location.trim() : '';
+      if (!segment || !location) return res.status(422).json({ error: 'invalid_request', message: 'segment e location são obrigatórios.' });
+      const limit = Number(req.body?.limit ?? 20);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100) return res.status(422).json({ error: 'invalid_limit', message: 'limit deve ser inteiro entre 1 e 100.' });
+      const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+      const job: ScrapeJob = {
+        id: jobId, user_id: 'api-consumer', segment, location, limit_requested: limit,
+        status: 'running', status_message: 'Coleta solicitada via API v1.', total_found: 0,
+        total_collected: 0, total_duplicates: 0, total_errors: 0,
+        current_step: 'Preparando coleta', created_at: new Date().toISOString(),
+      };
+      await createJob(job);
+      await safeWriteAuditLog({ category: 'api', event: 'api_v1.job_started', message: 'Coleta iniciada via API v1.', jobId, metadata: { segment, location, limit } });
+      const scrapePromise = runScraperJob(jobId, segment, location, limit, () => {}).catch(async (error) => {
+        await safeWriteAuditLog({ level: 'error', category: 'api', event: 'api_v1.job_failed', message: error instanceof Error ? error.message : 'Falha na coleta.', jobId });
+      });
+      if (process.env.VERCEL) waitUntil(scrapePromise);
+      return res.status(202).json({ data: { jobId, status: 'running', statusUrl: `/api/v1/jobs/${jobId}`, resultsUrl: `/api/v1/jobs/${jobId}/results` } });
+    } catch (error) {
+      return res.status(500).json({ error: 'job_start_failed', message: error instanceof Error ? error.message : 'Falha ao iniciar coleta.' });
+    }
+  });
+
+  app.get('/api/v1/jobs/:id', async (req: Request, res: Response) => {
+    try {
+      const job = await getJob(String(req.params.id));
+      if (!job) return res.status(404).json({ error: 'job_not_found', message: 'Coleta não encontrada.' });
+      return res.json({ data: { ...job, isRunning: isJobRunning(job.id) } });
+    } catch (error) {
+      return res.status(500).json({ error: 'job_query_failed', message: error instanceof Error ? error.message : 'Falha ao consultar coleta.' });
+    }
+  });
+
+  app.get('/api/v1/jobs/:id/results', async (req: Request, res: Response) => {
+    try {
+      const job = await getJob(String(req.params.id));
+      if (!job) return res.status(404).json({ error: 'job_not_found', message: 'Coleta não encontrada.' });
+      const limit = Number(req.query.limit ?? 50);
+      const offset = Number(req.query.offset ?? 0);
+      if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0) return res.status(422).json({ error: 'invalid_pagination', message: 'Parâmetros de paginação inválidos.' });
+      const result = await getPlaces({ jobId: job.id, limit, offset, sortBy: 'collected_at', sortOrder: 'desc' });
+      return res.json({ data: result.places.map(apiLead), pagination: { total: result.total, limit, offset, hasMore: offset + result.places.length < result.total } });
+    } catch (error) {
+      return res.status(500).json({ error: 'job_results_failed', message: error instanceof Error ? error.message : 'Falha ao consultar resultados.' });
     }
   });
 
