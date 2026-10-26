@@ -950,7 +950,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
                             </a>
                           ) : key === 'reviews' ? (
                             (() => {
-                              const reviews = parseJsonField<Array<{id?:string;author?:string;author_avatar_url?:string;author_profile_url?:string;author_metadata?:string;rating?:string;date?:string;text?:string;owner_response?:string;media?:Array<{url:string;alt?:string}>}>>(value, []);
+                              const reviews = parseJsonField<Array<{id?:string;author?:string;author_avatar_url?:string;author_profile_url?:string;author_metadata?:string;rating?:string;date?:string;text?:string;owner_response?:string;media?:Array<{url:string;alt?:string;type?:string}>}>>(value, []);
                               return reviews.length ? (
                                 <div className="space-y-3">
                                   <p className="text-xs text-zinc-500">{reviews.length} comentários capturados na ficha pública</p>
@@ -966,7 +966,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
                                       </div>
                                       {review.text && <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">{review.text}</p>}
                                       {review.owner_response && <div className="rounded-lg border-l-2 border-emerald-500 bg-zinc-950 p-3"><p className="text-xs font-semibold text-emerald-300 mb-1">Resposta do proprietário</p><p className="whitespace-pre-wrap text-sm text-zinc-300">{review.owner_response}</p></div>}
-                                      {!!review.media?.length && <div className="grid grid-cols-3 gap-2">{review.media.map((item, mediaIndex) => <a key={mediaIndex} href={item.url} target="_blank" rel="noopener noreferrer"><img src={item.url} alt={item.alt || 'Mídia da avaliação'} loading="lazy" className="aspect-square w-full rounded-lg object-cover" referrerPolicy="no-referrer" /></a>)}</div>}
+                                      {!!review.media?.length && <div className="grid grid-cols-3 gap-2">{review.media.map((item, mediaIndex) => item.type === 'video' ? <a key={mediaIndex} href={selectedPlace.maps_url} target="_blank" rel="noopener noreferrer" className="flex aspect-square flex-col items-center justify-center gap-2 rounded-lg bg-zinc-950 text-indigo-300"><PlayCircle className="h-8 w-8" /><span className="px-2 text-center text-xs">Abrir vídeo</span></a> : <a key={mediaIndex} href={item.url} target="_blank" rel="noopener noreferrer"><img src={item.url} alt={item.alt || 'Mídia da avaliação'} loading="lazy" className="aspect-square w-full rounded-lg object-cover" referrerPolicy="no-referrer" /></a>)}</div>}
                                       {review.author_profile_url && <a href={review.author_profile_url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:underline">Abrir perfil público do autor</a>}
                                     </article>
                                   ))}
