@@ -176,8 +176,8 @@ export async function placeExistsByUrl(url: string, _jobId?: string): Promise<bo
   const cleanUrl = url.trim().split('?')[0].replace(/\/$/, '');
   if (!cleanUrl) return false;
   const res = await db.execute({
-    sql: `SELECT id FROM places WHERE maps_url = ? OR maps_url LIKE ? LIMIT 1`,
-    args: [cleanUrl, `${cleanUrl}%`],
+    sql: `SELECT id FROM places WHERE rtrim(substr(maps_url, 1, instr(maps_url || '?', '?') - 1), '/') = ? LIMIT 1`,
+    args: [cleanUrl],
   });
   return res.rows.length > 0;
 }
