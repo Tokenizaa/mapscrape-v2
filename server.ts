@@ -268,6 +268,51 @@ async function startServer() {
     }
   });
 
+  // Field coverage is calculated from persisted records, not the current UI page.
+  app.get('/api/field-coverage', async (req: Request, res: Response) => {
+    try {
+      const jobId = req.query.jobId ? String(req.query.jobId) : undefined;
+      const records = await getAllPlaces(jobId);
+      const fields: { key: keyof PlaceRecord; label: string }[] = [
+        { key: 'name', label: 'Nome' },
+        { key: 'category', label: 'Categoria' },
+        { key: 'address', label: 'Endereço' },
+        { key: 'phone', label: 'Telefone' },
+        { key: 'website', label: 'Site' },
+        { key: 'rating', label: 'Nota' },
+        { key: 'review_count', label: 'Quantidade de avaliações' },
+        { key: 'price_range', label: 'Faixa de preço' },
+        { key: 'opening_hours', label: 'Horários' },
+        { key: 'business_status', label: 'Status operacional' },
+        { key: 'latitude', label: 'Latitude' },
+        { key: 'longitude', label: 'Longitude' },
+        { key: 'maps_url', label: 'Link do Maps' },
+        { key: 'description', label: 'Descrição' },
+        { key: 'services_attributes', label: 'Serviços e atributos' },
+        { key: 'collected_at', label: 'Data da coleta' },
+      ];
+      const coverage = fields.map((field) => {
+        const populated = records.reduce((count, record) => count + (String(record[field.key] ?? '').trim() ? 1 : 0), 0);
+        return {
+          ...field,
+          populated,
+          missing: records.length - populated,
+          percentage: records.length ? Math.round((populated / records.length) * 100) : 0,
+        };
+      });
+      const populatedCells = coverage.reduce((sum, field) => sum + field.populated, 0);
+      const totalCells = records.length * fields.length;
+      return res.json({
+        totalRecords: records.length,
+        totalFields: fields.length,
+        averageCoverage: totalCells ? Math.round((populatedCells / totalCells) * 100) : 0,
+        fields: coverage,
+      });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Erro ao calcular cobertura dos campos.' });
+    }
+  });
+
   // 10. Structured audit log query
   app.get('/api/logs', async (req: Request, res: Response) => {
     try {
