@@ -107,7 +107,7 @@ export async function initDb(): Promise<void> {
     CREATE TABLE IF NOT EXISTS api_credentials (
       id TEXT PRIMARY KEY,
       consumer_name TEXT NOT NULL,
-      consumer_project TEXT NOT NULL UNIQUE,
+      consumer_project TEXT NOT NULL,
       key_hash TEXT NOT NULL UNIQUE,
       status TEXT NOT NULL DEFAULT 'active',
       created_at TEXT NOT NULL,
@@ -116,6 +116,7 @@ export async function initDb(): Promise<void> {
     );
   `);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_api_credentials_status ON api_credentials (status);`);
+  await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_api_credentials_active_project ON api_credentials (consumer_project) WHERE status = 'active';`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
 }
 
