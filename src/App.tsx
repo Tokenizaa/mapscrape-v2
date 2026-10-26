@@ -264,7 +264,9 @@ export default function App() {
           />
         )}
 
-        {currentTab === 'logs' && <LogsScreen />}\n\n        {currentTab === 'history' && (
+        {currentTab === 'logs' && <LogsScreen />}
+
+        {currentTab === 'history' && (
           <HistoryScreen
             jobs={jobs}
             onViewResults={(jobId) => {
