@@ -59,6 +59,10 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
     listAuditLogs({ jobId, limit: 500 }),
   ]);
 
+  const finishEvent = audit.logs.find((event) => event.event === 'job.finished');
+  let finishMetadata: Record<string, unknown> = {};
+  try { finishMetadata = JSON.parse(finishEvent?.metadata || '{}'); } catch {}
+
   const duplicateEvents = audit.logs
     .filter((event) => event.event === 'place.duplicate_skipped')
     .map((event) => {
@@ -99,6 +103,9 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
       total_errors: job.total_errors,
       duplicate_only_run: job.total_collected === 0 && job.total_duplicates > 0,
       reached_successful_new_record_target: job.total_collected >= job.limit_requested,
+      scroll_attempts: Number(finishMetadata.scrollAttempts ?? 0),
+      reached_end_of_list: Boolean(finishMetadata.reachedEndOfList ?? false),
+      new_candidates_found: Number(finishMetadata.newCandidatesFound ?? finishMetadata.totalFound ?? 0),
     },
     data_quality: {
       records_with_missing_fields: placeQuality.filter((place) => place.missing_fields.length > 0).length,
