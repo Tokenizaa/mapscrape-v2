@@ -88,7 +88,30 @@ export async function runScraperJob(
       if (!browserWSEndpoint) {
         throw new Error('Navegador remoto não configurado: defina BROWSER_WS_ENDPOINT para um serviço Chromium compatível com Puppeteer.');
       }
-      browser = await puppeteer.connect({ browserWSEndpoint });
+      let endpointDiagnostic = 'invalid-url';
+      try {
+        const parsedEndpoint = new URL(browserWSEndpoint);
+        endpointDiagnostic = JSON.stringify({
+          protocol: parsedEndpoint.protocol,
+          hostname: parsedEndpoint.hostname,
+          hasCredentials: Boolean(parsedEndpoint.username || parsedEndpoint.password),
+          hasQuery: Boolean(parsedEndpoint.search),
+          pathDepth: parsedEndpoint.pathname.split('/').filter(Boolean).length,
+          length: browserWSEndpoint.length,
+        });
+        if (!['ws:', 'wss:', 'http:', 'https:', 'ws+unix:'].includes(parsedEndpoint.protocol)) {
+          throw new Error(`Protocolo inválido em BROWSER_WS_ENDPOINT (${parsedEndpoint.protocol || 'ausente'}). Use o endpoint fornecido pelo provedor de Chromium compatível com Puppeteer.`);
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'URL inválida';
+        throw new Error(`BROWSER_WS_ENDPOINT não é uma URL válida (${message}). Não foi registrado o valor secreto.`);
+      }
+      try {
+        browser = await puppeteer.connect({ browserWSEndpoint });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'falha desconhecida';
+        throw new Error(`Falha ao conectar ao Chromium remoto. Diagnóstico seguro do endpoint: ${endpointDiagnostic}. Erro Puppeteer: ${message}`);
+      }
     } else {
       browser = await puppeteer.launch({
         headless: true,
