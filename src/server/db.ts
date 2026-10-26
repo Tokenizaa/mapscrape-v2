@@ -281,3 +281,19 @@ export async function countPlaces(): Promise<number> {
   const result = await db.execute('SELECT COUNT(*) AS count FROM places');
   return Number(result.rows[0]?.count ?? 0);
 }
+
+
+/** Latest saved Maps URL for the exact same search, used as a resume checkpoint. */
+export async function getLastCollectedPlaceForSearch(segment: string, location: string): Promise<PlaceRecord | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: `SELECT p.* FROM places p
+          INNER JOIN searches s ON s.id = p.job_id
+          WHERE lower(trim(s.segment)) = lower(trim(?))
+            AND lower(trim(s.location)) = lower(trim(?))
+          ORDER BY p.collected_at DESC
+          LIMIT 1`,
+    args: [segment, location],
+  });
+  return result.rows.length ? result.rows[0] as unknown as PlaceRecord : null;
+}
