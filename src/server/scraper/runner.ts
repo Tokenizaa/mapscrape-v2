@@ -71,10 +71,25 @@ export async function runScraperJob(
       total_errors: totalErrors,
       ...updates,
     };
-    await updateJobProgress(jobId, jobUpdates);
-    if (onProgress) {
-      const current = await getJob(jobId);
-      if (current) onProgress(current);
+    // Progress persistence must not abort the scraping loop. Each place is
+    // persisted independently; transient status-update failures are logged and
+    // the next item still gets processed.
+    try {
+      await updateJobProgress(jobId, jobUpdates);
+      if (onProgress) {
+        const current = await getJob(jobId);
+        if (current) onProgress(current);
+      }
+    } catch (progressError) {
+      console.error('Falha ao atualizar progresso; a coleta continuará:', progressError instanceof Error ? progressError.message : progressError);
+      await safeAudit({
+        level: 'error',
+        category: 'scraper',
+        event: 'job.progress_update_failed',
+        message: progressError instanceof Error ? progressError.message : 'Falha ao persistir progresso.',
+        jobId,
+        metadata: { step: step.slice(0, 200), status: updates.status || 'running' },
+      });
     }
   };
 
@@ -558,22 +573,23 @@ export async function runScraperJob(
       const placeNum = i + 1;
       const previewTitle = item.previewName || `Estabelecimento #${placeNum}`;
 
-      // Deduplication check in SQLite
-      const existingPlace = await findPlaceByUrl(item.url);
-      if (existingPlace) {
-        totalDuplicates++;
-        await safeAudit({ category: 'scraper', event: 'place.duplicate_skipped', message: 'Ficha já existe no momento da persistência; ignorada para evitar duplicação.', jobId, metadata: { mapsUrl: item.url, previewName: item.previewName || previewTitle, existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'duplicate_detected_before_insert' } });
-        await emitProgress(
-          `[${placeNum}/${itemsToProcess.length}] Duplicado ignorado: ${previewTitle}`
-        );
-        continue;
-      }
-
-      await emitProgress(
-        `[${placeNum}/${itemsToProcess.length}] Extraindo ficha: ${previewTitle}...`
-      );
-
       try {
+        // Keep every per-place operation inside the isolation boundary: a
+        // database lookup or progress update can fail just like extraction.
+        const existingPlace = await findPlaceByUrl(item.url);
+        if (existingPlace) {
+          totalDuplicates++;
+          await safeAudit({ category: 'scraper', event: 'place.duplicate_skipped', message: 'Ficha já existe no momento da persistência; ignorada para evitar duplicação.', jobId, metadata: { mapsUrl: item.url, previewName: item.previewName || previewTitle, existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'duplicate_detected_before_insert' } });
+          await emitProgress(
+            `[${placeNum}/${itemsToProcess.length}] Duplicado ignorado: ${previewTitle}`
+          );
+          continue;
+        }
+
+        await emitProgress(
+          `[${placeNum}/${itemsToProcess.length}] Extraindo ficha: ${previewTitle}...`
+        );
+
         await page.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
         // Wait for the place title without requiring the Maps network to become idle.
@@ -607,9 +623,15 @@ export async function runScraperJob(
         totalErrors++;
         await safeAudit({ level: 'error', category: 'scraper', event: 'place.extraction_failed', message: placeErr?.message || 'Falha ao extrair ficha.', jobId, metadata: { mapsUrl: item.url, previewName: item.previewName || previewTitle, stack: String(placeErr?.stack || '').slice(0, 4000) } }).catch(() => {});
         console.error(`Erro ao coletar ficha ${item.url}:`, placeErr.message);
-        await emitProgress(
-          `[${placeNum}/${itemsToProcess.length}] Erro na ficha: ${placeErr.message}`
-        );
+        // Reporting the error must not turn an isolated place failure into
+        // a fatal job failure.
+        try {
+          await emitProgress(
+            `[${placeNum}/${itemsToProcess.length}] Erro na ficha: ${placeErr?.message || 'falha desconhecida'}`
+          );
+        } catch (progressError) {
+          console.error('Falha ao reportar erro de ficha; continuando coleta:', progressError);
+        }
       }
 
       // Polite pause between requests to prevent rate limits
