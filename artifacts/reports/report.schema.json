@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Tokenizaa/mapscrape-v2/blob/main/artifacts/reports/report.schema.json",
+  "title": "MapScrape Run Audit Report",
+  "type": "object",
+  "required": ["schema_version", "report_type", "generated_at", "application", "run", "database", "collection", "data_quality", "duplicates", "artifacts", "audit", "interpretation"],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "report_type": { "const": "mapscrape-run-audit" },
+    "generated_at": { "type": "string", "format": "date-time" },
+    "application": { "type": "string" },
+    "run": { "type": "object" },
+    "database": {
+      "type": "object",
+      "required": ["total_before", "total_after", "net_growth", "records_saved_by_run", "records_saved_by_run_matches_job_counter"],
+      "properties": {
+        "total_before": { "type": "integer", "minimum": 0 },
+        "total_after": { "type": "integer", "minimum": 0 },
+        "net_growth": { "type": "integer" },
+        "records_saved_by_run": { "type": "integer", "minimum": 0 },
+        "records_saved_by_run_matches_job_counter": { "type": "boolean" }
+      }
+    },
+    "collection": { "type": "object" },
+    "data_quality": { "type": "object" },
+    "duplicates": { "type": "array", "items": { "type": "object" } },
+    "artifacts": {
+      "type": "object",
+      "required": ["json_file", "pdf_file", "pdf_generated"],
+      "properties": {
+        "json_file": { "type": "string" },
+        "pdf_file": { "type": "string" },
+        "pdf_generated": { "type": "boolean" },
+        "pdf_error": { "type": "string" }
+      }
+    },
+    "audit": { "type": "object" },
+    "interpretation": { "type": "object" }
+  }
+}
