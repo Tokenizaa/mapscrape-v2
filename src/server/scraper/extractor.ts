@@ -29,7 +29,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     // Expansion is best-effort; extraction should continue if the UI changes.
   }
 
-  const raw: any = await page.evaluate((selectors: typeof SELECTORS.place) => {
+  const raw: any = await page.evaluate(async (selectors: typeof SELECTORS.place) => {
     if (typeof (window as any).__name === 'undefined') (window as any).__name = (f: any) => f;
     if (typeof (globalThis as any).__name === 'undefined') (globalThis as any).__name = (f: any) => f;
 
@@ -227,6 +227,132 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       } catch {}
     }
 
+    // Expand the public Reviews panel and collect the review cards that Maps
+    // actually exposes. Scroll the review container to load subsequent batches;
+    // stop when the DOM stops growing or the bounded traversal completes.
+    const clickByText = (pattern: RegExp): boolean => {
+      const element = Array.from(document.querySelectorAll('button,[role="button"],[role="tab"]'))
+        .find((candidate) => pattern.test([
+          (candidate as HTMLElement).innerText || '',
+          candidate.getAttribute('aria-label') || '',
+        ].join(' ').replace(/\\s+/g, ' ').trim()));
+      if (!element) return false;
+      (element as HTMLElement).click();
+      return true;
+    };
+    clickByText(/^Reviews$|Reviews for|Avaliações|Comentários/i);
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    clickByText(/^More reviews|Mais avaliações|Mais comentários|Ver todas as avaliações/i);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    const reviews: any[] = [];
+    const seenReviewIds = new Set<string>();
+    let reviewContainer: HTMLElement | null = null;
+    const findReviewContainer = (): HTMLElement | null => {
+      const firstReview = document.querySelector('[data-review-id].jftiEf, .jftiEf[data-review-id]');
+      let parent = firstReview?.parentElement as HTMLElement | null;
+      while (parent && parent !== document.body) {
+        if (parent.scrollHeight > parent.clientHeight + 80 && parent.clientHeight > 100) return parent;
+        parent = parent.parentElement;
+      }
+      const dialog = document.querySelector('[role="dialog"]') as HTMLElement | null;
+      return dialog;
+    };
+    const readReviews = () => {
+      document.querySelectorAll('.jftiEf[data-review-id], [data-review-id].jftiEf').forEach((card) => {
+        const id = card.getAttribute('data-review-id') || '';
+        if (!id || seenReviewIds.has(id)) return;
+        seenReviewIds.add(id);
+        const getText = (selectors: string[]) => {
+          for (const selector of selectors) {
+            const node = card.querySelector(selector);
+            const value = (node as HTMLElement | null)?.innerText?.trim() || '';
+            if (value) return value;
+          }
+          return '';
+        };
+        const getAttr = (selectors: string[], attribute: string) => {
+          for (const selector of selectors) {
+            const node = card.querySelector(selector);
+            const value = node?.getAttribute(attribute)?.trim() || '';
+            if (value) return value;
+          }
+          return '';
+        };
+        // Expand truncated review bodies before reading them.
+        const seeMore = Array.from(card.querySelectorAll('button')).find((button) =>
+          /see more|mais|ver mais|plus/i.test(button.innerText || button.getAttribute('aria-label') || '')
+        );
+        if (seeMore) (seeMore as HTMLElement).click();
+        const media = Array.from(card.querySelectorAll('img'))
+          .map((img) => ({ url: (img as HTMLImageElement).currentSrc || (img as HTMLImageElement).src, alt: img.getAttribute('alt') || '' }))
+          .filter((item) => item.url.startsWith('http') && !/NBa7we|w36-h36|avatar/i.test(item.url));
+        const ratingNode = card.querySelector('[role="img"][aria-label*="star"],[role="img"][aria-label*="estrela"],span[aria-label*="star"],span[aria-label*="estrela"]');
+        reviews.push({
+          id,
+          author: getText(['.d4r55','.WNxzHc .fontTitleMedium','button[aria-label^="Photo of"]']),
+          author_profile_url: getAttr('button[data-href]'.split(','), 'data-href'),
+          author_avatar_url: getAttr(['button[aria-label^="Photo of"] img','img.NBa7we'], 'src'),
+          author_metadata: getText(['.GHT2ce','.RfnDt']),
+          rating: ratingNode?.getAttribute('aria-label') || '',
+          date: getText(['.rsqaWe','.DU9Pgb','span[class*="rsqaWe"]']),
+          text: getText(['.wiI7pd','.MyEned','.review-full-text']),
+          owner_response: getText(['.CDe7pd','.bwb7ce','.ODSEW-ShBeI']),
+          media,
+          helpful_count: getText(['.GBkF3d','button[aria-label*="like"]']),
+        });
+      });
+    };
+    reviewContainer = findReviewContainer();
+    let lastCount = -1;
+    let stagnant = 0;
+    for (let iteration = 0; iteration < 80; iteration++) {
+      readReviews();
+      if (reviews.length === lastCount) stagnant += 1;
+      else stagnant = 0;
+      if (stagnant >= 5) break;
+      lastCount = reviews.length;
+      if (!reviewContainer) reviewContainer = findReviewContainer();
+      if (reviewContainer) reviewContainer.scrollTop = reviewContainer.scrollHeight;
+      else window.scrollTo(0, document.body.scrollHeight);
+      await new Promise((resolve) => setTimeout(resolve, 120));
+    }
+    readReviews();
+
+    // Capture the topic chips and their review counts independently of review text.
+    const review_topics = Array.from(document.querySelectorAll('[role="radio"],[role="checkbox"]'))
+      .map((node) => ({
+        label: ((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').replace(/\\s+/g, ' ').trim(),
+        count: (((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').match(/(\\d+)\\s*$/) || [])[1] || '',
+      }))
+      .filter((item) => item.label && !/^(all reviews|todas as avaliações|all|todas)$/i.test(item.label));
+
+    // The About tab contains additional attributes not present in the overview.
+    clickByText(/^About$|About |Sobre|Informações/i);
+    await new Promise((resolve) => setTimeout(resolve, 180));
+    const aboutText = ((document.querySelector('div[role="main"]') as HTMLElement | null)?.innerText || '')
+      .split('\\n').map((line) => line.trim()).filter(Boolean).slice(-180).join('\\n');
+    const additional_attributes = {
+      about_text: aboutText.slice(0, 18000),
+      labeled_attributes: Array.from(document.querySelectorAll('div[role="main"] button, div[role="main"] [role="button"]'))
+        .map((node) => ({
+          label: node.getAttribute('aria-label') || '',
+          value: ((node as HTMLElement).innerText || '').replace(/\\s+/g, ' ').trim(),
+        }))
+        .filter((item) => item.label || item.value)
+        .filter((item) => item.value.length < 500)
+        .slice(0, 200),
+    };
+
+    // Build typed media entries so the UI can render photos as images and video
+    // items with a playable preview where the public page exposes a source.
+    const media_items = [
+      ...photoUrls.map((url) => ({ type: 'image', url, thumbnail_url: url, title: '' })),
+    ];
+    const plusCodeNode = Array.from(document.querySelectorAll('[aria-label*="Plus code"],[aria-label*="Plus Code"],[data-item-id*="oloc"]'))
+      .find((node) => /plus code/i.test(node.getAttribute('aria-label') || ''));
+    const plus_code = plusCodeNode?.getAttribute('aria-label')?.replace(/^plus code:\\s*/i, '') || '';
+
     // Do not mislabel the first gallery photo as a logo/avatar.
     let logo_url = '';
     for (const selector of selectors.logo) {
@@ -240,10 +366,12 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       } catch {}
     }
 
+    videoUrls.forEach((url) => media_items.push({ type: 'video', url, thumbnail_url: '', title: '' }));
     return {
       name, category, rating, review_count, price_range, address, website, phone,
       opening_hours, business_status: statusText, description, services_attributes,
       photos: photoUrls.join(' | '), videos: videoUrls.join(' | '), logo_url, social_links: socialUrls.join(' | '),
+      reviews, review_topics, additional_attributes, media_items, plus_code,
       currentUrl: window.location.href,
     };
   }, SELECTORS.place);
@@ -272,6 +400,11 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     videos: cleanText(raw.videos),
     logo_url: cleanText(raw.logo_url),
     social_links: cleanText(raw.social_links),
+    reviews: JSON.stringify(Array.isArray(raw.reviews) ? raw.reviews : []),
+    review_topics: JSON.stringify(Array.isArray(raw.review_topics) ? raw.review_topics : []),
+    additional_attributes: JSON.stringify(raw.additional_attributes || {}),
+    media_items: JSON.stringify(Array.isArray(raw.media_items) ? raw.media_items : []),
+    plus_code: cleanText(raw.plus_code),
     collected_at: new Date().toISOString(),
   };
 }
