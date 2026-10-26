@@ -1,0 +1,29 @@
+# MapScrape API documentation
+
+MapScrape is a central scraping service. Consumer applications call it over HTTPS; they must not clone this repository, install Puppeteer, run a second scraper, or access the central database directly.
+
+## Start here
+- Public developer portal: https://mapscrape-v2.vercel.app/docs/
+- REST API v1 contract: https://mapscrape-v2.vercel.app/openapi.yaml
+- API health: https://mapscrape-v2.vercel.app/api/v1/health
+- API reference in source: https://github.com/Tokenizaa/mapscrape-v2/blob/main/docs/API.md
+- Agent integration prompt: https://mapscrape-v2.vercel.app/docs/#agent-prompt
+
+## Consumer configuration
+- MAPSCRAPE_API_BASE_URL: confirmed deployed API base URL.
+- MAPSCRAPE_API_KEY: individual consumer credential stored only as a server-side secret.
+
+Never expose API keys in browser code, URLs, logs, prompts, or version control. Do not give the administrative MAPSCRAPE_PROVISIONING_TOKEN to consumer agents. If a credential is missing, an authorized operator must provision it and store it directly in the consumer secret manager.
+
+## Main endpoints
+- GET /api/v1/health
+- GET /api/v1/leads
+- GET /api/v1/leads/{id}
+- POST /api/v1/jobs
+- GET /api/v1/jobs/{id}
+- GET /api/v1/jobs/{id}/results
+
+Authenticated endpoints use Authorization: Bearer <MAPSCRAPE_API_KEY>. Individual credentials are scoped to the consumer project. Jobs are asynchronous; create a job, poll status, then retrieve paginated results.
+
+## Agent requirements
+Read the public portal and OpenAPI contract before implementing. Adapt the existing consumer architecture, write tests, run lint/typecheck/build, and distinguish mocked tests from real API validation. Never clone or embed MapScrape in the consumer project.
