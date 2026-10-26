@@ -147,7 +147,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     }
 
     // Collect social profile links only when they are actual links rendered in the Maps sheet.
-    const socialHosts = /(^|\.)((instagram\.com)|(facebook\.com)|(fb\.com)|(tiktok\.com)|(youtube\.com)|(youtu\.be)|(linkedin\.com)|(x\.com)|(twitter\.com)|(pinterest\.com)|(threads\.net)|(wa\.me)|(whatsapp\.com)$/i;
+    const socialHosts = /(^|\.)(instagram\.com|facebook\.com|fb\.com|tiktok\.com|youtube\.com|youtu\.be|linkedin\.com|x\.com|twitter\.com|pinterest\.com|threads\.net|wa\.me|whatsapp\.com)$/i;
     const socialUrls: string[] = [];
     const seenSocial = new Set<string>();
     document.querySelectorAll('a[href]').forEach((anchor) => {
