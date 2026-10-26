@@ -1,6 +1,6 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PlaceRecord, ScrapeJob } from '../../shared/types';
-import { getJob, updateJobProgress, insertPlace, findPlaceByUrl, countPlaces } from '../db';
+import { getJob, updateJobProgress, insertPlace, findPlaceByUrl, countPlaces, getLastCollectedPlaceForSearch } from '../db';
 import { writeRunReport } from '../run-report';
 import { extractPlaceDetails } from './extractor';
 import { writeAuditLog } from '../audit-log';
@@ -226,6 +226,16 @@ export async function runScraperJob(
     const seenUrlsInRun = new Set<string>();
     let duplicateUrlsDiscovered = 0;
 
+    // Resume at the most recently saved URL for this exact segment/location pair.
+    // Maps does not expose page offsets, so the feed must scroll until the checkpoint
+    // reappears; older results are ignored without per-place database lookups/log spam.
+    const resumeRecord = await getLastCollectedPlaceForSearch(segment, location);
+    const resumeUrl = resumeRecord?.maps_url
+      ? resumeRecord.maps_url.split('?')[0].replace(/\/$/, '')
+      : '';
+    let resumeReached = !resumeUrl;
+    let resumeFallbackUsed = false;
+
     let scrollAttempts = 0;
     let stagnantRounds = 0;
     let reachedEndOfList = false;
@@ -233,6 +243,18 @@ export async function runScraperJob(
 
     while (discoveredUrls.length < limitRequested && scrollAttempts < maxScrollAttempts && stagnantRounds < 8 && !handle.cancelled) {
       scrollAttempts++;
+
+      // If Maps has changed result ordering and the old checkpoint never appears,
+      // fall back to ordinary global deduplication rather than blocking the run.
+      if (!resumeReached && scrollAttempts >= 12) {
+        resumeReached = true;
+        resumeFallbackUsed = true;
+        await safeAudit({
+          level: 'warn', category: 'scraper', event: 'results.resume_checkpoint_missing',
+          message: 'O último resultado salvo não reapareceu nas primeiras 12 rolagens; retomada automática desativada para esta execução.',
+          jobId, metadata: { checkpointUrl: resumeUrl, scrollAttempts },
+        });
+      }
 
       // Extract current place links in the DOM
       const currentLinks = await page.evaluate((selectors) => {
@@ -268,6 +290,20 @@ export async function runScraperJob(
         if (!canonicalUrl || seenUrlsInRun.has(canonicalUrl)) continue;
         seenUrlsInRun.add(canonicalUrl);
         newUniqueLinksInBatch++;
+
+        // Ignore all prior results up to the saved checkpoint. Once the checkpoint
+        // appears, candidates following it in the feed are eligible for collection.
+        if (!resumeReached) {
+          if (canonicalUrl === resumeUrl) {
+            resumeReached = true;
+            await safeAudit({
+              category: 'scraper', event: 'results.resume_checkpoint_reached',
+              message: 'Retomada alcançou a última ficha salva para esta pesquisa.',
+              jobId, metadata: { checkpointUrl: resumeUrl, checkpointName: resumeRecord?.name || '', scrollAttempt: scrollAttempts },
+            });
+          }
+          continue;
+        }
 
         // Count and log existing records during discovery, then continue scrolling
         // until the requested number of genuinely new candidates has been found.
@@ -437,7 +473,7 @@ export async function runScraperJob(
         event: 'results.scroll',
         message: 'Rolagem da lista de resultados executada e medida.',
         jobId,
-        metadata: { scrollAttempt: scrollAttempts, target: scrollTarget, evidence: scrollEvidence, moved: scrollTarget ? Math.abs(scrollEvidence.scrollTop - scrollTarget.beforeTop) > 2 : scrollMoved },
+        metadata: { scrollAttempt: scrollAttempts, target: scrollTarget, evidence: scrollEvidence, moved: scrollTarget ? Math.abs(scrollEvidence.scrollTop - scrollTarget.beforeTop) > 2 : scrollMoved, resumeCheckpoint: resumeUrl || null, resumeReached, resumeFallbackUsed },
       });
     }
 
