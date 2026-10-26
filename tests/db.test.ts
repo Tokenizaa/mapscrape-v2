@@ -61,6 +61,8 @@ describe('SQLite Database Operations', () => {
 
     const exists = await placeExistsByUrl(mapsUrl, testJobId);
     expect(exists).toBe(true);
+    expect(await placeExistsByUrl(`${mapsUrl}?authuser=0&hl=pt-BR`)).toBe(true);
+    expect(await placeExistsByUrl(`${mapsUrl}/`)).toBe(true);
 
     const notExists = await placeExistsByUrl('https://maps.google.com/notfound', testJobId);
     expect(notExists).toBe(false);
