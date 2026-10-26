@@ -73,7 +73,11 @@ export async function initDb(): Promise<void> {
     await db.execute(`ALTER TABLE places ADD COLUMN logo_url TEXT DEFAULT '';`);
   } catch {}
 
-  try {\n    await db.execute(`ALTER TABLE places ADD COLUMN social_links TEXT DEFAULT '';`);\n  } catch {}\n\n  await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);`);
+  try {
+    await db.execute(`ALTER TABLE places ADD COLUMN social_links TEXT DEFAULT '';`);
+  } catch {}
+
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
 }
 
