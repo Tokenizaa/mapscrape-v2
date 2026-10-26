@@ -295,7 +295,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
         reviews.push({
           id,
           author: getText(['.d4r55','.WNxzHc .fontTitleMedium','button[aria-label^="Photo of"]']),
-          author_profile_url: getAttr('button[data-href]'.split(','), 'data-href'),
+          author_profile_url: getAttr(['button[data-href]'], 'data-href'),
           author_avatar_url: getAttr(['button[aria-label^="Photo of"] img','img.NBa7we'], 'src'),
           author_metadata: getText(['.GHT2ce','.RfnDt']),
           rating: ratingNode?.getAttribute('aria-label') || '',
@@ -335,20 +335,20 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       .filter((item) => item.label && !/^(all reviews|todas as avaliações|all|todas)$/i.test(item.label));
 
     // The About tab contains additional attributes not present in the overview.
-    clickByText(/^(?:About(?:\s|$)|Sobre(?:\s|$)|Informações(?:\s|$))/i);
+    const aboutTabClicked = clickByText(/^(?:About(?:\s|$)|Sobre(?:\s|$)|Informações(?:\s|$))/i);
     await new Promise((resolve) => setTimeout(resolve, 180));
     const aboutText = ((document.querySelector('div[role="main"]') as HTMLElement | null)?.innerText || '')
       .split('\n').map((line) => line.trim()).filter(Boolean).slice(-180).join('\n');
     const additional_attributes = {
-      about_text: aboutText.slice(0, 18000),
-      labeled_attributes: Array.from(document.querySelectorAll('div[role="main"] button, div[role="main"] [role="button"]'))
+      about_text: aboutTabClicked ? aboutText.slice(0, 18000) : '',
+      labeled_attributes: aboutTabClicked ? Array.from(document.querySelectorAll('div[role="main"] button, div[role="main"] [role="button"]'))
         .map((node) => ({
           label: node.getAttribute('aria-label') || '',
           value: ((node as HTMLElement).innerText || '').replace(/\s+/g, ' ').trim(),
         }))
         .filter((item) => item.label || item.value)
         .filter((item) => item.value.length < 500)
-        .slice(0, 200),
+        .slice(0, 200) : [],
     };
 
     // Close any review dialog and inspect the public gallery. Collect thumbnails
