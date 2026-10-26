@@ -1,5 +1,30 @@
-import React, { useMemo, useState } from 'react';
-import { Search, ExternalLink, FileDown, ChevronLeft, ChevronRight, Filter, MapPin, Phone, Globe, Star, Clock3, X, Building2, Copy, Check } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Search,
+  ExternalLink,
+  FileDown,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
+  MapPin,
+  Phone,
+  Globe,
+  Star,
+  Clock3,
+  X,
+  Building2,
+  Copy,
+  Check,
+  LayoutGrid,
+  Table as TableIcon,
+  Image as ImageIcon,
+  Video as VideoIcon,
+  Share2,
+  Info,
+  DollarSign,
+  Compass,
+  PlayCircle,
+} from 'lucide-react';
 import { PlaceRecord, ScrapeJob } from '../shared/types';
 
 interface ResultsScreenProps {
@@ -24,29 +49,52 @@ interface ResultsScreenProps {
   isLoading: boolean;
 }
 
-const fields: { key: keyof PlaceRecord; label: string }[] = [
+const detailFields: { key: keyof PlaceRecord; label: string }[] = [
   { key: 'category', label: 'Categoria' },
-  { key: 'address', label: 'Endereço' },
-  { key: 'phone', label: 'Telefone' },
-  { key: 'website', label: 'Site' },
-  { key: 'business_status', label: 'Status' },
-  { key: 'opening_hours', label: 'Horários' },
+  { key: 'address', label: 'Endereço completo' },
+  { key: 'phone', label: 'Telefone comercial' },
+  { key: 'website', label: 'Website oficial' },
+  { key: 'rating', label: 'Nota / Avaliação' },
+  { key: 'review_count', label: 'Total de avaliações' },
   { key: 'price_range', label: 'Faixa de preço' },
+  { key: 'business_status', label: 'Status de funcionamento' },
+  { key: 'opening_hours', label: 'Horários de funcionamento' },
   { key: 'description', label: 'Descrição' },
   { key: 'services_attributes', label: 'Serviços e atributos' },
   { key: 'latitude', label: 'Latitude' },
   { key: 'longitude', label: 'Longitude' },
-  { key: 'collected_at', label: 'Data da coleta' },
+  { key: 'photos', label: 'Fotos (URLs)' },
+  { key: 'videos', label: 'Vídeos (URLs)' },
+  { key: 'logo_url', label: 'Logo / Imagem' },
+  { key: 'collected_at', label: 'Data e hora da coleta' },
 ];
 
 export const ResultsScreen: React.FC<ResultsScreenProps> = ({
-  places, totalPlaces, jobs, selectedJobId, onSelectJobId, selectedPlaceIds,
-  onToggleSelectPlace, onToggleSelectAll, onGoToExport, searchQuery,
-  onSearchQueryChange, sortBy, sortOrder, onSortChange, currentPage, pageSize,
-  onPageChange, onPageSizeChange, isLoading,
+  places,
+  totalPlaces,
+  jobs,
+  selectedJobId,
+  onSelectJobId,
+  selectedPlaceIds,
+  onToggleSelectPlace,
+  onToggleSelectAll,
+  onGoToExport,
+  searchQuery,
+  onSearchQueryChange,
+  sortBy,
+  sortOrder,
+  onSortChange,
+  currentPage,
+  pageSize,
+  onPageChange,
+  onPageSizeChange,
+  isLoading,
 }) => {
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [selectedPlace, setSelectedPlace] = useState<PlaceRecord | null>(null);
-  const [copied, setCopied] = useState(false);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [copiedDetails, setCopiedDetails] = useState(false);
+
   const [coverage, setCoverage] = useState<{
     totalRecords: number;
     totalFields: number;
@@ -54,6 +102,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     fields: { key: string; label: string; populated: number; missing: number; percentage: number }[];
   } | null>(null);
   const [coverageError, setCoverageError] = useState('');
+  const [showCoverageSection, setShowCoverageSection] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,185 +122,897 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       }
     };
     void loadCoverage();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [selectedJobId, totalPlaces, places.length]);
+
   const currentIds = useMemo(() => places.map((place) => place.id), [places]);
   const isAllSelected = currentIds.length > 0 && currentIds.every((id) => selectedPlaceIds.has(id));
   const totalPages = Math.max(1, Math.ceil(totalPlaces / pageSize));
 
-  const copyDetails = async () => {
-    if (!selectedPlace) return;
-    const content = [
-      selectedPlace.name,
-      ...fields.map(({ key, label }) => `${label}: ${String(selectedPlace[key] || 'Não informado')}`),
-      `Nota: ${selectedPlace.rating || 'Não informada'}`,
-      `Avaliações: ${selectedPlace.review_count || 'Não informado'}`,
-      `Ficha Maps: ${selectedPlace.maps_url || 'Não informada'}`,
-    ].join('\n');
+  const copyToClipboard = async (text: string, id: string) => {
     try {
-      await navigator.clipboard.writeText(content);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setCopied(false);
-    }
+      await navigator.clipboard.writeText(text);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {}
   };
 
-  const missing = (value: string | null | undefined) => value?.trim() || 'Não informado';
+  const copyFullPlaceDetails = async () => {
+    if (!selectedPlace) return;
+    try {
+      const formatted = [
+        `Nome: ${selectedPlace.name || '—'}`,
+        `Categoria: ${selectedPlace.category || '—'}`,
+        `Endereço: ${selectedPlace.address || '—'}`,
+        `Telefone: ${selectedPlace.phone || '—'}`,
+        `Site: ${selectedPlace.website || '—'}`,
+        `Nota: ${selectedPlace.rating || '—'} (${selectedPlace.review_count || '0'} avaliações)`,
+        `Status: ${selectedPlace.business_status || '—'}`,
+        `Horários: ${selectedPlace.opening_hours || '—'}`,
+        `Fotos: ${selectedPlace.photos || '—'}`,
+        `Vídeos: ${selectedPlace.videos || '—'}`,
+        `Logo: ${selectedPlace.logo_url || '—'}`,
+        `Coletado em: ${selectedPlace.collected_at}`,
+        `Link: ${selectedPlace.maps_url || '—'}`,
+      ].join('\n');
+      await navigator.clipboard.writeText(formatted);
+      setCopiedDetails(true);
+      setTimeout(() => setCopiedDetails(false), 2000);
+    } catch {}
+  };
+
+  const missing = (val?: string) => (val && val.trim() ? val : <span className="text-zinc-600 italic">—</span>);
+
+  const getFirstPhotoUrl = (place: PlaceRecord): string | null => {
+    if (place.logo_url && place.logo_url.startsWith('http')) return place.logo_url;
+    if (place.photos && place.photos.trim()) {
+      const urls = place.photos.split(' | ');
+      if (urls.length > 0 && urls[0].startsWith('http')) return urls[0];
+    }
+    return null;
+  };
+
+  const getVideoUrls = (place: PlaceRecord): string[] => {
+    if (!place.videos || !place.videos.trim()) return [];
+    return place.videos.split(' | ').filter((u) => u.startsWith('http'));
+  };
 
   return (
-    <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="max-w-7xl mx-auto py-2 sm:py-6 space-y-6">
+      {/* Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-zinc-850 pb-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Leads coletados</h1>
-          <p className="mt-1 text-sm text-zinc-500">{totalPlaces.toLocaleString('pt-BR')} estabelecimentos salvos. Abra um card para conferir todos os campos antes de exportar.</p>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold uppercase tracking-wider mb-2">
+            <Compass className="w-3.5 h-3.5" />
+            <span>Base Local de Leads</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-zinc-100 tracking-tight">
+            Resultados Coletados
+          </h1>
+          <p className="mt-1 text-base sm:text-lg text-zinc-400">
+            {totalPlaces.toLocaleString('pt-BR')} estabelecimentos cadastrados no SQLite com extração direta.
+          </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          {places.length > 0 && <button onClick={() => onToggleSelectAll(currentIds)} className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">{isAllSelected ? 'Desmarcar página' : 'Selecionar página'}</button>}
-          {selectedPlaceIds.size > 0 && <button onClick={onGoToExport} className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"><FileDown className="h-4 w-4" /> Exportar {selectedPlaceIds.size} selecionados</button>}
+
+        {/* Global Export Shortcut Button */}
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onGoToExport}
+            className="flex items-center gap-2.5 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm sm:text-base shadow-lg shadow-emerald-950/40 hover:shadow-emerald-900/50 transition-all cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+          >
+            <FileDown className="w-5 h-5" />
+            <span>
+              {selectedPlaceIds.size > 0
+                ? `Exportar Selecionados (${selectedPlaceIds.size})`
+                : 'Exportar Base Completa'}
+            </span>
+          </button>
         </div>
       </div>
 
-      <section aria-labelledby="field-coverage-title" className="mb-5 rounded-xl border border-zinc-200 bg-white p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 id="field-coverage-title" className="text-base font-semibold text-zinc-900">Cobertura real dos campos</h2>
-            <p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-500">Contagem calculada sobre os registros persistidos no SQLite — não apenas os cards desta página. Campo vazio significa que o dado não foi encontrado ou não estava visível na ficha pública.</p>
-          </div>
-          <div className="flex shrink-0 gap-2">
-            <div className="rounded-lg bg-zinc-50 px-3 py-2">
-              <p className="text-[11px] text-zinc-500">Registros analisados</p>
-              <p className="text-lg font-semibold tabular-nums text-zinc-900">{coverage?.totalRecords ?? '—'}</p>
+      {/* Field Coverage Strip */}
+      <div className="rounded-2xl border border-zinc-800 bg-zinc-900/90 p-5 backdrop-blur-sm shadow-xl shadow-black/20">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+              <Info className="h-5 w-5" />
             </div>
-            <div className="rounded-lg bg-zinc-50 px-3 py-2">
-              <p className="text-[11px] text-zinc-500">Preenchimento médio</p>
-              <p className="text-lg font-semibold tabular-nums text-zinc-900">{coverage ? `${coverage.averageCoverage}%` : '—'}</p>
-            </div>
-          </div>
-        </div>
-        {coverageError && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{coverageError}</p>}
-        {coverage && coverage.totalRecords === 0 && <p className="mt-4 rounded-lg border border-dashed border-zinc-200 px-3 py-4 text-sm text-zinc-500">Ainda não há registros salvos para medir. Inicie uma coleta e volte aos resultados.</p>}
-        {coverage && coverage.totalRecords > 0 && <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
-          {coverage.fields.map((field) => (
-            <div key={field.key} className="min-w-0">
-              <div className="mb-1 flex items-baseline justify-between gap-3">
-                <span className="truncate text-xs font-medium text-zinc-700">{field.label}</span>
-                <span className="shrink-0 text-xs tabular-nums text-zinc-500">{field.populated}/{coverage.totalRecords} · {field.percentage}%</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-zinc-200">Qualidade e Cobertura de Campos</span>
+                {coverage && (
+                  <span className="rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 text-xs font-bold font-mono">
+                    {coverage.averageCoverage}% preenchidos
+                  </span>
+                )}
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-zinc-100" role="progressbar" aria-label={`Cobertura de ${field.label}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={field.percentage}>
-                <div className="h-full rounded-full bg-emerald-600 transition-[width]" style={{ width: `${field.percentage}%` }} />
-              </div>
+              <p className="text-xs text-zinc-400 mt-0.5">
+                Calculada a partir dos dados persistidos no banco de dados SQLite
+              </p>
             </div>
-          ))}
-        </div>}
-      </section>
+          </div>
 
-      <div className="mb-5 grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-4 md:grid-cols-[1fr_auto]">
+          <button
+            type="button"
+            onClick={() => setShowCoverageSection(!showCoverageSection)}
+            className="text-xs sm:text-sm font-semibold text-zinc-300 hover:text-emerald-400 underline underline-offset-4 cursor-pointer transition-colors"
+          >
+            {showCoverageSection ? 'Ocultar detalhes de cobertura' : 'Ver cobertura por campo (18 campos)'}
+          </button>
+        </div>
+
+        {showCoverageSection && coverage && coverage.totalRecords > 0 && (
+          <div className="mt-5 pt-4 border-t border-zinc-800 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3">
+            {coverage.fields.map((field) => (
+              <div key={field.key} className="min-w-0">
+                <div className="mb-1 flex items-baseline justify-between gap-2">
+                  <span className="truncate text-xs font-semibold text-zinc-300">{field.label}</span>
+                  <span className="shrink-0 text-xs font-mono font-medium text-zinc-400 tabular-nums">
+                    {field.populated}/{coverage.totalRecords} ({field.percentage}%)
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-emerald-500 transition-all"
+                    style={{ width: `${field.percentage}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Filter and Control Bar */}
+      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-4 sm:p-5 shadow-xl shadow-black/20 md:grid-cols-[1fr_auto_auto]">
+        {/* Search Input */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
-          <input value={searchQuery} onChange={(e) => { onSearchQueryChange(e.target.value); onPageChange(1); }} placeholder="Buscar por nome, categoria, endereço, telefone ou site..." className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-zinc-400 focus:bg-white" />
+          <Search className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
+          <input
+            value={searchQuery}
+            onChange={(e) => {
+              onSearchQueryChange(e.target.value);
+              onPageChange(1);
+            }}
+            placeholder="Buscar por nome, categoria, bairro, endereço, telefone ou site..."
+            className="w-full rounded-xl border border-zinc-750 bg-zinc-950 py-3 pl-11 pr-4 text-sm sm:text-base text-zinc-100 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 transition-all font-medium placeholder:text-zinc-500"
+          />
         </div>
-        <label className="flex items-center gap-2">
-          <Filter className="h-4 w-4 shrink-0 text-zinc-500" />
-          <select value={selectedJobId || ''} onChange={(e) => { onSelectJobId(e.target.value || undefined); onPageChange(1); }} className="min-w-0 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2.5 text-sm text-zinc-700">
-            <option value="">Todas as pesquisas ({jobs.length})</option>
-            {jobs.map((job) => <option key={job.id} value={job.id}>{job.segment} · {job.location} ({job.total_collected})</option>)}
+
+        {/* Search Job Selector */}
+        <div className="flex items-center gap-2">
+          <Filter className="h-4 w-4 shrink-0 text-zinc-400" />
+          <select
+            value={selectedJobId || ''}
+            onChange={(e) => {
+              onSelectJobId(e.target.value || undefined);
+              onPageChange(1);
+            }}
+            className="rounded-xl border border-zinc-750 bg-zinc-950 px-3.5 py-3 text-sm font-medium text-zinc-200 outline-none focus:border-emerald-500"
+          >
+            <option value="" className="bg-zinc-900 text-zinc-100">Todas as coletas ({jobs.length})</option>
+            {jobs.map((job) => (
+              <option key={job.id} value={job.id} className="bg-zinc-900 text-zinc-100">
+                {job.segment} · {job.location} ({job.total_collected})
+              </option>
+            ))}
           </select>
-        </label>
+        </div>
+
+        {/* View Mode Toggle (Cards vs Table) */}
+        <div className="flex items-center p-1 bg-zinc-950 rounded-xl border border-zinc-800">
+          <button
+            type="button"
+            onClick={() => setViewMode('cards')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              viewMode === 'cards'
+                ? 'bg-zinc-800 text-zinc-100 shadow-xs border border-zinc-700'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <LayoutGrid className="w-4 h-4" />
+            <span>Cards</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('table')}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all cursor-pointer ${
+              viewMode === 'table'
+                ? 'bg-zinc-800 text-zinc-100 shadow-xs border border-zinc-700'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <TableIcon className="w-4 h-4" />
+            <span>Tabela</span>
+          </button>
+        </div>
       </div>
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p className="text-xs text-zinc-500">Ordenar por:
-          {' '}<button onClick={() => onSortChange('name')} className={`ml-1 underline underline-offset-2 ${sortBy === 'name' ? 'font-semibold text-zinc-900' : 'text-zinc-500'}`}>Nome {sortBy === 'name' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</button>
-          {' '}<button onClick={() => onSortChange('rating')} className={`ml-3 underline underline-offset-2 ${sortBy === 'rating' ? 'font-semibold text-zinc-900' : 'text-zinc-500'}`}>Nota {sortBy === 'rating' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</button>
-          {' '}<button onClick={() => onSortChange('review_count')} className={`ml-3 underline underline-offset-2 ${sortBy === 'review_count' ? 'font-semibold text-zinc-900' : 'text-zinc-500'}`}>Avaliações {sortBy === 'review_count' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</button>
-        </p>
-        <label className="flex items-center gap-2 text-xs text-zinc-500">Por página
-          <select value={pageSize} onChange={(e) => { onPageSizeChange(Number(e.target.value)); onPageChange(1); }} className="rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-xs text-zinc-700">
-            {[10, 25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+      {/* Sorting and Select All Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-400 px-1">
+        <div className="flex items-center gap-2.5">
+          <span className="font-semibold text-zinc-300">Ordenar por:</span>
+          <button
+            type="button"
+            onClick={() => onSortChange('name')}
+            className={`px-3 py-1.5 rounded-lg border text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+              sortBy === 'name'
+                ? 'bg-zinc-800 text-zinc-100 border-zinc-650'
+                : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+            }`}
+          >
+            Nome {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSortChange('rating')}
+            className={`px-3 py-1.5 rounded-lg border text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+              sortBy === 'rating'
+                ? 'bg-zinc-800 text-zinc-100 border-zinc-650'
+                : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+            }`}
+          >
+            Nota {sortBy === 'rating' && (sortOrder === 'asc' ? '↑' : '↓')}
+          </button>
+          <button
+            type="button"
+            onClick={() => onSortChange('collected_at')}
+            className={`px-3 py-1.5 rounded-lg border text-xs sm:text-sm font-medium transition-colors cursor-pointer ${
+              sortBy === 'collected_at'
+                ? 'bg-zinc-800 text-zinc-100 border-zinc-650'
+                : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
+            }`}
+          >
+            Data {sortBy === 'collected_at' && (sortOrder === 'asc' ? '↑' : '↓')}
+          </button>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer text-xs sm:text-sm font-medium text-zinc-300 hover:text-zinc-100">
+            <input
+              type="checkbox"
+              checked={isAllSelected}
+              onChange={() => onToggleSelectAll(currentIds)}
+              className="h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+            />
+            <span>Selecionar todos da página ({currentIds.length})</span>
+          </label>
+
+          <select
+            value={pageSize}
+            onChange={(e) => {
+              onPageSizeChange(Number(e.target.value));
+              onPageChange(1);
+            }}
+            className="rounded-lg border border-zinc-800 bg-zinc-950 px-2.5 py-1 text-xs sm:text-sm text-zinc-300 outline-none"
+          >
+            <option value={10}>10 / pág</option>
+            <option value={25}>25 / pág</option>
+            <option value={50}>50 / pág</option>
+            <option value={100}>100 / pág</option>
           </select>
-        </label>
+        </div>
       </div>
 
-      {isLoading ? <div className="rounded-xl border border-zinc-200 bg-white py-16 text-center text-sm text-zinc-500">Carregando estabelecimentos...</div>
-        : places.length === 0 ? <div className="rounded-xl border border-dashed border-zinc-300 bg-white px-6 py-16 text-center"><Building2 className="mx-auto mb-3 h-8 w-8 text-zinc-300" /><h2 className="font-semibold text-zinc-900">Nenhum lead encontrado</h2><p className="mt-1 text-sm text-zinc-500">Ajuste os filtros ou inicie uma nova coleta.</p></div>
-        : <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {/* Main Content Area */}
+      {isLoading ? (
+        <div className="p-16 text-center text-zinc-400">
+          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-base font-medium">Carregando estabelecimentos...</p>
+        </div>
+      ) : places.length === 0 ? (
+        <div className="p-16 text-center rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/50">
+          <Building2 className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-zinc-200">Nenhum estabelecimento encontrado</h3>
+          <p className="mt-2 text-sm text-zinc-400 max-w-md mx-auto">
+            {searchQuery
+              ? 'Nenhum resultado corresponde à sua busca. Tente palavras mais curtas.'
+              : 'Execute uma nova coleta na tela "1. Pesquisar" para extrair fichas do Google Maps.'}
+          </p>
+        </div>
+      ) : viewMode === 'cards' ? (
+        /* ================= CARDS VIEW (Linear/Stripe Minimalist Dark Mode) ================= */
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {places.map((place) => {
-            const selected = selectedPlaceIds.has(place.id);
-            return <article key={place.id} className={`flex min-w-0 flex-col rounded-xl border bg-white p-4 transition-colors hover:border-zinc-400 ${selected ? 'border-zinc-900 ring-1 ring-zinc-900/10' : 'border-zinc-200'}`}>
-              <div className="flex items-start gap-3">
-                <input type="checkbox" aria-label={`Selecionar ${place.name}`} checked={selected} onChange={() => onToggleSelectPlace(place.id)} className="mt-1 h-4 w-4 rounded border-zinc-300 accent-zinc-900" />
-                <button onClick={() => setSelectedPlace(place)} className="min-w-0 flex-1 text-left">
-                  <h2 className="line-clamp-2 text-base font-semibold leading-5 text-zinc-900 hover:underline">{missing(place.name)}</h2>
-                  <p className="mt-1 truncate text-xs text-zinc-500">{missing(place.category)}</p>
-                </button>
-                {place.maps_url && <a href={place.maps_url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} aria-label="Abrir ficha do Google Maps" title="Abrir ficha do Google Maps" className="rounded-md p-1.5 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-900"><ExternalLink className="h-4 w-4" /></a>}
-              </div>
-              <div className="mt-4 flex items-center gap-2 text-sm">
-                <Star className={`h-4 w-4 ${place.rating ? 'fill-amber-400 text-amber-500' : 'text-zinc-300'}`} />
-                <span className="font-semibold text-zinc-900">{place.rating || '—'}</span>
-                <span className="text-xs text-zinc-500">{place.review_count ? `(${place.review_count} avaliações)` : 'Sem avaliações'}</span>
-              </div>
-              <div className="mt-3 space-y-2 text-xs text-zinc-600">
-                <p className="flex gap-2"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-zinc-400" /><span className="line-clamp-2">{missing(place.address)}</span></p>
-                <p className="flex gap-2"><Phone className="h-3.5 w-3.5 shrink-0 text-zinc-400" /><span>{missing(place.phone)}</span></p>
-                <p className="flex gap-2"><Globe className="h-3.5 w-3.5 shrink-0 text-zinc-400" /><span className="truncate">{place.website ? place.website.replace(/^https?:\/\/(www\.)?/, '') : 'Site não informado'}</span></p>
-              </div>
-              <div className="mt-4 flex items-center justify-between gap-3 border-t border-zinc-100 pt-3">
-                <span className={`max-w-[65%] truncate rounded-full px-2.5 py-1 text-[11px] font-medium ${/aberto/i.test(place.business_status) ? 'bg-emerald-50 text-emerald-700' : 'bg-zinc-100 text-zinc-600'}`}>{missing(place.business_status)}</span>
-                <button onClick={() => setSelectedPlace(place)} className="shrink-0 text-xs font-semibold text-zinc-900 hover:underline">Ver detalhes</button>
-              </div>
-            </article>;
+            const isSelected = selectedPlaceIds.has(place.id);
+            const photoUrl = getFirstPhotoUrl(place);
+            const videos = getVideoUrls(place);
+
+            return (
+              <article
+                key={place.id}
+                className={`flex flex-col justify-between rounded-2xl border transition-all duration-150 overflow-hidden bg-zinc-900/90 shadow-lg shadow-black/30 ${
+                  isSelected
+                    ? 'border-emerald-500 ring-2 ring-emerald-500/20'
+                    : 'border-zinc-800 hover:border-zinc-700'
+                }`}
+              >
+                {/* Card Header Media */}
+                {photoUrl ? (
+                  <div className="relative h-44 w-full bg-zinc-950 overflow-hidden border-b border-zinc-800/80">
+                    <img
+                      src={photoUrl}
+                      alt={place.name}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover opacity-90 hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/20 to-transparent" />
+
+                    {/* Top Row in Photo */}
+                    <div className="absolute top-3 inset-x-3 flex items-center justify-between">
+                      <label className="flex items-center gap-2 p-1.5 rounded-lg bg-zinc-950/80 backdrop-blur-xs border border-zinc-800 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          aria-label={`Selecionar ${place.name}`}
+                          checked={isSelected}
+                          onChange={() => onToggleSelectPlace(place.id)}
+                          className="h-4 w-4 rounded border-zinc-700 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                        />
+                      </label>
+
+                      <div className="flex items-center gap-1.5">
+                        {videos.length > 0 && (
+                          <span className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-xs font-semibold backdrop-blur-xs">
+                            <VideoIcon className="w-3.5 h-3.5 text-indigo-400" />
+                            <span>Vídeo ({videos.length})</span>
+                          </span>
+                        )}
+                        {place.category && (
+                          <span className="px-2.5 py-1 rounded-md bg-zinc-950/80 text-zinc-300 border border-zinc-800 text-xs font-medium backdrop-blur-xs">
+                            {place.category}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 pb-0 flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        aria-label={`Selecionar ${place.name}`}
+                        checked={isSelected}
+                        onChange={() => onToggleSelectPlace(place.id)}
+                        className="h-4 w-4 rounded border-zinc-700 bg-zinc-950 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                      />
+                    </label>
+
+                    <div className="flex items-center gap-1.5">
+                      {videos.length > 0 && (
+                        <span className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 text-xs font-medium">
+                          <VideoIcon className="w-3 h-3 text-indigo-400" />
+                          <span>Vídeo ({videos.length})</span>
+                        </span>
+                      )}
+                      {place.category && (
+                        <span className="px-2.5 py-1 rounded-md bg-zinc-800/80 text-zinc-300 border border-zinc-700/80 text-xs font-medium">
+                          {place.category}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Card Body */}
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div>
+                    {/* Place Title */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPlace(place)}
+                      className="text-left group cursor-pointer w-full"
+                    >
+                      <h2 className="text-xl font-bold text-zinc-100 group-hover:text-emerald-400 transition-colors line-clamp-2 leading-snug">
+                        {place.name || 'Estabelecimento sem nome'}
+                      </h2>
+                    </button>
+
+                    {/* Rating & Reviews */}
+                    <div className="mt-3 flex items-center gap-2">
+                      <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/30">
+                        <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                        <span className="font-bold text-sm text-zinc-100">{place.rating || '—'}</span>
+                      </div>
+                      <span className="text-xs sm:text-sm text-zinc-400 font-medium">
+                        {place.review_count ? `${place.review_count} avaliações` : 'Sem avaliações'}
+                      </span>
+                      {place.price_range && (
+                        <span className="ml-auto text-xs font-semibold text-zinc-300 px-2 py-0.5 rounded bg-zinc-800 border border-zinc-750">
+                          {place.price_range}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Contact & Address Lines */}
+                    <div className="mt-4 space-y-2.5 text-xs sm:text-sm text-zinc-300">
+                      {/* Endereço */}
+                      <div className="flex items-start gap-2.5">
+                        <MapPin className="h-4 w-4 shrink-0 text-emerald-400 mt-0.5" />
+                        <span className="line-clamp-2 leading-relaxed font-medium">
+                          {missing(place.address)}
+                        </span>
+                      </div>
+
+                      {/* Telefone */}
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <Phone className="h-4 w-4 shrink-0 text-zinc-400" />
+                          <span className="font-semibold text-zinc-100 font-mono">
+                            {missing(place.phone)}
+                          </span>
+                        </div>
+                        {place.phone && (
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(place.phone, `phone_${place.id}`)}
+                            className="p-1 rounded text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 cursor-pointer transition-colors"
+                            title="Copiar telefone"
+                          >
+                            {copiedId === `phone_${place.id}` ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Site */}
+                      <div className="flex items-center gap-2.5">
+                        <Globe className="h-4 w-4 shrink-0 text-zinc-400" />
+                        {place.website ? (
+                          <a
+                            href={place.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-400 hover:underline truncate block font-medium"
+                          >
+                            {place.website.replace(/^https?:\/\/(www\.)?/, '')}
+                          </a>
+                        ) : (
+                          <span className="text-zinc-500 italic">Site não informado</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card Footer: Status & Links */}
+                  <div className="pt-3 border-t border-zinc-800 flex items-center justify-between gap-3">
+                    <span
+                      className={`truncate rounded-md px-2.5 py-1 text-xs font-semibold border ${
+                        /aberto/i.test(place.business_status)
+                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                          : /fechado/i.test(place.business_status)
+                          ? 'bg-rose-500/10 text-rose-300 border-rose-500/30'
+                          : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                      }`}
+                    >
+                      {missing(place.business_status)}
+                    </span>
+
+                    <div className="flex items-center gap-2">
+                      {place.maps_url && (
+                        <a
+                          href={place.maps_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-label="Abrir ficha do Google Maps"
+                          title="Abrir ficha do Google Maps"
+                          className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPlace(place)}
+                        className="px-3.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-xs font-semibold transition-colors cursor-pointer border border-zinc-700"
+                      >
+                        Ver detalhes
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            );
           })}
-        </div>}
-
-      {totalPlaces > 0 && <div className="mt-5 flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between">
-        <span>Mostrando {Math.min((currentPage - 1) * pageSize + 1, totalPlaces)}–{Math.min(currentPage * pageSize, totalPlaces)} de {totalPlaces}</span>
-        <div className="flex items-center justify-end gap-3">
-          <button disabled={currentPage <= 1} onClick={() => onPageChange(currentPage - 1)} className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-3 py-2 text-zinc-700 disabled:opacity-40"><ChevronLeft className="h-4 w-4" /> Anterior</button>
-          <span>Página {currentPage} de {totalPages}</span>
-          <button disabled={currentPage >= totalPages} onClick={() => onPageChange(currentPage + 1)} className="inline-flex items-center gap-1 rounded-md border border-zinc-200 px-3 py-2 text-zinc-700 disabled:opacity-40">Próxima <ChevronRight className="h-4 w-4" /></button>
         </div>
-      </div>}
+      ) : (
+        /* ================= TABLE VIEW ================= */
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-zinc-800 bg-zinc-950 text-xs font-bold text-zinc-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 w-12 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={() => onToggleSelectAll(currentIds)}
+                      className="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                    />
+                  </th>
+                  <th className="py-3.5 px-4 font-bold">Estabelecimento</th>
+                  <th className="py-3.5 px-4 font-bold">Categoria</th>
+                  <th className="py-3.5 px-4 text-center font-bold">Nota / Avaliações</th>
+                  <th className="py-3.5 px-4 font-bold">Endereço</th>
+                  <th className="py-3.5 px-4 font-bold">Telefone</th>
+                  <th className="py-3.5 px-4 font-bold">Site</th>
+                  <th className="py-3.5 px-4 font-bold">Mídia</th>
+                  <th className="py-3.5 px-4 font-bold">Status</th>
+                  <th className="py-3.5 px-4 text-center font-bold">Ficha Maps</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-800/80 text-sm text-zinc-300">
+                {places.map((place) => {
+                  const isSelected = selectedPlaceIds.has(place.id);
+                  const videos = getVideoUrls(place);
 
-      {selectedPlace && <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/50 p-3 sm:p-6" role="presentation" onMouseDown={(e) => { if (e.target === e.currentTarget) setSelectedPlace(null); }}>
-        <section role="dialog" aria-modal="true" aria-labelledby="lead-detail-title" className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white shadow-2xl">
-          <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-zinc-200 bg-white px-5 py-4 sm:px-6">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">Detalhes do estabelecimento</p>
-              <h2 id="lead-detail-title" className="mt-1 text-xl font-semibold tracking-tight text-zinc-900">{missing(selectedPlace.name)}</h2>
-              <p className="mt-1 text-sm text-zinc-500">{missing(selectedPlace.category)}</p>
-            </div>
-            <button onClick={() => setSelectedPlace(null)} aria-label="Fechar detalhes" className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"><X className="h-5 w-5" /></button>
+                  return (
+                    <tr
+                      key={place.id}
+                      className={`hover:bg-zinc-850/60 transition-colors ${
+                        isSelected ? 'bg-zinc-850/40' : ''
+                      }`}
+                    >
+                      <td className="py-4 px-4 text-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => onToggleSelectPlace(place.id)}
+                          className="rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                        />
+                      </td>
+                      <td className="py-4 px-4 font-semibold text-zinc-100 max-w-[220px]">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedPlace(place)}
+                          className="hover:text-emerald-400 hover:underline text-left"
+                        >
+                          {place.name}
+                        </button>
+                      </td>
+                      <td className="py-4 px-4 max-w-[150px] truncate text-zinc-400">{missing(place.category)}</td>
+                      <td className="py-4 px-4 text-center whitespace-nowrap">
+                        {place.rating ? (
+                          <div className="inline-flex items-center gap-1 font-bold text-zinc-100">
+                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                            <span>{place.rating}</span>
+                            {place.review_count && (
+                              <span className="text-zinc-500 font-normal text-xs font-mono">
+                                ({place.review_count})
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-zinc-600">—</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 max-w-[240px] truncate" title={place.address}>
+                        {missing(place.address)}
+                      </td>
+                      <td className="py-4 px-4 font-mono whitespace-nowrap font-medium text-zinc-200">
+                        {missing(place.phone)}
+                      </td>
+                      <td className="py-4 px-4 max-w-[160px] truncate">
+                        {place.website ? (
+                          <a
+                            href={place.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-400 hover:underline"
+                          >
+                            {place.website.replace(/^https?:\/\/(www\.)?/, '')}
+                          </a>
+                        ) : (
+                          <span className="text-zinc-600 italic">—</span>
+                        )}
+                      </td>
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          {place.photos && (
+                            <span className="text-xs text-zinc-400 font-mono" title="Fotos disponíveis">
+                              📷
+                            </span>
+                          )}
+                          {videos.length > 0 && (
+                            <span className="text-xs text-indigo-400 font-mono" title={`${videos.length} vídeo(s)`}>
+                              🎥
+                            </span>
+                          )}
+                          {!place.photos && videos.length === 0 && (
+                            <span className="text-zinc-600">—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4 whitespace-nowrap">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs font-medium border ${
+                            /aberto/i.test(place.business_status)
+                              ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                              : 'bg-zinc-800 text-zinc-400 border-zinc-700'
+                          }`}
+                        >
+                          {missing(place.business_status)}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4 text-center whitespace-nowrap">
+                        {place.maps_url ? (
+                          <a
+                            href={place.maps_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-zinc-300 hover:text-white font-medium px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700"
+                          >
+                            <span>Ficha</span>
+                            <ExternalLink className="w-3.5 h-3.5" />
+                          </a>
+                        ) : (
+                          <span className="text-zinc-600">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <div className="px-5 py-5 sm:px-6">
-            <div className="mb-5 grid grid-cols-2 gap-3">
-              <div className="rounded-lg bg-zinc-50 p-3"><p className="text-xs text-zinc-500">Nota no Maps</p><p className="mt-1 flex items-center gap-1.5 text-lg font-semibold text-zinc-900"><Star className="h-4 w-4 fill-amber-400 text-amber-500" />{selectedPlace.rating || '—'}<span className="text-xs font-normal text-zinc-500">{selectedPlace.review_count ? `· ${selectedPlace.review_count} avaliações` : ''}</span></p></div>
-              <div className="rounded-lg bg-zinc-50 p-3"><p className="text-xs text-zinc-500">Status informado</p><p className="mt-2 text-sm font-semibold text-zinc-900">{missing(selectedPlace.business_status)}</p></div>
+        </div>
+      )}
+
+      {/* Pagination Bar */}
+      {totalPlaces > 0 && (
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/90 px-6 py-4 text-sm font-medium text-zinc-400 shadow-xl">
+          <span>
+            Mostrando {Math.min((currentPage - 1) * pageSize + 1, totalPlaces)}–{Math.min(currentPage * pageSize, totalPlaces)} de {totalPlaces.toLocaleString('pt-BR')} estabelecimentos
+          </span>
+          <div className="flex items-center gap-3">
+            <button
+              disabled={currentPage <= 1}
+              onClick={() => onPageChange(currentPage - 1)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-750 bg-zinc-950 px-4 py-2 text-zinc-200 font-semibold hover:bg-zinc-850 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              <ChevronLeft className="h-4 w-4" /> Anterior
+            </button>
+            <span className="font-mono font-bold text-zinc-100 tabular-nums">
+              Página {currentPage} de {totalPages}
+            </span>
+            <button
+              disabled={currentPage >= totalPages}
+              onClick={() => onPageChange(currentPage + 1)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-zinc-750 bg-zinc-950 px-4 py-2 text-zinc-200 font-semibold hover:bg-zinc-850 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+            >
+              Próxima <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ================= MODAL DE DETALHES COMPLETO DOS CAMPOS (Dark Minimalist) ================= */}
+      {selectedPlace && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-3 sm:p-6"
+          role="presentation"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setSelectedPlace(null);
+          }}
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="lead-detail-title"
+            className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-3xl bg-zinc-900 border border-zinc-750 shadow-2xl text-zinc-100"
+          >
+            {/* Modal Photo / Header */}
+            {getFirstPhotoUrl(selectedPlace) && (
+              <div className="relative h-56 w-full bg-zinc-950 overflow-hidden border-b border-zinc-800">
+                <img
+                  src={getFirstPhotoUrl(selectedPlace)!}
+                  alt={selectedPlace.name}
+                  referrerPolicy="no-referrer"
+                  className="w-full h-full object-cover"
+                />
+                <button
+                  onClick={() => setSelectedPlace(null)}
+                  aria-label="Fechar detalhes"
+                  className="absolute top-4 right-4 rounded-full bg-zinc-950/80 border border-zinc-700 text-white p-2 hover:bg-zinc-900 transition-colors cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+
+            {/* Modal Title Bar */}
+            <div className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-zinc-800 bg-zinc-900/95 backdrop-blur-md px-6 py-5">
+              <div className="min-w-0">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-md">
+                  Ficha Completa do Estabelecimento
+                </span>
+                <h2 id="lead-detail-title" className="mt-2 text-2xl font-bold tracking-tight text-zinc-100">
+                  {missing(selectedPlace.name)}
+                </h2>
+                <p className="mt-1 text-sm font-medium text-zinc-400">
+                  {missing(selectedPlace.category)}
+                </p>
+              </div>
+              {!getFirstPhotoUrl(selectedPlace) && (
+                <button
+                  onClick={() => setSelectedPlace(null)}
+                  aria-label="Fechar detalhes"
+                  className="rounded-xl p-2.5 text-zinc-400 hover:bg-zinc-800 hover:text-white cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              )}
             </div>
-            <div className="divide-y divide-zinc-100">
-              {fields.map(({ key, label }) => {
-                const value = String(selectedPlace[key] ?? '').trim();
-                return <div key={key} className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[155px_1fr] sm:gap-4">
-                  <dt className="text-xs font-medium text-zinc-500">{label}</dt>
-                  <dd className={`min-w-0 break-words text-sm ${value ? 'text-zinc-900' : 'italic text-zinc-400'}`}>
-                    {value ? key === 'website' ? <a href={value} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-700 hover:underline">{value}<ExternalLink className="h-3 w-3 shrink-0" /></a> : value : 'Não informado na ficha'}
+
+            {/* Modal Body */}
+            <div className="px-6 py-6 space-y-6">
+              {/* Highlight Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <div className="rounded-xl bg-zinc-950 p-4 border border-zinc-800">
+                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Avaliação</p>
+                  <p className="mt-1 flex items-center gap-1.5 text-xl font-extrabold text-zinc-100">
+                    <Star className="h-5 w-5 fill-amber-400 text-amber-400" />
+                    <span>{selectedPlace.rating || '—'}</span>
+                    <span className="text-xs font-normal text-zinc-500">
+                      {selectedPlace.review_count ? `(${selectedPlace.review_count})` : ''}
+                    </span>
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-zinc-950 p-4 border border-zinc-800">
+                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Status</p>
+                  <p className="mt-2 text-base font-bold text-zinc-200">
+                    {missing(selectedPlace.business_status)}
+                  </p>
+                </div>
+
+                <div className="rounded-xl bg-zinc-950 p-4 border border-zinc-800 col-span-2 sm:col-span-1">
+                  <p className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Faixa de Preço</p>
+                  <p className="mt-2 text-base font-bold text-zinc-200">
+                    {missing(selectedPlace.price_range)}
+                  </p>
+                </div>
+              </div>
+
+              {/* All Detail Fields */}
+              <div className="divide-y divide-zinc-800/80 border border-zinc-800 rounded-2xl overflow-hidden bg-zinc-950/60">
+                {detailFields.map(({ key, label }) => {
+                  const value = String(selectedPlace[key] ?? '').trim();
+                  return (
+                    <div
+                      key={key}
+                      className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-2 p-3.5 sm:px-4 hover:bg-zinc-850/40 transition-colors"
+                    >
+                      <dt className="text-xs sm:text-sm font-semibold text-zinc-400">{label}</dt>
+                      <dd className={`text-sm sm:text-base break-words ${value ? 'text-zinc-200 font-medium' : 'text-zinc-600 italic'}`}>
+                        {value ? (
+                          key === 'website' ? (
+                            <a
+                              href={value}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-emerald-400 hover:underline font-semibold"
+                            >
+                              <span>{value}</span>
+                              <ExternalLink className="h-3.5 w-3.5" />
+                            </a>
+                          ) : key === 'photos' && value.includes('http') ? (
+                            <div className="space-y-2">
+                              <span className="text-xs font-mono text-zinc-500 block truncate">{value}</span>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {value.split(' | ').slice(0, 4).map((url, uIdx) => (
+                                  <a
+                                    key={uIdx}
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block h-16 w-20 rounded-lg overflow-hidden border border-zinc-750 hover:opacity-80"
+                                  >
+                                    <img src={url} alt={`Foto ${uIdx + 1}`} className="w-full h-full object-cover" />
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          ) : key === 'videos' && value.includes('http') ? (
+                            <div className="space-y-2">
+                              <span className="text-xs font-mono text-zinc-400 block truncate">{value}</span>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {value.split(' | ').map((vUrl, vIdx) => (
+                                  <a
+                                    key={vIdx}
+                                    href={vUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 text-xs font-medium hover:bg-indigo-500/20"
+                                  >
+                                    <PlayCircle className="w-4 h-4 text-indigo-400" />
+                                    <span>Abrir Vídeo #{vIdx + 1}</span>
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            value
+                          )
+                        ) : (
+                          'Não informado na ficha pública'
+                        )}
+                      </dd>
+                    </div>
+                  );
+                })}
+
+                {/* Google Maps External URL */}
+                <div className="grid grid-cols-1 sm:grid-cols-[180px_1fr] gap-2 p-3.5 sm:px-4 hover:bg-zinc-850/40 transition-colors">
+                  <dt className="text-xs sm:text-sm font-semibold text-zinc-400">Ficha Original no Maps</dt>
+                  <dd>
+                    {selectedPlace.maps_url ? (
+                      <a
+                        href={selectedPlace.maps_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-sm sm:text-base font-semibold text-emerald-400 hover:underline"
+                      >
+                        <span>Abrir ficha no Google Maps</span>
+                        <ExternalLink className="h-4 w-4" />
+                      </a>
+                    ) : (
+                      <span className="text-zinc-600 italic">URL não disponível</span>
+                    )}
                   </dd>
-                </div>;
-              })}
-              <div className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[155px_1fr] sm:gap-4"><dt className="text-xs font-medium text-zinc-500">Ficha original</dt><dd>{selectedPlace.maps_url ? <a href={selectedPlace.maps_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 break-all text-sm font-medium text-blue-700 hover:underline">Abrir no Google Maps <ExternalLink className="h-3.5 w-3.5 shrink-0" /></a> : <span className="text-sm italic text-zinc-400">Link não informado</span>}</dd></div>
-              <div className="grid grid-cols-1 gap-1 py-3 sm:grid-cols-[155px_1fr] sm:gap-4"><dt className="text-xs font-medium text-zinc-500">Identificador</dt><dd className="break-all font-mono text-xs text-zinc-500">{selectedPlace.id}</dd></div>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="sticky bottom-0 flex flex-wrap justify-between gap-2 border-t border-zinc-200 bg-white px-5 py-4 sm:px-6">
-            <button onClick={() => void copyDetails()} className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{copied ? 'Copiado' : 'Copiar dados'}</button>
-            <div className="flex gap-2">
-              <button onClick={() => { onToggleSelectPlace(selectedPlace.id); }} className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50">{selectedPlaceIds.has(selectedPlace.id) ? 'Desmarcar lead' : 'Selecionar lead'}</button>
-              <button onClick={() => setSelectedPlace(null)} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800">Fechar</button>
+
+            {/* Modal Sticky Footer */}
+            <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-zinc-800 bg-zinc-900 px-6 py-4 rounded-b-3xl">
+              <button
+                type="button"
+                onClick={() => void copyFullPlaceDetails()}
+                className="inline-flex items-center gap-2 rounded-xl border border-zinc-700 bg-zinc-800 hover:bg-zinc-700 px-4 py-2.5 text-sm font-bold text-zinc-100 transition-colors cursor-pointer"
+              >
+                {copiedDetails ? (
+                  <>
+                    <Check className="h-4 w-4 text-emerald-400" />
+                    <span>Copiado com sucesso!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-4 w-4 text-zinc-400" />
+                    <span>Copiar todos os dados</span>
+                  </>
+                )}
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => onToggleSelectPlace(selectedPlace.id)}
+                  className={`rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors cursor-pointer border ${
+                    selectedPlaceIds.has(selectedPlace.id)
+                      ? 'border-emerald-500 bg-emerald-600 text-white'
+                      : 'border-zinc-700 bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+                  }`}
+                >
+                  {selectedPlaceIds.has(selectedPlace.id) ? 'Desmarcar seleção' : 'Selecionar lead'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPlace(null)}
+                  className="rounded-xl bg-zinc-800 hover:bg-zinc-700 px-5 py-2.5 text-sm font-semibold text-zinc-300 transition-colors cursor-pointer border border-zinc-700"
+                >
+                  Fechar
+                </button>
+              </div>
             </div>
-          </div>
-        </section>
-      </div>}
+          </section>
+        </div>
+      )}
     </div>
   );
 };

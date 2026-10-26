@@ -14,10 +14,10 @@ type AuditLog = {
 
 const levelLabels: Record<string, string> = { debug: 'Debug', info: 'Info', warn: 'Aviso', error: 'Erro' };
 const levelClasses: Record<string, string> = {
-  debug: 'bg-zinc-100 text-zinc-600',
-  info: 'bg-blue-50 text-blue-700',
-  warn: 'bg-amber-50 text-amber-800',
-  error: 'bg-red-50 text-red-700',
+  debug: 'bg-zinc-800 text-zinc-300 border border-zinc-700',
+  info: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30',
+  warn: 'bg-amber-500/10 text-amber-300 border border-amber-500/30',
+  error: 'bg-rose-500/10 text-rose-300 border border-rose-500/30',
 };
 
 export const LogsScreen: React.FC = () => {
@@ -76,92 +76,142 @@ export const LogsScreen: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+    <div className="max-w-6xl mx-auto py-2 sm:py-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-zinc-850 pb-5">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900">Logs e auditoria</h1>
-          <p className="mt-1 text-sm text-zinc-500">Eventos persistidos no SQLite para diagnosticar coletas e anexar evidências a uma revisão no GitHub.</p>
+          <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+            Diagnóstico do Sistema
+          </span>
+          <h1 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tight text-zinc-100">Logs e Auditoria</h1>
+          <p className="mt-2 text-base text-zinc-400 max-w-2xl">Eventos persistidos no SQLite para auditar detalhadamente cada ciclo de coleta do Google Maps.</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={() => void loadLogs()} disabled={loading} className="inline-flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} /> Atualizar
+        <div className="flex gap-2.5">
+          <button
+            onClick={() => void loadLogs()}
+            disabled={loading}
+            className="inline-flex items-center gap-2 rounded-xl border border-zinc-750 bg-zinc-900 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-50 transition-colors cursor-pointer"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-400' : 'text-zinc-400'}`} /> Atualizar
           </button>
-          <button onClick={downloadLogs} className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800">
+          <button
+            onClick={downloadLogs}
+            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors cursor-pointer shadow-sm shadow-emerald-950/40"
+          >
             <Download className="w-4 h-4" /> Baixar JSONL
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_160px_180px] gap-3 bg-white border border-zinc-200 rounded-xl p-4 mb-5">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_160px_180px] gap-3 bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 shadow-xl backdrop-blur-sm">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar mensagem, evento, ID da pesquisa..." className="w-full rounded-lg border border-zinc-200 bg-zinc-50 py-2 pl-9 pr-3 text-sm outline-none focus:border-zinc-400 focus:bg-white" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+          <input
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Buscar mensagem, evento, ID da pesquisa..."
+            className="w-full rounded-xl border border-zinc-750 bg-zinc-950 py-2.5 pl-10 pr-3 text-sm text-zinc-100 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+          />
         </div>
-        <select value={level} onChange={(e) => setLevel(e.target.value)} className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
-          <option value="">Todos os níveis</option>
-          <option value="error">Erros</option>
-          <option value="warn">Avisos</option>
-          <option value="info">Informações</option>
-          <option value="debug">Debug</option>
+        <select
+          value={level}
+          onChange={(e) => setLevel(e.target.value)}
+          className="rounded-xl border border-zinc-750 bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-200 outline-none focus:border-emerald-500"
+        >
+          <option value="" className="bg-zinc-900 text-zinc-100">Todos os níveis</option>
+          <option value="error" className="bg-zinc-900 text-zinc-100">Erros</option>
+          <option value="warn" className="bg-zinc-900 text-zinc-100">Avisos</option>
+          <option value="info" className="bg-zinc-900 text-zinc-100">Informações</option>
+          <option value="debug" className="bg-zinc-900 text-zinc-100">Debug</option>
         </select>
-        <select value={category} onChange={(e) => setCategory(e.target.value)} className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm">
-          <option value="">Todas as categorias</option>
-          <option value="scraper">Raspagem</option>
-          <option value="server">Servidor</option>
-          <option value="api">API</option>
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="rounded-xl border border-zinc-750 bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-200 outline-none focus:border-emerald-500"
+        >
+          <option value="" className="bg-zinc-900 text-zinc-100">Todas as categorias</option>
+          <option value="scraper" className="bg-zinc-900 text-zinc-100">Raspagem</option>
+          <option value="server" className="bg-zinc-900 text-zinc-100">Servidor</option>
+          <option value="api" className="bg-zinc-900 text-zinc-100">API</option>
         </select>
       </div>
 
-      <div className="mb-4 flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 sm:flex-row sm:items-end sm:justify-between">
-        <label className="flex-1 text-xs font-medium text-zinc-600">ID da pesquisa (opcional)
-          <input value={jobId} onChange={(e) => setJobId(e.target.value)} placeholder="job_..." className="mt-1 block w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-normal outline-none focus:border-zinc-400 focus:bg-white" />
+      <div className="flex flex-col gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-4 sm:flex-row sm:items-end sm:justify-between shadow-xl backdrop-blur-sm">
+        <label className="flex-1 text-xs font-semibold text-zinc-400">
+          ID da pesquisa (opcional)
+          <input
+            value={jobId}
+            onChange={(e) => setJobId(e.target.value)}
+            placeholder="job_..."
+            className="mt-1.5 block w-full rounded-xl border border-zinc-750 bg-zinc-950 px-3.5 py-2.5 text-sm font-mono text-zinc-100 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+          />
         </label>
         <div className="flex flex-wrap gap-2">
-          <button onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}`; }} disabled={!jobId.trim()} className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40">Baixar JSON</button>
-          <button onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}/pdf`; }} disabled={!jobId.trim()} className="rounded-lg bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40">Baixar PDF</button>
+          <button
+            onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}`; }}
+            disabled={!jobId.trim()}
+            className="rounded-xl border border-zinc-750 bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-850 disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer"
+          >
+            Baixar JSON
+          </button>
+          <button
+            onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}/pdf`; }}
+            disabled={!jobId.trim()}
+            className="rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer"
+          >
+            Baixar PDF
+          </button>
         </div>
       </div>
 
-      <div className="flex items-center justify-between mb-3 text-xs text-zinc-500">
+      <div className="flex items-center justify-between text-xs text-zinc-400 px-1 font-mono">
         <span>{total.toLocaleString('pt-BR')} eventos encontrados</span>
         <span>Exibindo até 100 mais recentes</span>
       </div>
 
-      {error && <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
-      <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white">
-        {loading && logs.length === 0 ? <div className="p-12 text-center text-sm text-zinc-500">Carregando logs...</div>
-          : logs.length === 0 ? <div className="p-12 text-center text-sm text-zinc-500">Nenhum evento encontrado para estes filtros.</div>
-          : <div className="divide-y divide-zinc-100">
+      {error && <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm font-medium text-rose-300">{error}</div>}
+
+      <div className="overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/90 shadow-xl">
+        {loading && logs.length === 0 ? (
+          <div className="p-16 text-center text-sm text-zinc-400">Carregando logs do SQLite...</div>
+        ) : logs.length === 0 ? (
+          <div className="p-16 text-center text-sm text-zinc-400">Nenhum evento encontrado para estes filtros.</div>
+        ) : (
+          <div className="divide-y divide-zinc-800">
             {logs.map((log) => {
               const isExpanded = expanded === log.id;
-              return <div key={log.id} className="px-4 py-4 hover:bg-zinc-50/60">
-                <button onClick={() => setExpanded(isExpanded ? null : log.id)} className="flex w-full items-start gap-3 text-left">
-                  <span className={`mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-semibold ${levelClasses[log.level] || levelClasses.info}`}>
-                    {iconForLevel(log.level)} {levelLabels[log.level] || log.level}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                      <span className="text-sm font-semibold text-zinc-900">{log.event}</span>
-                      <span className="text-[11px] text-zinc-400">{log.category}</span>
+              return (
+                <div key={log.id} className="px-5 py-4 hover:bg-zinc-850/50 transition-colors">
+                  <button onClick={() => setExpanded(isExpanded ? null : log.id)} className="flex w-full items-start gap-3.5 text-left cursor-pointer">
+                    <span className={`mt-0.5 inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold ${levelClasses[log.level] || levelClasses.info}`}>
+                      {iconForLevel(log.level)} {levelLabels[log.level] || log.level}
                     </span>
-                    <span className="mt-1 block text-sm text-zinc-700 break-words">{log.message}</span>
-                    <span className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-zinc-400">
-                      <span>{formatDate(log.created_at)}</span>
-                      {log.job_id && <span className="font-mono">Pesquisa: {log.job_id}</span>}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+                        <span className="text-sm font-bold text-zinc-100">{log.event}</span>
+                        <span className="text-xs font-mono text-zinc-500">[{log.category}]</span>
+                      </span>
+                      <span className="mt-1 block text-sm text-zinc-300 break-words leading-relaxed">{log.message}</span>
+                      <span className="mt-1.5 flex flex-wrap gap-x-4 text-xs text-zinc-500 font-mono">
+                        <span>{formatDate(log.created_at)}</span>
+                        {log.job_id && <span>job: {log.job_id}</span>}
+                      </span>
                     </span>
-                  </span>
-                  {isExpanded ? <ChevronUp className="mt-1 h-4 w-4 shrink-0 text-zinc-400" /> : <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-zinc-400" />}
-                </button>
-                {isExpanded && <div className="mt-3 ml-0 sm:ml-20 rounded-lg bg-zinc-950 p-4 text-xs text-zinc-100">
-                  <div className="mb-2 text-[10px] uppercase tracking-wider text-zinc-400">Metadados técnicos</div>
-                  <pre className="overflow-x-auto whitespace-pre-wrap break-words">{(() => { try { return JSON.stringify(JSON.parse(log.metadata || '{}'), null, 2); } catch { return log.metadata || '{}'; } })()}</pre>
-                  <div className="mt-3 break-all text-zinc-400">ID do evento: {log.id}</div>
-                </div>}
-              </div>;
+                    {isExpanded ? <ChevronUp className="mt-1 h-4 w-4 shrink-0 text-zinc-400" /> : <ChevronDown className="mt-1 h-4 w-4 shrink-0 text-zinc-400" />}
+                  </button>
+                  {isExpanded && (
+                    <div className="mt-4 ml-0 sm:ml-24 rounded-xl bg-zinc-950 p-4 border border-zinc-800 text-xs text-zinc-300 font-mono">
+                      <div className="mb-2 text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Metadados técnicos</div>
+                      <pre className="overflow-x-auto whitespace-pre-wrap break-words">{(() => { try { return JSON.stringify(JSON.parse(log.metadata || '{}'), null, 2); } catch { return log.metadata || '{}'; } })()}</pre>
+                      <div className="mt-3 text-[11px] text-zinc-500">ID do evento: {log.id}</div>
+                    </div>
+                  )}
+                </div>
+              );
             })}
-          </div>}
+          </div>
+        )}
       </div>
-      <p className="mt-4 text-xs text-zinc-400">O download gera um arquivo .jsonl, um evento JSON por linha. Anexe esse arquivo ao relatório ou ao issue do GitHub; ele não inclui o banco de dados inteiro.</p>
+      <p className="text-xs text-zinc-500 leading-relaxed px-1">O download gera um arquivo .jsonl, um evento JSON por linha. Ideal para auditoria técnica detalhada.</p>
     </div>
   );
 };

@@ -4,16 +4,18 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Navbar, ScreenTab } from './components/Navbar';
+import { Sidebar, ScreenTab } from './components/Sidebar';
 import { SearchScreen } from './components/SearchScreen';
 import { ResultsScreen } from './components/ResultsScreen';
 import { ExportScreen } from './components/ExportScreen';
 import { HistoryScreen } from './components/HistoryScreen';
 import { LogsScreen } from './components/LogsScreen';
 import { PlaceRecord, ScrapeJob } from './shared/types';
+import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-react';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<ScreenTab>('search');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   // Active or most recent job
   const [currentJob, setCurrentJob] = useState<ScrapeJob | null>(null);
@@ -206,86 +208,155 @@ export default function App() {
     }
   };
 
+  const tabLabels: Record<ScreenTab, string> = {
+    search: 'Pesquisar',
+    results: 'Resultados',
+    export: 'Exportar CSV',
+    history: 'Histórico',
+    logs: 'Auditoria & Logs',
+  };
+
   return (
-    <div className="min-h-screen bg-zinc-50/50 text-zinc-900 flex flex-col font-sans antialiased">
-      {/* Top Navigation Bar */}
-      <Navbar
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans antialiased selection:bg-emerald-500/20 selection:text-emerald-300">
+      {/* Sidebar Navigation */}
+      <Sidebar
         currentTab={currentTab}
         onTabChange={setCurrentTab}
         totalPlaces={totalPlaces}
         selectedCount={selectedPlaceIds.size}
         isScrapingActive={isScraping}
+        currentJob={currentJob}
+        onStopScrape={handleStopScrape}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      {/* Main Screen Content (Strictly 4 screens) */}
-      <main className="flex-1">
-        {currentTab === 'search' && (
-          <SearchScreen
-            currentJob={currentJob}
-            isScraping={isScraping}
-            onStartScrape={handleStartScrape}
-            onStopScrape={handleStopScrape}
-            onGoToResults={() => setCurrentTab('results')}
-          />
-        )}
+      {/* Main Content Area with Desktop Sidebar Offset */}
+      <div className="lg:pl-72 flex-1 flex flex-col min-w-0">
+        {/* Minimalist Linear / Stripe Top Bar */}
+        <header className="h-16 px-4 sm:px-8 border-b border-zinc-850/80 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-30 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-850 transition-colors"
+              aria-label="Abrir menu lateral"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
 
-        {currentTab === 'results' && (
-          <ResultsScreen
-            places={places}
-            totalPlaces={totalPlaces}
-            jobs={jobs}
-            selectedJobId={selectedJobId}
-            onSelectJobId={setSelectedJobId}
-            selectedPlaceIds={selectedPlaceIds}
-            onToggleSelectPlace={handleToggleSelectPlace}
-            onToggleSelectAll={handleToggleSelectAll}
-            onGoToExport={() => setCurrentTab('export')}
-            searchQuery={searchQuery}
-            onSearchQueryChange={setSearchQuery}
-            sortBy={sortBy}
-            sortOrder={sortOrder}
-            onSortChange={handleSortChange}
-            currentPage={currentPage}
-            pageSize={pageSize}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-            isLoading={isLoadingPlaces}
-          />
-        )}
+            {/* Contextual Breadcrumb trail */}
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-semibold text-zinc-400">MapScrape</span>
+              <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />
+              <span className="font-medium text-zinc-100 text-base">{tabLabels[currentTab]}</span>
+            </div>
+          </div>
 
-        {currentTab === 'export' && (
-          <ExportScreen
-            places={places}
-            totalPlaces={totalPlaces}
-            selectedPlaceIds={selectedPlaceIds}
-            jobs={jobs}
-            selectedJobId={selectedJobId}
-            onSelectJobId={setSelectedJobId}
-          />
-        )}
+          {/* Top Actions & Quick Indicators */}
+          <div className="flex items-center gap-3">
+            {isScraping && (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping inline-block" />
+                <span>Coleta ativa</span>
+              </div>
+            )}
 
-        {currentTab === 'history' && (
-          <HistoryScreen
-            jobs={jobs}
-            onViewResults={(jobId) => {
-              setSelectedJobId(jobId);
-              setCurrentTab('results');
-            }}
-            onGoToExportWithJob={(jobId) => {
-              setSelectedJobId(jobId);
-              setCurrentTab('export');
-            }}
-            onDeleteJob={handleDeleteJob}
-          />
-        )}
+            {totalPlaces > 0 && currentTab !== 'results' && (
+              <button
+                type="button"
+                onClick={() => setCurrentTab('results')}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-zinc-100 hover:bg-zinc-850 text-xs font-medium transition-colors"
+              >
+                <Database className="w-3.5 h-3.5 text-emerald-400" />
+                <span>{totalPlaces} salvos</span>
+              </button>
+            )}
 
-        {currentTab === 'logs' && <LogsScreen />}
-      </main>
+            {selectedPlaceIds.size > 0 && currentTab !== 'export' && (
+              <button
+                type="button"
+                onClick={() => setCurrentTab('export')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium transition-colors shadow-sm shadow-emerald-950/40"
+              >
+                <FileSpreadsheet className="w-3.5 h-3.5" />
+                <span>Exportar ({selectedPlaceIds.size})</span>
+              </button>
+            )}
+          </div>
+        </header>
 
-      {/* Footer */}
-      <footer className="border-t border-zinc-200 py-6 text-center text-xs text-zinc-400">
-        <p>MapScrape &mdash; Extração direta de fichas do Google Maps com Puppeteer e SQLite.</p>
-      </footer>
+        {/* Screen Content Viewport */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-10">
+          {currentTab === 'search' && (
+            <SearchScreen
+              currentJob={currentJob}
+              isScraping={isScraping}
+              onStartScrape={handleStartScrape}
+              onStopScrape={handleStopScrape}
+              onGoToResults={() => setCurrentTab('results')}
+            />
+          )}
+
+          {currentTab === 'results' && (
+            <ResultsScreen
+              places={places}
+              totalPlaces={totalPlaces}
+              jobs={jobs}
+              selectedJobId={selectedJobId}
+              onSelectJobId={setSelectedJobId}
+              selectedPlaceIds={selectedPlaceIds}
+              onToggleSelectPlace={handleToggleSelectPlace}
+              onToggleSelectAll={handleToggleSelectAll}
+              onGoToExport={() => setCurrentTab('export')}
+              searchQuery={searchQuery}
+              onSearchQueryChange={setSearchQuery}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
+              currentPage={currentPage}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+              isLoading={isLoadingPlaces}
+            />
+          )}
+
+          {currentTab === 'export' && (
+            <ExportScreen
+              places={places}
+              totalPlaces={totalPlaces}
+              selectedPlaceIds={selectedPlaceIds}
+              jobs={jobs}
+              selectedJobId={selectedJobId}
+              onSelectJobId={setSelectedJobId}
+            />
+          )}
+
+          {currentTab === 'history' && (
+            <HistoryScreen
+              jobs={jobs}
+              onViewResults={(jobId) => {
+                setSelectedJobId(jobId);
+                setCurrentTab('results');
+              }}
+              onGoToExportWithJob={(jobId) => {
+                setSelectedJobId(jobId);
+                setCurrentTab('export');
+              }}
+              onDeleteJob={handleDeleteJob}
+            />
+          )}
+
+          {currentTab === 'logs' && <LogsScreen />}
+        </main>
+
+        {/* Minimal Footer */}
+        <footer className="border-t border-zinc-850/80 py-5 px-6 text-center text-xs text-zinc-400">
+          <p>MapScrape &mdash; Extração direta e transparente de fichas públicas do Google Maps com Puppeteer e SQLite.</p>
+        </footer>
+      </div>
     </div>
   );
 }
+

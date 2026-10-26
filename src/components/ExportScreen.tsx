@@ -7,6 +7,8 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   AlertCircle,
+  Download,
+  Check,
 } from 'lucide-react';
 import { PlaceRecord, EXPORTABLE_FIELDS, ScrapeJob } from '../shared/types';
 
@@ -121,33 +123,41 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
   const previewRecords = places.slice(0, 3);
 
   return (
-    <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-zinc-900 tracking-tight">
-          Exportar para CSV
+    <div className="max-w-5xl mx-auto py-2 sm:py-6 space-y-8">
+      {/* Header with Larger Typography */}
+      <div>
+        <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+          Exportação Profissional
+        </span>
+        <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-100 tracking-tight">
+          Exportar Estabelecimentos para CSV
         </h1>
-        <p className="mt-2 text-sm sm:text-base text-zinc-600">
-          Gere uma planilha compatível com Microsoft Excel e LibreOffice Calc com codificação UTF-8 BOM, preservação total de acentuação e sanitização contra injeção de fórmulas.
+        <p className="mt-3 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-3xl">
+          Gere uma planilha compatível com Microsoft Excel, Google Planilhas e LibreOffice Calc com codificação UTF-8 BOM, preservação total de caracteres acentuados, URLs de fotos/vídeos e proteção automática contra injeção de fórmulas.
         </p>
       </div>
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Step 1: Escopo dos registros */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-xs">
-          <h2 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider mb-4">
-            1. Escopo dos Registros
-          </h2>
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/30 space-y-4 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl font-bold text-zinc-100">
+              1. Selecionar Escopo dos Registros
+            </h2>
+            <span className="text-xs sm:text-sm font-semibold text-zinc-400 font-mono tabular-nums">
+              {totalPlaces.toLocaleString('pt-BR')} registros no total
+            </span>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Option A: Selected */}
             <label
-              className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
+              className={`flex items-start gap-3.5 p-5 border rounded-2xl cursor-pointer transition-all ${
                 scope === 'selected'
-                  ? 'border-zinc-900 bg-zinc-50/70 ring-1 ring-zinc-900'
+                  ? 'border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20'
                   : selectedPlaceIds.size === 0
-                  ? 'border-zinc-200 opacity-50 cursor-not-allowed'
-                  : 'border-zinc-200 hover:bg-zinc-50'
+                  ? 'border-zinc-800 opacity-40 cursor-not-allowed bg-zinc-950/40'
+                  : 'border-zinc-800 hover:border-zinc-700 bg-zinc-950'
               }`}
             >
               <input
@@ -157,26 +167,26 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 checked={scope === 'selected'}
                 disabled={selectedPlaceIds.size === 0}
                 onChange={() => setScope('selected')}
-                className="mt-0.5 text-zinc-900 focus:ring-zinc-900"
+                className="mt-1 text-emerald-500 focus:ring-emerald-500/30 h-4 w-4 bg-zinc-900 border-zinc-700"
               />
               <div>
-                <span className="block text-sm font-medium text-zinc-900">
-                  Registros selecionados
+                <span className="block text-base font-bold text-zinc-100">
+                  Registros Selecionados
                 </span>
-                <span className="block text-xs text-zinc-500 mt-0.5">
-                  {selectedPlaceIds.size} itens marcados na tabela
+                <span className="block text-xs sm:text-sm font-medium text-zinc-400 mt-1">
+                  {selectedPlaceIds.size} estabelecimentos marcados na tabela
                 </span>
               </div>
             </label>
 
             {/* Option B: Current Search */}
             <label
-              className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
+              className={`flex items-start gap-3.5 p-5 border rounded-2xl cursor-pointer transition-all ${
                 scope === 'current_job'
-                  ? 'border-zinc-900 bg-zinc-50/70 ring-1 ring-zinc-900'
+                  ? 'border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20'
                   : !selectedJobId
-                  ? 'border-zinc-200 opacity-50 cursor-not-allowed'
-                  : 'border-zinc-200 hover:bg-zinc-50'
+                  ? 'border-zinc-800 opacity-40 cursor-not-allowed bg-zinc-950/40'
+                  : 'border-zinc-800 hover:border-zinc-700 bg-zinc-950'
               }`}
             >
               <input
@@ -186,26 +196,26 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 checked={scope === 'current_job'}
                 disabled={!selectedJobId}
                 onChange={() => setScope('current_job')}
-                className="mt-0.5 text-zinc-900 focus:ring-zinc-900"
+                className="mt-1 text-emerald-500 focus:ring-emerald-500/30 h-4 w-4 bg-zinc-900 border-zinc-700"
               />
               <div>
-                <span className="block text-sm font-medium text-zinc-900">
-                  Pesquisa filtrada
+                <span className="block text-base font-bold text-zinc-100">
+                  Pesquisa Selecionada
                 </span>
-                <span className="block text-xs text-zinc-500 mt-0.5">
+                <span className="block text-xs sm:text-sm font-medium text-zinc-400 mt-1 truncate">
                   {selectedJobId
-                    ? `${jobs.find((j) => j.id === selectedJobId)?.segment || 'Selecionada'}`
+                    ? jobs.find((j) => j.id === selectedJobId)?.segment || 'Pesquisa ativa'
                     : 'Nenhuma pesquisa filtrada'}
                 </span>
               </div>
             </label>
 
-            {/* Option C: All in database */}
+            {/* Option C: All database */}
             <label
-              className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all ${
+              className={`flex items-start gap-3.5 p-5 border rounded-2xl cursor-pointer transition-all ${
                 scope === 'all'
-                  ? 'border-zinc-900 bg-zinc-50/70 ring-1 ring-zinc-900'
-                  : 'border-zinc-200 hover:bg-zinc-50'
+                  ? 'border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20'
+                  : 'border-zinc-800 hover:border-zinc-700 bg-zinc-950'
               }`}
             >
               <input
@@ -214,71 +224,73 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 value="all"
                 checked={scope === 'all'}
                 onChange={() => setScope('all')}
-                className="mt-0.5 text-zinc-900 focus:ring-zinc-900"
+                className="mt-1 text-emerald-500 focus:ring-emerald-500/30 h-4 w-4 bg-zinc-900 border-zinc-700"
               />
               <div>
-                <span className="block text-sm font-medium text-zinc-900">
-                  Todos os registros
+                <span className="block text-base font-bold text-zinc-100">
+                  Base Completa
                 </span>
-                <span className="block text-xs text-zinc-500 mt-0.5">
-                  {totalPlaces} estabelecimentos no SQLite
+                <span className="block text-xs sm:text-sm font-medium text-zinc-400 mt-1">
+                  Todos os {totalPlaces.toLocaleString('pt-BR')} registros salvos no SQLite
                 </span>
               </div>
             </label>
           </div>
         </div>
 
-        {/* Step 2: Seleção dos 15 Campos */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-xs">
-          <div className="flex items-center justify-between mb-4">
+        {/* Step 2: Selecionar Colunas / Campos */}
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/30 space-y-5 backdrop-blur-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-4">
             <div>
-              <h2 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">
-                2. Campos a Incluir na Planilha
+              <h2 className="text-lg sm:text-xl font-bold text-zinc-100">
+                2. Selecionar Campos para Exportação
               </h2>
-              <span className="text-xs text-zinc-500">
-                {selectedFields.size} de {EXPORTABLE_FIELDS.length} campos selecionados
-              </span>
+              <p className="text-xs sm:text-sm text-zinc-400 mt-0.5">
+                {selectedFields.size} de {EXPORTABLE_FIELDS.length} campos selecionados para as colunas do CSV
+              </p>
             </div>
 
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={selectAllFields}
-                className="text-xs font-medium text-zinc-700 hover:text-zinc-900 px-2.5 py-1 rounded border border-zinc-200 hover:bg-zinc-50 transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-zinc-750 bg-zinc-950 hover:bg-zinc-850 text-xs sm:text-sm font-semibold text-zinc-200 transition-colors cursor-pointer"
               >
-                Selecionar todos
+                Marcar todos
               </button>
               <button
                 type="button"
                 onClick={deselectAllFields}
-                className="text-xs font-medium text-zinc-500 hover:text-zinc-700 px-2.5 py-1 rounded border border-zinc-200 hover:bg-zinc-50 transition-colors"
+                className="px-3 py-1.5 rounded-lg border border-zinc-750 bg-zinc-950 hover:bg-zinc-850 text-xs sm:text-sm font-semibold text-zinc-400 transition-colors cursor-pointer"
               >
                 Limpar seleção
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             {EXPORTABLE_FIELDS.map((field) => {
               const isChecked = selectedFields.has(field.key);
               return (
                 <label
                   key={field.key}
-                  className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer transition-colors ${
+                  className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                     isChecked
-                      ? 'bg-zinc-50 border-zinc-300 text-zinc-900'
-                      : 'bg-white border-zinc-200 text-zinc-500 hover:bg-zinc-50/50'
+                      ? 'border-emerald-500/40 bg-zinc-950 shadow-xs'
+                      : 'border-zinc-800/80 bg-zinc-950/40 opacity-60 hover:opacity-100'
                   }`}
                 >
                   <input
                     type="checkbox"
                     checked={isChecked}
                     onChange={() => toggleField(field.key)}
-                    className="mt-0.5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-900 cursor-pointer"
+                    className="mt-1 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
                   />
-                  <div className="leading-tight">
-                    <span className="font-medium block">{field.label}</span>
-                    <span className="text-[10px] text-zinc-400 block mt-0.5">
+                  <div className="min-w-0">
+                    <span className="block text-sm font-bold text-zinc-100 leading-snug">
+                      {field.label}
+                    </span>
+                    <span className="block text-xs text-zinc-400 truncate mt-0.5">
                       {field.description}
                     </span>
                   </div>
@@ -288,108 +300,100 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
           </div>
         </div>
 
-        {/* Step 3: Nome do Arquivo & Botão Principal */}
-        <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-xs space-y-6">
-          <h2 className="text-sm font-semibold text-zinc-900 uppercase tracking-wider">
-            3. Configuração do Arquivo e Download
+        {/* Step 3: Nome do Arquivo & Botão de Download */}
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/30 space-y-6 backdrop-blur-sm">
+          <h2 className="text-lg sm:text-xl font-bold text-zinc-100">
+            3. Nome do Arquivo e Download
           </h2>
 
-          <div>
-            <label htmlFor="csv_filename" className="block text-xs font-medium text-zinc-700 mb-1.5">
-              Nome do arquivo (.csv)
+          <div className="space-y-2">
+            <label htmlFor="csv-filename" className="block text-sm font-semibold text-zinc-300">
+              Nome do arquivo CSV:
             </label>
-            <div className="flex items-center">
+            <div className="flex items-center gap-2">
               <input
-                id="csv_filename"
+                id="csv-filename"
                 type="text"
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
-                className="flex-1 py-2.5 px-3 bg-zinc-50 border border-zinc-200 rounded-l-lg text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-zinc-900 focus:bg-white"
+                placeholder="Ex: mapscrape_leads_2026"
+                className="flex-1 py-3.5 px-4 bg-zinc-950 border border-zinc-750 rounded-xl text-zinc-100 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
               />
-              <span className="bg-zinc-100 border border-l-0 border-zinc-200 py-2.5 px-3 rounded-r-lg text-sm text-zinc-500 font-mono">
-                .csv
-              </span>
+              <span className="text-base font-bold text-zinc-400 font-mono shrink-0">.csv</span>
             </div>
           </div>
 
-          {/* Standards & Security Notice */}
-          <div className="p-4 bg-zinc-50 border border-zinc-200 rounded-lg flex items-start gap-3 text-xs text-zinc-600">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+          {/* Compliance & Security Callout */}
+          <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl flex items-start gap-3 text-xs sm:text-sm text-zinc-300">
+            <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
             <div className="space-y-1">
-              <p className="font-medium text-zinc-900">
-                Padrões de exportação e segurança garantidos:
+              <span className="font-bold text-zinc-100 block">Padrão Corporativo & Proteção contra Fórmulas</span>
+              <p className="text-zinc-400 leading-relaxed">
+                O arquivo é gerado com cabeçalho UTF-8 BOM para abertura perfeita no Excel sem desconfigurar acentuação. Células que iniciam com caracteres perigosos (<code className="text-emerald-400 font-mono">=</code>, <code className="text-emerald-400 font-mono">+</code>, <code className="text-emerald-400 font-mono">-</code>, <code className="text-emerald-400 font-mono">@</code>) são automaticamente neutralizadas com aspas simples para segurança contra CSV Injection.
               </p>
-              <ul className="list-disc list-inside space-y-0.5 text-zinc-600">
-                <li>Codificação <strong>UTF-8 com BOM (\uFEFF)</strong> para visualização sem erros no Excel e LibreOffice.</li>
-                <li><strong>Proteção contra injeção de fórmulas CSV</strong>: células iniciadas com <code className="font-mono bg-zinc-200 px-1 rounded">=</code>, <code className="font-mono bg-zinc-200 px-1 rounded">+</code>, <code className="font-mono bg-zinc-200 px-1 rounded">-</code> ou <code className="font-mono bg-zinc-200 px-1 rounded">@</code> são devidamente sanitizadas.</li>
-                <li>Tratamento automático de aspas, quebras de linha e vírgulas.</li>
-              </ul>
             </div>
           </div>
 
-          {/* Big Action Button */}
+          {exportSuccess && (
+            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-3 text-sm font-semibold text-emerald-300">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span>Download concluído com sucesso! Verifique a pasta de downloads do seu computador.</span>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleExport}
             disabled={isExporting || totalPlaces === 0}
-            className="w-full py-4 px-6 bg-zinc-900 hover:bg-zinc-800 disabled:opacity-50 text-white font-medium text-base rounded-xl shadow-xs transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-4 sm:py-5 px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-lg sm:text-xl rounded-2xl shadow-lg shadow-emerald-950/50 hover:shadow-emerald-900/60 transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
           >
-            <FileDown className="w-5 h-5" />
-            <span>
-              {isExporting
-                ? 'Gerando arquivo CSV seguro...'
-                : 'Exportar CSV'}
-            </span>
+            {isExporting ? (
+              <>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <span>Gerando arquivo CSV...</span>
+              </>
+            ) : (
+              <>
+                <Download className="w-6 h-6" />
+                <span>Baixar Arquivo CSV Agora</span>
+              </>
+            )}
           </button>
-
-          {exportSuccess && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-xs text-emerald-800 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Arquivo CSV baixado com sucesso!</span>
-            </div>
-          )}
         </div>
 
-        {/* Prévia dos Dados */}
+        {/* Step 4: Prévia das Primeiras Linhas */}
         {previewRecords.length > 0 && (
-          <div className="bg-white border border-zinc-200 rounded-xl p-6 shadow-xs">
-            <div className="flex items-center gap-2 mb-3">
-              <FileSpreadsheet className="w-4 h-4 text-zinc-500" />
-              <h3 className="text-xs font-semibold text-zinc-700 uppercase tracking-wider">
-                Prévia das Primeiras Linhas da Planilha
-              </h3>
+          <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/30 space-y-4 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
+                <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                <span>Prévia das Primeiras Linhas da Planilha</span>
+              </h2>
+              <span className="text-xs text-zinc-400 font-mono">3 amostras</span>
             </div>
-            <div className="overflow-x-auto border border-zinc-100 rounded-lg">
-              <table className="w-full text-left text-[11px]">
-                <thead className="bg-zinc-50 border-b border-zinc-200 font-semibold text-zinc-600">
+
+            <div className="overflow-x-auto border border-zinc-800 rounded-xl">
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-zinc-950 border-b border-zinc-800 text-zinc-400">
                   <tr>
-                    {EXPORTABLE_FIELDS.filter((f) => selectedFields.has(f.key))
-                      .slice(0, 5)
-                      .map((f) => (
-                        <th key={f.key} className="p-2 whitespace-nowrap">
-                          {f.label}
+                    {Array.from(selectedFields).slice(0, 7).map((key) => {
+                      const f = EXPORTABLE_FIELDS.find((item) => item.key === key);
+                      return (
+                        <th key={key} className="py-2.5 px-3 font-semibold whitespace-nowrap">
+                          {f?.label || key}
                         </th>
-                      ))}
-                    {selectedFields.size > 5 && (
-                      <th className="p-2 text-zinc-400 font-normal">
-                        +{selectedFields.size - 5} colunas...
-                      </th>
-                    )}
+                      );
+                    })}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-zinc-100 text-zinc-700">
-                  {previewRecords.map((r, idx) => (
-                    <tr key={idx} className="hover:bg-zinc-50/50">
-                      {EXPORTABLE_FIELDS.filter((f) => selectedFields.has(f.key))
-                        .slice(0, 5)
-                        .map((f) => (
-                          <td key={f.key} className="p-2 whitespace-nowrap max-w-[150px] truncate">
-                            {r[f.key] || <span className="text-zinc-300">—</span>}
-                          </td>
-                        ))}
-                      {selectedFields.size > 5 && (
-                        <td className="p-2 text-zinc-400">...</td>
-                      )}
+                <tbody className="divide-y divide-zinc-800 bg-zinc-950/40 text-zinc-300">
+                  {previewRecords.map((rec) => (
+                    <tr key={rec.id}>
+                      {Array.from(selectedFields).slice(0, 7).map((key) => (
+                        <td key={key} className="py-2.5 px-3 max-w-[200px] truncate">
+                          {String(rec[key] ?? '') || '—'}
+                        </td>
+                      ))}
                     </tr>
                   ))}
                 </tbody>

@@ -1,5 +1,14 @@
 import React from 'react';
-import { Table2, FileDown, Trash2, Calendar, MapPin, Building2, CheckCircle2, AlertTriangle, Clock } from 'lucide-react';
+import {
+  Table2,
+  FileDown,
+  Trash2,
+  Calendar,
+  MapPin,
+  Clock,
+  ArrowRight,
+  Database,
+} from 'lucide-react';
 import { ScrapeJob } from '../shared/types';
 
 interface HistoryScreenProps {
@@ -28,23 +37,26 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   };
 
   return (
-    <div className="max-w-5xl mx-auto py-10 px-4 sm:px-6">
+    <div className="max-w-6xl mx-auto py-2 sm:py-6 space-y-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-semibold text-zinc-900 tracking-tight">
+      <div className="border-b border-zinc-850 pb-5">
+        <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+          Auditoria de Execuções
+        </span>
+        <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-100 tracking-tight">
           Histórico de Pesquisas
         </h1>
-        <p className="mt-2 text-sm sm:text-base text-zinc-600">
-          Registro de todas as pesquisas realizadas no Google Maps, com status de coleta e acesso direto aos estabelecimentos salvos no SQLite.
+        <p className="mt-3 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-3xl">
+          Registro completo de todas as coletas realizadas no Google Maps, com os contadores de estabelecimentos encontrados, coletados e persistidos no SQLite.
         </p>
       </div>
 
       {jobs.length === 0 ? (
-        <div className="bg-white border border-zinc-200 rounded-xl p-12 text-center shadow-xs">
-          <Clock className="w-8 h-8 text-zinc-400 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-zinc-900">Nenhuma pesquisa no histórico</h3>
-          <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
-            Quando você iniciar uma coleta na Tela 1, ela será registrada aqui com seus contadores e dados persistidos.
+        <div className="bg-zinc-900/60 border border-dashed border-zinc-800 rounded-3xl p-16 text-center">
+          <Clock className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-zinc-200">Nenhuma pesquisa no histórico</h3>
+          <p className="text-base text-zinc-400 mt-2 max-w-md mx-auto">
+            Quando você iniciar uma coleta na tela "1. Pesquisar", ela será registrada aqui com seus contadores e dados persistidos.
           </p>
         </div>
       ) : (
@@ -53,68 +65,66 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
             return (
               <div
                 key={job.id}
-                className="bg-white border border-zinc-200 rounded-xl p-5 sm:p-6 shadow-xs hover:border-zinc-300 transition-colors"
+                className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 sm:p-7 shadow-xl shadow-black/20 hover:border-zinc-700 transition-all duration-150 backdrop-blur-sm"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
                   {/* Left: Info */}
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-zinc-900 text-base">
+                  <div className="space-y-3 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2.5">
+                      <h2 className="text-xl sm:text-2xl font-bold text-zinc-100">
                         {job.segment}
-                      </span>
-                      <span className="text-zinc-400">·</span>
-                      <span className="text-zinc-600 text-sm flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-zinc-400" />
+                      </h2>
+                      <span className="text-zinc-600">·</span>
+                      <span className="text-sm sm:text-base font-semibold text-zinc-300 flex items-center gap-1.5 bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">
+                        <MapPin className="w-4 h-4 text-emerald-400" />
                         {job.location}
                       </span>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-500">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-zinc-400" />
+                    {/* Metric Badges */}
+                    <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-zinc-400">
+                      <span className="flex items-center gap-1.5 font-medium bg-zinc-950 px-3 py-1 rounded-md border border-zinc-800 font-mono">
+                        <Calendar className="w-3.5 h-3.5 text-zinc-500" />
                         {formatDate(job.created_at)}
                       </span>
-                      <span>
-                        Solicitado: <strong className="text-zinc-700">{job.limit_requested}</strong>
+                      <span className="bg-zinc-950 px-3 py-1 rounded-md border border-zinc-800 font-mono tabular-nums">
+                        Meta solicitada: <strong className="text-zinc-200 font-bold">{job.limit_requested}</strong>
                       </span>
-                      <span>
-                        Coletados:{' '}
-                        <strong className="text-emerald-700 font-medium">
-                          {job.total_collected}
-                        </strong>
+                      <span className="bg-emerald-500/10 text-emerald-300 px-3 py-1 rounded-md border border-emerald-500/30 font-semibold font-mono tabular-nums">
+                        Salvos no SQLite: <strong className="text-emerald-300 font-extrabold">{job.total_collected}</strong>
                       </span>
                       {job.total_duplicates > 0 && (
-                        <span>
-                          Duplicados: <strong className="text-zinc-600">{job.total_duplicates}</strong>
+                        <span className="bg-zinc-950 px-3 py-1 rounded-md border border-zinc-800 font-mono tabular-nums text-zinc-400">
+                          Duplicados ignorados: <strong className="text-zinc-300">{job.total_duplicates}</strong>
                         </span>
                       )}
                       {job.total_errors > 0 && (
-                        <span className="text-red-600">
+                        <span className="bg-rose-500/10 text-rose-300 px-3 py-1 rounded-md border border-rose-500/30 font-semibold font-mono tabular-nums">
                           Erros: <strong>{job.total_errors}</strong>
                         </span>
                       )}
                     </div>
 
                     {job.status_message && (
-                      <p className="text-xs text-zinc-500 mt-1 italic line-clamp-1">
+                      <p className="text-xs sm:text-sm text-zinc-400 italic line-clamp-2">
                         {job.status_message}
                       </p>
                     )}
                   </div>
 
                   {/* Right: Status badge & Actions */}
-                  <div className="flex flex-wrap items-center gap-2.5 sm:self-center">
+                  <div className="flex flex-wrap items-center gap-3 shrink-0">
                     <span
-                      className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                      className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-full font-bold uppercase tracking-wider border ${
                         job.status === 'completed'
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
                           : job.status === 'running'
-                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 animate-pulse'
                           : job.status === 'partial'
-                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
                           : job.status === 'stopped'
-                          ? 'bg-zinc-100 text-zinc-700 border border-zinc-200'
-                          : 'bg-red-50 text-red-800 border border-red-200'
+                          ? 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                          : 'bg-rose-500/10 text-rose-300 border-rose-500/30'
                       }`}
                     >
                       {job.status === 'completed' && 'Concluída'}
@@ -126,32 +136,35 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
 
                     {/* View in Table */}
                     <button
+                      type="button"
                       onClick={() => onViewResults(job.id)}
-                      className="px-3 py-1.5 bg-zinc-50 hover:bg-zinc-100 border border-zinc-200 text-zinc-800 text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
-                      title="Ver registros coletados na tabela"
+                      className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-sm font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer border border-zinc-700"
+                      title="Ver estabelecimentos desta coleta"
                     >
-                      <Table2 className="w-3.5 h-3.5 text-zinc-500" />
+                      <Table2 className="w-4 h-4 text-emerald-400" />
                       <span>Ver Resultados</span>
                     </button>
 
                     {/* Direct CSV Export */}
                     <button
+                      type="button"
                       onClick={() => onGoToExportWithJob(job.id)}
-                      className="px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-medium rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer"
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-sm shadow-emerald-950/40"
                       title="Exportar esta pesquisa para CSV"
                     >
-                      <FileDown className="w-3.5 h-3.5" />
+                      <FileDown className="w-4 h-4" />
                       <span>Exportar CSV</span>
                     </button>
 
                     {/* Delete */}
                     <button
+                      type="button"
                       onClick={() => {
-                        if (confirm(`Deseja remover esta pesquisa (${job.segment}) e seus registros?`)) {
+                        if (confirm(`Deseja remover esta pesquisa (${job.segment}) e seus registros do banco?`)) {
                           onDeleteJob(job.id);
                         }
                       }}
-                      className="p-1.5 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      className="p-2 text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 rounded-xl transition-colors cursor-pointer"
                       title="Excluir pesquisa do banco"
                     >
                       <Trash2 className="w-4 h-4" />

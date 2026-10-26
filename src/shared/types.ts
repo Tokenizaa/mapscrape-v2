@@ -16,6 +16,9 @@ export interface PlaceRecord {
   maps_url: string;
   description: string;
   services_attributes: string;
+  photos?: string;
+  videos?: string;
+  logo_url?: string;
   collected_at: string;
 }
 
@@ -66,5 +69,8 @@ export const EXPORTABLE_FIELDS: { key: keyof PlaceRecord; label: string; descrip
   { key: 'maps_url', label: 'Link do Google Maps', description: 'URL da ficha' },
   { key: 'description', label: 'Descrição', description: 'Descrição apresentada, se houver' },
   { key: 'services_attributes', label: 'Serviços e atributos', description: 'Informações exibidas na ficha' },
+  { key: 'photos', label: 'Fotos (URLs)', description: 'URLs das fotos visíveis na ficha' },
+  { key: 'videos', label: 'Vídeos (URLs)', description: 'URLs ou fontes de vídeos visíveis na ficha' },
+  { key: 'logo_url', label: 'Logo / Foto de perfil', description: 'Imagem ou avatar exibido na ficha' },
   { key: 'collected_at', label: 'Data e hora da coleta', description: 'Registrada pelo aplicativo' },
 ];

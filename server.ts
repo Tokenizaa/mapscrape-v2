@@ -289,6 +289,9 @@ async function startServer() {
         { key: 'maps_url', label: 'Link do Maps' },
         { key: 'description', label: 'Descrição' },
         { key: 'services_attributes', label: 'Serviços e atributos' },
+        { key: 'photos', label: 'Fotos (URLs)' },
+        { key: 'videos', label: 'Vídeos (URLs)' },
+        { key: 'logo_url', label: 'Logo / Foto de perfil' },
         { key: 'collected_at', label: 'Data da coleta' },
       ];
       const coverage = fields.map((field) => {

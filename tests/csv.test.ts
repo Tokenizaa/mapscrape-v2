@@ -40,6 +40,9 @@ describe('CSV Module and Formula Sanitization', () => {
       maps_url: 'https://maps.google.com/?cid=12345',
       description: 'Pães artesanais e café fresco',
       services_attributes: 'Consumo no local · Entrega',
+      photos: 'https://lh5.googleusercontent.com/photo.jpg',
+      videos: 'https://maps.google.com/video.mp4',
+      logo_url: 'https://lh5.googleusercontent.com/logo.jpg',
       collected_at: '2026-10-25T15:00:00Z',
     };
 
@@ -51,12 +54,16 @@ describe('CSV Module and Formula Sanitization', () => {
     // Check header presence
     expect(csv).toContain('Nome do estabelecimento');
     expect(csv).toContain('Telefone');
+    expect(csv).toContain('Fotos (URLs)');
+    expect(csv).toContain('Vídeos (URLs)');
+    expect(csv).toContain('Logo / Foto de perfil');
     expect(csv).toContain('Link do Google Maps');
 
     // Check data row
     expect(csv).toContain('Padaria Central');
     expect(csv).toContain('"Rua das Flores, 100"');
     expect(csv).toContain('(11) 98765-4321');
+    expect(csv).toContain('https://maps.google.com/video.mp4');
   });
 
   it('supports exporting only user-selected columns', () => {

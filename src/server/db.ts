@@ -54,10 +54,23 @@ export async function initDb(): Promise<void> {
       maps_url TEXT NOT NULL DEFAULT '',
       description TEXT NOT NULL DEFAULT '',
       services_attributes TEXT NOT NULL DEFAULT '',
+      photos TEXT DEFAULT '',
+      videos TEXT DEFAULT '',
+      logo_url TEXT DEFAULT '',
       collected_at TEXT NOT NULL,
       FOREIGN KEY (job_id) REFERENCES searches (id) ON DELETE CASCADE
     );
   `);
+
+  try {
+    await db.execute(`ALTER TABLE places ADD COLUMN photos TEXT DEFAULT '';`);
+  } catch {}
+  try {
+    await db.execute(`ALTER TABLE places ADD COLUMN videos TEXT DEFAULT '';`);
+  } catch {}
+  try {
+    await db.execute(`ALTER TABLE places ADD COLUMN logo_url TEXT DEFAULT '';`);
+  } catch {}
 
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
@@ -142,8 +155,9 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
     sql: `INSERT OR REPLACE INTO places (
       id, job_id, name, category, address, phone, website,
       rating, review_count, price_range, opening_hours, business_status,
-      latitude, longitude, maps_url, description, services_attributes, collected_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      latitude, longitude, maps_url, description, services_attributes,
+      photos, videos, logo_url, collected_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       place.id,
       place.job_id,
@@ -162,6 +176,9 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
       place.maps_url,
       place.description,
       place.services_attributes,
+      place.photos || '',
+      place.videos || '',
+      place.logo_url || '',
       place.collected_at,
     ],
   });

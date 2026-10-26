@@ -109,6 +109,61 @@ export async function extractPlaceDetails(
       .filter(Boolean)
       .join(' · ');
 
+    // 11. Photos & Media
+    var photoUrls: string[] = [];
+    var seenPhotos: Record<string, boolean> = {};
+    for (var p = 0; p < selectors.photos.length; p++) {
+      try {
+        var pEls = document.querySelectorAll(selectors.photos[p]);
+        for (var j = 0; j < pEls.length; j++) {
+          var src = (pEls[j] as HTMLImageElement).src || pEls[j].getAttribute('src') || '';
+          if (src && src.startsWith('http') && !src.includes('cleardot.gif') && !seenPhotos[src]) {
+            seenPhotos[src] = true;
+            photoUrls.push(src);
+          }
+        }
+      } catch(e) {}
+    }
+
+    // 12. Videos & Clips
+    var videoUrls: string[] = [];
+    var seenVideos: Record<string, boolean> = {};
+    for (var v = 0; v < selectors.videos.length; v++) {
+      try {
+        var vEls = document.querySelectorAll(selectors.videos[v]);
+        for (var k = 0; k < vEls.length; k++) {
+          var vEl = vEls[k];
+          var vSrc = (vEl as HTMLVideoElement).currentSrc ||
+            (vEl as HTMLVideoElement).src ||
+            vEl.getAttribute('src') ||
+            vEl.getAttribute('href') ||
+            vEl.getAttribute('data-video-url') || '';
+          if (vSrc && vSrc.startsWith('http') && !vSrc.includes('cleardot.gif') && !seenVideos[vSrc]) {
+            seenVideos[vSrc] = true;
+            videoUrls.push(vSrc);
+          }
+        }
+      } catch(e) {}
+    }
+
+    // 13. Logo / Avatar
+    var logo_url = '';
+    for (var l = 0; l < selectors.logo.length; l++) {
+      try {
+        var lEl = document.querySelector(selectors.logo[l]) as HTMLImageElement | null;
+        if (lEl) {
+          var lSrc = lEl.src || lEl.getAttribute('src') || '';
+          if (lSrc && lSrc.startsWith('http') && !lSrc.includes('cleardot.gif')) {
+            logo_url = lSrc;
+            break;
+          }
+        }
+      } catch(e) {}
+    }
+    if (!logo_url && photoUrls.length > 0) {
+      logo_url = photoUrls[0];
+    }
+
     return {
       name: name,
       category: category,
@@ -122,6 +177,9 @@ export async function extractPlaceDetails(
       business_status: business_status,
       description: description,
       services_attributes: services_attributes,
+      photos: photoUrls.join(' | '),
+      videos: videoUrls.join(' | '),
+      logo_url: logo_url,
       currentUrl: window.location.href
     };
   }, SELECTORS.place);
@@ -149,6 +207,9 @@ export async function extractPlaceDetails(
     maps_url: finalUrl,
     description: cleanText(raw.description),
     services_attributes: cleanText(raw.services_attributes),
+    photos: cleanText(raw.photos),
+    videos: cleanText(raw.videos),
+    logo_url: cleanText(raw.logo_url),
     collected_at: now,
   };
 

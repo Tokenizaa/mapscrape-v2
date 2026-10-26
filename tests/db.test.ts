@@ -54,6 +54,9 @@ describe('SQLite Database Operations', () => {
       maps_url: mapsUrl,
       description: 'Cafés especiais torrados no local.',
       services_attributes: 'Consumo no local · Retirada na porta',
+      photos: 'https://lh5.googleusercontent.com/p/photo1.jpg | https://lh5.googleusercontent.com/p/photo2.jpg',
+      videos: 'https://maps.google.com/video1.mp4',
+      logo_url: 'https://lh5.googleusercontent.com/p/logo.jpg',
       collected_at: new Date().toISOString(),
     };
 
@@ -69,6 +72,9 @@ describe('SQLite Database Operations', () => {
 
     const results = await getPlaces({ jobId: testJobId });
     expect(results.total).toBeGreaterThanOrEqual(1);
-    expect(results.places.some(p => p.name === 'Lucca Cafés Especiais')).toBe(true);
+    const foundPlace = results.places.find(p => p.name === 'Lucca Cafés Especiais');
+    expect(foundPlace).toBeDefined();
+    expect(foundPlace?.videos).toBe('https://maps.google.com/video1.mp4');
+    expect(foundPlace?.photos).toContain('photo1.jpg');
   });
 });

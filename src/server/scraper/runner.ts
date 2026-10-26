@@ -18,7 +18,7 @@ async function safeAudit(input: Parameters<typeof writeAuditLog>[0]): Promise<vo
 }
 
 function missingFields(place: PlaceRecord): string[] {
-  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'collected_at'];
+  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'collected_at'];
   return fields.filter((field) => !String(place[field] ?? '').trim());
 }
 
@@ -418,7 +418,7 @@ export async function runScraperJob(
         );
       } catch (placeErr: any) {
         totalErrors++;
-        await safeAudit({ level: 'error', category: 'scraper', event: 'place.extraction_failed', message: placeErr?.message || 'Falha ao extrair ficha.', jobId, metadata: { mapsUrl: item.url, previewName, stack: String(placeErr?.stack || '').slice(0, 4000) } }).catch(() => {});
+        await safeAudit({ level: 'error', category: 'scraper', event: 'place.extraction_failed', message: placeErr?.message || 'Falha ao extrair ficha.', jobId, metadata: { mapsUrl: item.url, previewName: item.previewName || previewTitle, stack: String(placeErr?.stack || '').slice(0, 4000) } }).catch(() => {});
         console.error(`Erro ao coletar ficha ${item.url}:`, placeErr.message);
         await emitProgress(
           `[${placeNum}/${itemsToProcess.length}] Erro na ficha: ${placeErr.message}`
