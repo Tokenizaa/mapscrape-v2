@@ -16,7 +16,7 @@ import { runScraperJob, stopScrapeJob, isJobRunning } from './src/server/scraper
 import { generateCsv } from './src/server/scraper/csv';
 import { ScrapeJob, PlaceRecord } from './src/shared/types';
 import { initAuditLog, listAuditLogs, writeAuditLog } from './src/server/audit-log';
-import { readRunReport } from './src/server/run-report';
+import { readRunReport, readRunReportPdf } from './src/server/run-report';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -252,6 +252,19 @@ async function startServer() {
       return res.json(report);
     } catch (err: any) {
       return res.status(500).json({ error: err.message || 'Erro ao carregar relatório.' });
+    }
+  });
+
+  app.get('/api/reports/:jobId/pdf', async (req: Request, res: Response) => {
+    try {
+      const jobId = String(req.params.jobId || '');
+      const pdf = await readRunReportPdf(jobId);
+      if (!pdf) return res.status(404).json({ error: 'PDF ainda não existe para esta pesquisa. Confira se a execução já terminou e se a geração do PDF foi bem-sucedida.' });
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="mapscrape-report-${jobId}.pdf"`);
+      return res.send(pdf);
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Erro ao carregar PDF.' });
     }
   });
 
