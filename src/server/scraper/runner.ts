@@ -1,6 +1,6 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PlaceRecord, ScrapeJob } from '../../shared/types';
-import { getJob, updateJobProgress, insertPlace, placeExistsByUrl, countPlaces } from '../db';
+import { getJob, updateJobProgress, insertPlace, placeExistsByUrl, findPlaceByUrl, countPlaces } from '../db';
 import { writeRunReport } from '../run-report';
 import { extractPlaceDetails } from './extractor';
 import { writeAuditLog } from '../audit-log';
@@ -263,7 +263,8 @@ export async function runScraperJob(
 
         // Count and log existing records during discovery, then continue scrolling
         // until the requested number of genuinely new candidates has been found.
-        if (await placeExistsByUrl(canonicalUrl)) {
+        const existingPlace = await findPlaceByUrl(canonicalUrl);
+        if (existingPlace) {
           totalDuplicates++;
           duplicateUrlsDiscovered++;
           await safeAudit({
@@ -271,7 +272,7 @@ export async function runScraperJob(
             event: 'place.duplicate_skipped',
             message: 'Ficha já existe na base; ignorada durante a descoberta.',
             jobId,
-            metadata: { mapsUrl: canonicalUrl, previewName: item.previewName || '', reason: 'canonical_maps_url_exists' },
+            metadata: { mapsUrl: canonicalUrl, previewName: item.previewName || '', existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'canonical_maps_url_exists' },
           });
           continue;
         }
@@ -371,10 +372,10 @@ export async function runScraperJob(
       const previewTitle = item.previewName || `Estabelecimento #${placeNum}`;
 
       // Deduplication check in SQLite
-      const alreadyInDb = await placeExistsByUrl(item.url);
-      if (alreadyInDb) {
+      const existingPlace = await findPlaceByUrl(item.url);
+      if (existingPlace) {
         totalDuplicates++;
-        await safeAudit({ category: 'scraper', event: 'place.duplicate_skipped', message: 'Ficha já existe no momento da persistência; ignorada para evitar duplicação.', jobId, metadata: { mapsUrl: item.url, previewName, reason: 'duplicate_detected_before_insert' } });
+        await safeAudit({ category: 'scraper', event: 'place.duplicate_skipped', message: 'Ficha já existe no momento da persistência; ignorada para evitar duplicação.', jobId, metadata: { mapsUrl: item.url, previewName, existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'duplicate_detected_before_insert' } });
         await emitProgress(
           `[${placeNum}/${itemsToProcess.length}] Duplicado ignorado: ${previewTitle}`
         );
