@@ -83,16 +83,24 @@ export async function runScraperJob(
     await safeAudit({ category: 'scraper', event: 'job.browser_start', message: 'Inicializando Chromium.', jobId, metadata: { segment, location, limitRequested, databaseCountBefore: baselineCount } });
     await emitProgress('Iniciando navegador Chromium...', { status: 'running' });
 
-    browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--lang=pt-BR,pt',
-      ],
-    });
+    const browserWSEndpoint = process.env.BROWSER_WS_ENDPOINT?.trim();
+    if (process.env.VERCEL) {
+      if (!browserWSEndpoint) {
+        throw new Error('Navegador remoto não configurado: defina BROWSER_WS_ENDPOINT para um serviço Chromium compatível com Puppeteer.');
+      }
+      browser = await puppeteer.connect({ browserWSEndpoint });
+    } else {
+      browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--lang=pt-BR,pt',
+        ],
+      });
+    }
 
     handle.cancel = () => {
       handle.cancelled = true;
