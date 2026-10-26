@@ -2,6 +2,7 @@ import puppeteer, { Browser, Page } from 'puppeteer';
 import { PlaceRecord, ScrapeJob } from '../../shared/types';
 import { getJob, updateJobProgress, insertPlace, placeExistsByUrl } from '../db';
 import { extractPlaceDetails } from './extractor';
+import { writeAuditLog } from '../audit-log';
 import { SELECTORS } from './selectors';
 
 interface ActiveJobHandle {
@@ -10,6 +11,11 @@ interface ActiveJobHandle {
 }
 
 const activeJobs = new Map<string, ActiveJobHandle>();
+function missingFields(place: PlaceRecord): string[] {
+  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url'];
+  return fields.filter((field) => !String(place[field] ?? '').trim());
+}
+
 
 export function isJobRunning(jobId: string): boolean {
   return activeJobs.has(jobId);
@@ -66,6 +72,7 @@ export async function runScraperJob(
   };
 
   try {
+    await writeAuditLog({ category: 'scraper', event: 'job.browser_start', message: 'Inicializando Chromium.', jobId, metadata: { segment, location, limitRequested } });
     await emitProgress('Iniciando navegador Chromium...', { status: 'running' });
 
     browser = await puppeteer.launch({
@@ -140,6 +147,7 @@ export async function runScraperJob(
     });
 
     if (isBlocked) {
+      await writeAuditLog({ level: 'error', category: 'scraper', event: 'maps.access_challenge', message: 'Google Maps exibiu verificação ou bloqueio; a coleta foi interrompida.', jobId, metadata: { pageUrl: page.url() } });
       await emitProgress('Bloqueio ou verificação detectada no Google Maps.', {
         status: 'failed',
         status_message: 'Google Maps exigiu verificação de tráfego. Coleta interrompida para cumprir regras de acesso.',
@@ -160,6 +168,7 @@ export async function runScraperJob(
       } else {
         await insertPlace(placeRecord);
         totalCollected = 1;
+        await writeAuditLog({ category: 'scraper', event: 'place.saved', message: 'Ficha salva no SQLite.', jobId, metadata: { placeId: placeRecord.id, name: placeRecord.name, mapsUrl: placeRecord.maps_url, missingFields: missingFields(placeRecord) } });
       }
 
       await emitProgress('Coleta concluída com sucesso.', {
@@ -245,6 +254,7 @@ export async function runScraperJob(
       }
 
       totalFound = discoveredUrls.length;
+      if (newFoundInBatch > 0) await writeAuditLog({ category: 'scraper', event: 'results.discovered', message: 'Novos links de fichas encontrados na lista.', jobId, metadata: { totalFound, newInBatch: newFoundInBatch, scrollAttempt: scrollAttempts } });
       await emitProgress(`Encontrados ${totalFound} estabelecimentos no feed...`);
 
       if (discoveredUrls.length >= limitRequested) {
@@ -359,12 +369,14 @@ export async function runScraperJob(
         // Persist immediately to SQLite
         await insertPlace(placeRecord);
         totalCollected++;
+        await writeAuditLog({ category: 'scraper', event: 'place.saved', message: 'Ficha salva no SQLite.', jobId, metadata: { placeId: placeRecord.id, name: placeRecord.name, mapsUrl: placeRecord.maps_url, missingFields: missingFields(placeRecord) } });
 
         await emitProgress(
           `[${placeNum}/${itemsToProcess.length}] Coletado: ${placeRecord.name}`
         );
       } catch (placeErr: any) {
         totalErrors++;
+        await writeAuditLog({ level: 'error', category: 'scraper', event: 'place.extraction_failed', message: placeErr?.message || 'Falha ao extrair ficha.', jobId, metadata: { mapsUrl: item.url, previewName, stack: String(placeErr?.stack || '').slice(0, 4000) } }).catch(() => {});
         console.error(`Erro ao coletar ficha ${item.url}:`, placeErr.message);
         await emitProgress(
           `[${placeNum}/${itemsToProcess.length}] Erro na ficha: ${placeErr.message}`
@@ -383,6 +395,7 @@ export async function runScraperJob(
         ? `Coleta encerrada parcialmente: ${totalCollected} registros salvos, ${totalDuplicates} duplicados, ${totalErrors} falhas. Foram encontrados ${discoveredUrls.length} resultados para um limite de ${limitRequested}; isso não comprova que não existam outros resultados.`
         : `Coleta concluída: ${totalCollected} registros salvos, ${totalDuplicates} duplicados e ${totalErrors} falhas.`;
 
+    await writeAuditLog({ level: finalStatus === 'partial' ? 'warn' : 'info', category: 'scraper', event: 'job.finished', message: statusMsg, jobId, metadata: { status: finalStatus, totalFound, totalCollected, totalDuplicates, totalErrors, scrollAttempts, reachedEndOfList } });
     await emitProgress(statusMsg, {
       status: finalStatus,
       status_message: statusMsg,
@@ -390,6 +403,7 @@ export async function runScraperJob(
     });
   } catch (error: any) {
     const errMsg = error.message || 'Erro inesperado durante a coleta.';
+    await writeAuditLog({ level: handle.cancelled ? 'warn' : 'error', category: 'scraper', event: handle.cancelled ? 'job.stopped' : 'job.failed', message: errMsg, jobId, metadata: { stack: String(error?.stack || '').slice(0, 5000), totalFound, totalCollected, totalDuplicates, totalErrors } }).catch(() => {});
     console.error('Scraper fatal error:', error);
     if (handle.cancelled) {
       await emitProgress('Coleta interrompida pelo usuário.', {
