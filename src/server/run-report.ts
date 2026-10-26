@@ -18,9 +18,10 @@ function missingFields(place: PlaceRecord): string[] {
 
 
 function escapeHtml(value: unknown): string {
-  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  const entities: Record<string, string> = {
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  })[char] || char);
+  };
+  return String(value ?? '').replace(/[&<>"']/g, (char) => entities[char] || char);
 }
 
 function renderReportHtml(report: any): string {
@@ -143,6 +144,7 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
     } catch (error: any) {
       report.artifacts.pdf_generated = false;
       (report.artifacts as any).pdf_error = String(error?.message || error).slice(0, 1000);
+      await fs.unlink(pdfPath).catch(() => {});
     } finally {
       if (browser) await browser.close().catch(() => {});
     }
@@ -152,6 +154,7 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
   if (options.updateLatest !== false) {
     await fs.writeFile(path.join(reportDirectory, 'latest-audit.json'), json, 'utf8');
     if (report.artifacts.pdf_generated) await fs.copyFile(pdfPath, path.join(reportDirectory, 'latest-audit.pdf'));
+    else await fs.unlink(path.join(reportDirectory, 'latest-audit.pdf')).catch(() => {});
   }
   return filePath;
 }
