@@ -20,10 +20,14 @@ import { initAuditLog, listAuditLogs, writeAuditLog } from './src/server/audit-l
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+async function safeWriteAuditLog(input: Parameters<typeof writeAuditLog>[0]): Promise<void> {
+  try { await writeAuditLog(input); } catch (error) { console.error('Audit log write failed:', error); }
+}
+
 async function startServer() {
   await initDb();
   await initAuditLog();
-  await writeAuditLog({ category: 'server', event: 'server.start', message: 'Servidor iniciado e banco inicializado.' });
+  await safeWriteAuditLog({ category: 'server', event: 'server.start', message: 'Servidor iniciado e banco inicializado.' });
   console.log('SQLite database initialized.');
 
   const app = express();
@@ -82,14 +86,14 @@ async function startServer() {
       };
 
       await createJob(newJob);
-      await writeAuditLog({ category: 'scraper', event: 'job.started', message: 'Coleta iniciada.', jobId, metadata: { segment: segment.trim(), location: location.trim(), limit: limitNum } });
+      await safeWriteAuditLog({ category: 'scraper', event: 'job.started', message: 'Coleta iniciada.', jobId, metadata: { segment: segment.trim(), location: location.trim(), limit: limitNum } });
 
       // Start asynchronous scraping
       runScraperJob(jobId, segment, location, limitNum, (updatedJob) => {
         broadcastJobUpdate(updatedJob);
       }).catch(async (err) => {
         console.error('Job error:', err);
-        await writeAuditLog({ level: 'error', category: 'scraper', event: 'job.unhandled_error', message: err?.message || 'Erro não tratado na tarefa.', jobId, metadata: { stack: String(err?.stack || '').slice(0, 5000) } }).catch(() => {});
+        await safeWriteAuditLog({ level: 'error', category: 'scraper', event: 'job.unhandled_error', message: err?.message || 'Erro não tratado na tarefa.', jobId, metadata: { stack: String(err?.stack || '').slice(0, 5000) } }).catch(() => {});
       });
 
       return res.json({
@@ -99,7 +103,7 @@ async function startServer() {
       });
     } catch (err: any) {
       console.error('Start error:', err);
-      await writeAuditLog({ level: 'error', category: 'api', event: 'job.start_failed', message: err?.message || 'Falha ao iniciar coleta.', metadata: { stack: String(err?.stack || '').slice(0, 4000) } }).catch(() => {});
+      await safeWriteAuditLog({ level: 'error', category: 'api', event: 'job.start_failed', message: err?.message || 'Falha ao iniciar coleta.', metadata: { stack: String(err?.stack || '').slice(0, 4000) } }).catch(() => {});
       return res.status(500).json({ error: err.message || 'Erro ao iniciar coleta.' });
     }
   });
@@ -108,7 +112,7 @@ async function startServer() {
   app.post('/api/scrape/stop/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const stopped = stopScrapeJob(id);
-    await writeAuditLog({ level: stopped ? 'warn' : 'info', category: 'scraper', event: stopped ? 'job.stop_requested' : 'job.stop_not_active', message: stopped ? 'Interrupção solicitada pelo usuário.' : 'Solicitação de interrupção para tarefa não ativa.', jobId: id });
+    await safeWriteAuditLog({ level: stopped ? 'warn' : 'info', category: 'scraper', event: stopped ? 'job.stop_requested' : 'job.stop_not_active', message: stopped ? 'Interrupção solicitada pelo usuário.' : 'Solicitação de interrupção para tarefa não ativa.', jobId: id });
     return res.json({
       success: true,
       stopped,
@@ -250,7 +254,7 @@ async function startServer() {
       });
       return res.json(result);
     } catch (err: any) {
-      await writeAuditLog({ level: 'error', category: 'api', event: 'logs.query_failed', message: err?.message || 'Falha ao consultar logs.' }).catch(() => {});
+      await safeWriteAuditLog({ level: 'error', category: 'api', event: 'logs.query_failed', message: err?.message || 'Falha ao consultar logs.' }).catch(() => {});
       return res.status(500).json({ error: err.message || 'Erro ao consultar logs.' });
     }
   });
