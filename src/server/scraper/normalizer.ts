@@ -72,7 +72,7 @@ export function normalizeReviewCount(raw: string | null | undefined): string {
 export function normalizePriceRange(raw: string | null | undefined): string {
   if (!raw) return '';
   let cleaned = cleanText(raw);
-  cleaned = cleaned.replace(/^(preço|price):\s*/i, '');
+  cleaned = cleaned.replace(/^(preço|price|prix|precio):\s*/i, '');
   return cleaned.trim();
 }
 
