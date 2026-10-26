@@ -200,6 +200,7 @@ export async function runScraperJob(
 
     let scrollAttempts = 0;
     let stagnantRounds = 0;
+    let reachedEndOfList = false;
     const maxScrollAttempts = Math.min(Math.max(limitRequested * 2, 30), 120);
 
     while (discoveredUrls.length < limitRequested && scrollAttempts < maxScrollAttempts && stagnantRounds < 7 && !handle.cancelled) {
@@ -271,6 +272,7 @@ export async function runScraperJob(
       else stagnantRounds = 0;
 
       if (isEndOfList && newFoundInBatch === 0) {
+        reachedEndOfList = true;
         break;
       }
 
@@ -373,7 +375,7 @@ export async function runScraperJob(
       await new Promise((r) => setTimeout(r, 600));
     }
 
-    const hadPartialFailures = totalErrors > 0 || discoveredUrls.length < limitRequested;
+    const hadPartialFailures = totalErrors > 0 || (discoveredUrls.length < limitRequested && !reachedEndOfList);
     const finalStatus = handle.cancelled ? 'stopped' : hadPartialFailures ? 'partial' : 'completed';
     const statusMsg = handle.cancelled
       ? `Coleta interrompida. ${totalCollected} registros salvos; ${totalErrors} falhas.`
