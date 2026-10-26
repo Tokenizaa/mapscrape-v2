@@ -110,6 +110,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                           ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                           : job.status === 'running'
                           ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                          : job.status === 'partial'
+                          ? 'bg-amber-50 text-amber-800 border border-amber-200'
                           : job.status === 'stopped'
                           ? 'bg-zinc-100 text-zinc-700 border border-zinc-200'
                           : 'bg-red-50 text-red-800 border border-red-200'
@@ -117,6 +119,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                     >
                       {job.status === 'completed' && 'Concluída'}
                       {job.status === 'running' && 'Em andamento'}
+                      {job.status === 'partial' && 'Parcial'}
                       {job.status === 'stopped' && 'Interrompida'}
                       {job.status === 'failed' && 'Falha'}
                     </span>
