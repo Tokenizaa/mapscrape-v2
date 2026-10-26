@@ -19,7 +19,7 @@ export interface PlaceRecord {
   collected_at: string;
 }
 
-export type JobStatus = 'running' | 'completed' | 'stopped' | 'failed';
+export type JobStatus = 'running' | 'completed' | 'partial' | 'stopped' | 'failed';
 
 export interface ScrapeJob {
   id: string;
