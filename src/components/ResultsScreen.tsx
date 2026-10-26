@@ -47,6 +47,34 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
 }) => {
   const [selectedPlace, setSelectedPlace] = useState<PlaceRecord | null>(null);
   const [copied, setCopied] = useState(false);
+  const [coverage, setCoverage] = useState<{
+    totalRecords: number;
+    totalFields: number;
+    averageCoverage: number;
+    fields: { key: string; label: string; populated: number; missing: number; percentage: number }[];
+  } | null>(null);
+  const [coverageError, setCoverageError] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadCoverage = async () => {
+      try {
+        const params = new URLSearchParams();
+        if (selectedJobId) params.set('jobId', selectedJobId);
+        const response = await fetch(`/api/field-coverage?${params.toString()}`);
+        if (!response.ok) throw new Error('Não foi possível calcular a cobertura dos campos.');
+        const data = await response.json();
+        if (!cancelled) {
+          setCoverage(data);
+          setCoverageError('');
+        }
+      } catch (error: any) {
+        if (!cancelled) setCoverageError(error?.message || 'Falha ao carregar a cobertura dos campos.');
+      }
+    };
+    void loadCoverage();
+    return () => { cancelled = true; };
+  }, [selectedJobId, totalPlaces, places.length]);
   const currentIds = useMemo(() => places.map((place) => place.id), [places]);
   const isAllSelected = currentIds.length > 0 && currentIds.every((id) => selectedPlaceIds.has(id));
   const totalPages = Math.max(1, Math.ceil(totalPlaces / pageSize));
@@ -83,6 +111,40 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
           {selectedPlaceIds.size > 0 && <button onClick={onGoToExport} className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800"><FileDown className="h-4 w-4" /> Exportar {selectedPlaceIds.size} selecionados</button>}
         </div>
       </div>
+
+      <section aria-labelledby="field-coverage-title" className="mb-5 rounded-xl border border-zinc-200 bg-white p-4 sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 id="field-coverage-title" className="text-base font-semibold text-zinc-900">Cobertura real dos campos</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-zinc-500">Contagem calculada sobre os registros persistidos no SQLite — não apenas os cards desta página. Campo vazio significa que o dado não foi encontrado ou não estava visível na ficha pública.</p>
+          </div>
+          <div className="flex shrink-0 gap-2">
+            <div className="rounded-lg bg-zinc-50 px-3 py-2">
+              <p className="text-[11px] text-zinc-500">Registros analisados</p>
+              <p className="text-lg font-semibold tabular-nums text-zinc-900">{coverage?.totalRecords ?? '—'}</p>
+            </div>
+            <div className="rounded-lg bg-zinc-50 px-3 py-2">
+              <p className="text-[11px] text-zinc-500">Preenchimento médio</p>
+              <p className="text-lg font-semibold tabular-nums text-zinc-900">{coverage ? `${coverage.averageCoverage}%` : '—'}</p>
+            </div>
+          </div>
+        </div>
+        {coverageError && <p role="alert" className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{coverageError}</p>}
+        {coverage && coverage.totalRecords === 0 && <p className="mt-4 rounded-lg border border-dashed border-zinc-200 px-3 py-4 text-sm text-zinc-500">Ainda não há registros salvos para medir. Inicie uma coleta e volte aos resultados.</p>}
+        {coverage && coverage.totalRecords > 0 && <div className="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2">
+          {coverage.fields.map((field) => (
+            <div key={field.key} className="min-w-0">
+              <div className="mb-1 flex items-baseline justify-between gap-3">
+                <span className="truncate text-xs font-medium text-zinc-700">{field.label}</span>
+                <span className="shrink-0 text-xs tabular-nums text-zinc-500">{field.populated}/{coverage.totalRecords} · {field.percentage}%</span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-zinc-100" role="progressbar" aria-label={`Cobertura de ${field.label}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={field.percentage}>
+                <div className="h-full rounded-full bg-emerald-600 transition-[width]" style={{ width: `${field.percentage}%` }} />
+              </div>
+            </div>
+          ))}
+        </div>}
+      </section>
 
       <div className="mb-5 grid grid-cols-1 gap-3 rounded-xl border border-zinc-200 bg-white p-4 md:grid-cols-[1fr_auto]">
         <div className="relative">
