@@ -9,7 +9,6 @@ import { SearchScreen } from './components/SearchScreen';
 import { ResultsScreen } from './components/ResultsScreen';
 import { ExportScreen } from './components/ExportScreen';
 import { HistoryScreen } from './components/HistoryScreen';
-import { LogsScreen } from './components/LogsScreen';
 import { PlaceRecord, ScrapeJob } from './shared/types';
 
 export default function App() {
@@ -263,8 +262,6 @@ export default function App() {
             onSelectJobId={setSelectedJobId}
           />
         )}
-
-        {currentTab === 'logs' && <LogsScreen />}
 
         {currentTab === 'history' && (
           <HistoryScreen
