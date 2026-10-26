@@ -22,6 +22,7 @@ O endpoint de provisionamento usa uma credencial bootstrap separada: `MAPSCRAPE_
 - `POST /api/v1/provisioning/credentials` — emite uma credencial individual. Cabeçalho `X-MapScrape-Provisioning-Token`; JSON `{ "consumerName": "Nome do produto", "consumerProject": "org/repo-ou-id-estavel" }`. Retorna `201` com `credentialId` e `apiKey` uma única vez. Repetir para um projeto com credencial ativa retorna `409`.
 - `GET /api/v1/provisioning/credentials` — lista metadados sem revelar chaves.
 - `DELETE /api/v1/provisioning/credentials/{credentialId}` — revoga a credencial imediatamente.
+- `POST /api/v1/provisioning/credentials/{credentialId}/rotate` — revoga a chave ativa anterior e emite uma substituta; retorna a nova `apiKey` uma única vez. A chave anterior deixa de autenticar imediatamente. Se a emissão da substituta falhar, a anterior permanece revogada e uma nova emissão deve ser feita.
 - `scripts/provision-consumer.mjs` — emite a chave, grava-a diretamente em Vercel Production ou Cloudflare Worker Secret e valida uma chamada de leitura. Não imprime nem salva a chave em arquivo.
 
 Execute o instalador no ambiente seguro do projeto consumidor com `MAPSCRAPE_BASE_URL`, `MAPSCRAPE_PROVISIONING_TOKEN`, `CONSUMER_NAME`, `CONSUMER_PROJECT` e `TARGET_PROVIDER`. Para Vercel, forneça `VERCEL_TOKEN`, `VERCEL_PROJECT_ID` e opcionalmente `VERCEL_TEAM_ID`. Para Cloudflare, forneça `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_WORKER_NAME`.
