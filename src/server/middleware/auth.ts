@@ -100,19 +100,19 @@ export function jobOwnershipMiddleware(required: boolean = true): (req: AuthRequ
 
     try {
       const db = getDb();
-      const res = await db.execute({
+      const queryResult = await db.execute({
         sql: `SELECT user_id FROM searches WHERE id = ?`,
         args: [String(jobId)],
       });
 
-      if (res.rows.length === 0) {
+      if (queryResult.rows.length === 0) {
         res.status(404).json({ error: 'Pesquisa não encontrada.' });
         return;
       }
 
-      const jobUserId = res.rows[0].user_id;
+      const jobUserId = queryResult.rows[0].user_id;
 
-      if (jobUserId !== userId) {
+      if (jobUserId !== user_id) {
         res.status(403).json({ error: 'Não tem permissão para acessar esta pesquisa.' });
         return;
       }
