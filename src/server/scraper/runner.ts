@@ -254,10 +254,12 @@ export async function runScraperJob(
       }, SELECTORS.feed);
 
       let newFoundInBatch = 0;
+      let newUniqueLinksInBatch = 0;
       for (const item of currentLinks) {
         const canonicalUrl = item.url.split('?')[0].replace(/\/$/, '');
         if (!canonicalUrl || seenUrlsInRun.has(canonicalUrl)) continue;
         seenUrlsInRun.add(canonicalUrl);
+        newUniqueLinksInBatch++;
 
         // Count and log existing records during discovery, then continue scrolling
         // until the requested number of genuinely new candidates has been found.
@@ -303,10 +305,10 @@ export async function runScraperJob(
         return false;
       }, SELECTORS.feed);
 
-      if (newFoundInBatch === 0) stagnantRounds++;
+      if (newUniqueLinksInBatch === 0) stagnantRounds++;
       else stagnantRounds = 0;
 
-      if (isEndOfList && newFoundInBatch === 0) {
+      if (isEndOfList && newUniqueLinksInBatch === 0) {
         reachedEndOfList = true;
         break;
       }
