@@ -25,7 +25,7 @@ export async function extractPlaceDetails(
   targetUrl: string
 ): Promise<PlaceRecord> {
   // Extract raw details inside the browser context
-  const raw: any = await page.evaluate((selectors) => {
+  const raw: any = await page.evaluate((selectors: typeof SELECTORS.place) => {
     if (typeof (window as any).__name === 'undefined') {
       (window as any).__name = function(f: any) { return f; };
     }
