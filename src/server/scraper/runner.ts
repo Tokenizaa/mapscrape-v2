@@ -20,7 +20,6 @@ export function stopScrapeJob(jobId: string): boolean {
   if (handle) {
     handle.cancelled = true;
     handle.cancel();
-    activeJobs.delete(jobId);
     return true;
   }
   return false;
@@ -112,7 +111,9 @@ export async function runScraperJob(
     await emitProgress(`Navegando no Google Maps para: "${fullQuery}"...`);
 
     try {
-      await page.goto(searchUrl, { waitUntil: 'networkidle2', timeout: 35000 });
+      await page.goto(searchUrl, { waitUntil: 'domcontentloaded', timeout: 35000 });
+      await page.waitForSelector('div[role="feed"], a[href*="/maps/place/"], div.Nv2PK', { timeout: 20000 }).catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 1200));
     } catch (err: any) {
       // If network navigation failed
       throw new Error(`Falha ao carregar página de pesquisa do Google Maps: ${err.message}`);
@@ -154,12 +155,18 @@ export async function runScraperJob(
       totalFound = 1;
 
       const placeRecord = await extractPlaceDetails(page, jobId, currentUrl);
-      await insertPlace(placeRecord);
-      totalCollected = 1;
+      if (await placeExistsByUrl(currentUrl)) {
+        totalDuplicates = 1;
+      } else {
+        await insertPlace(placeRecord);
+        totalCollected = 1;
+      }
 
       await emitProgress('Coleta concluída com sucesso.', {
         status: 'completed',
-        status_message: 'Coleta concluída com sucesso (resultado único direto).',
+        status_message: totalCollected === 1
+          ? 'Coleta concluída com sucesso (resultado único direto).'
+          : 'A ficha encontrada já estava salva; nenhum registro duplicado foi criado.',
         completed_at: new Date().toISOString(),
       });
       return;
@@ -192,9 +199,10 @@ export async function runScraperJob(
     const seenUrlsInRun = new Set<string>();
 
     let scrollAttempts = 0;
-    const maxScrollAttempts = Math.min(Math.ceil(limitRequested / 3) + 5, 25);
+    let stagnantRounds = 0;
+    const maxScrollAttempts = Math.min(Math.max(limitRequested * 2, 30), 120);
 
-    while (discoveredUrls.length < limitRequested && scrollAttempts < maxScrollAttempts && !handle.cancelled) {
+    while (discoveredUrls.length < limitRequested && scrollAttempts < maxScrollAttempts && stagnantRounds < 7 && !handle.cancelled) {
       scrollAttempts++;
 
       // Extract current place links in the DOM
@@ -259,25 +267,32 @@ export async function runScraperJob(
         return false;
       }, SELECTORS.feed);
 
+      if (newFoundInBatch === 0) stagnantRounds++;
+      else stagnantRounds = 0;
+
       if (isEndOfList && newFoundInBatch === 0) {
         break;
       }
 
       // Scroll feed container
       await page.evaluate((selectors) => {
+        let container: Element | null = null;
         for (const sel of selectors.container) {
           try {
-            const container = document.querySelector(sel);
-            if (container) {
-              container.scrollTop = container.scrollHeight;
-              return;
-            }
+            container = document.querySelector(sel);
+            if (container) break;
           } catch {}
         }
-        window.scrollBy(0, 1000);
+        if (container) {
+          container.scrollBy({ top: Math.max(600, container.clientHeight * 0.8), behavior: 'instant' as ScrollBehavior });
+        } else {
+          window.scrollBy({ top: 700, behavior: 'instant' });
+        }
       }, SELECTORS.feed);
 
-      await new Promise((r) => setTimeout(r, 1500));
+      // Give the Maps virtualized result list time to fetch and render the next batch.
+      await new Promise((resolve) => setTimeout(resolve, 1800));
+      await page.waitForFunction(() => document.readyState === 'complete' || !!document.querySelector('div[role="feed"]'), { timeout: 2500 }).catch(() => {});
     }
 
     if (discoveredUrls.length === 0) {
@@ -312,7 +327,7 @@ export async function runScraperJob(
       const previewTitle = item.previewName || `Estabelecimento #${placeNum}`;
 
       // Deduplication check in SQLite
-      const alreadyInDb = await placeExistsByUrl(item.url, jobId);
+      const alreadyInDb = await placeExistsByUrl(item.url);
       if (alreadyInDb) {
         totalDuplicates++;
         await emitProgress(
@@ -326,10 +341,11 @@ export async function runScraperJob(
       );
 
       try {
-        await page.goto(item.url, { waitUntil: 'networkidle2', timeout: 25000 });
+        await page.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-        // Wait a brief moment for dynamic card elements
-        await page.waitForSelector('h1', { timeout: 8000 }).catch(() => {});
+        // Wait for the place title without requiring the Maps network to become idle.
+        await page.waitForSelector('h1', { timeout: 12000 }).catch(() => {});
+        await new Promise((resolve) => setTimeout(resolve, 700));
 
         const placeRecord = await extractPlaceDetails(page, jobId, item.url);
 
@@ -358,9 +374,12 @@ export async function runScraperJob(
     }
 
     const finalStatus = handle.cancelled ? 'stopped' : 'completed';
+    const hadPartialFailures = totalErrors > 0 || discoveredUrls.length < limitRequested;
     const statusMsg = handle.cancelled
-      ? `Coleta interrompida. ${totalCollected} registros coletados com sucesso.`
-      : `Coleta concluída! ${totalCollected} estabelecimentos coletados e salvos no SQLite.`;
+      ? `Coleta interrompida. ${totalCollected} registros salvos; ${totalErrors} falhas.`
+      : hadPartialFailures
+        ? `Coleta encerrada parcialmente: ${totalCollected} registros salvos, ${totalDuplicates} duplicados, ${totalErrors} falhas. Foram encontrados ${discoveredUrls.length} resultados para um limite de ${limitRequested}; isso não comprova que não existam outros resultados.`
+        : `Coleta concluída: ${totalCollected} registros salvos, ${totalDuplicates} duplicados e ${totalErrors} falhas.`;
 
     await emitProgress(statusMsg, {
       status: finalStatus,
