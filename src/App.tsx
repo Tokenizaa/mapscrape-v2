@@ -139,9 +139,29 @@ export default function App() {
         body: JSON.stringify({ segment, location, limit }),
       });
 
-      const data = await res.json();
+      const contentType = res.headers.get('content-type') || '';
+      const responseText = await res.text();
+      let data: { error?: string; jobId?: string; message?: string } | null = null;
+
+      if (contentType.includes('application/json')) {
+        try {
+          data = JSON.parse(responseText);
+        } catch {
+          data = null;
+        }
+      }
+
       if (!res.ok) {
-        alert(data.error || 'Erro ao iniciar coleta.');
+        const detail = data?.error || data?.message ||
+          (responseText.trim().startsWith('<')
+            ? 'O servidor retornou uma página HTML em vez de JSON. Verifique o roteamento da API na Vercel.'
+            : responseText.trim().slice(0, 240));
+        alert(`Falha ao iniciar coleta (HTTP ${res.status}): ${detail || res.statusText}`);
+        return;
+      }
+
+      if (!data || typeof data.jobId !== 'string' || !data.jobId) {
+        alert(`Resposta inválida do servidor (HTTP ${res.status}). Esperava JSON com jobId; Content-Type: ${contentType || 'ausente'}.`);
         return;
       }
 
