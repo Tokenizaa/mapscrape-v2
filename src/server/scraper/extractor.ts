@@ -182,7 +182,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       const src = (candidate || '').trim().split(/\s+/)[0];
       if (!src.startsWith('http') || /cleardot\.gif|gstatic\.com\/images\/branding/i.test(src)) return;
       // Ignore tiny UI icons and avatars; retain Google-hosted business/gallery media.
-      if (/=s(\d{1,2}|\d{1,2}-c)$/.test(src)) return;
+      if (/=s(?:16|24|32|40|48|64)(?:-c)?(?:-[a-z]+)?$/i.test(src)) return;
       if (!seenPhotos.has(src)) { seenPhotos.add(src); photoUrls.push(src); }
     };
     for (const selector of selectors.photos) {
@@ -447,6 +447,13 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
           logo_url = src; break;
         }
       } catch {}
+    }
+
+    // Google Maps frequently exposes the business cover/gallery but no separately
+    // labelled logo. Preserve a real business-owned image as the profile-image
+    // fallback; never substitute a reviewer avatar.
+    if (!logo_url) {
+      logo_url = photoUrls.find((url) => /googleusercontent\\.com/i.test(url)) || '';
     }
 
     videoUrls.forEach((url) => media_items.push({ type: 'video', url, thumbnail_url: '', title: '' }));
