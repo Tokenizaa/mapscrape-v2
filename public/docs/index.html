@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="theme-color" content="#ffffff">
+<title>MapScrape API — Documentação para desenvolvedores e agentes</title>
+<meta name="description" content="Documentação pública da API MapScrape, endpoints, autenticação e prompt copiável para agentes integrarem aplicações sem clonar o scraper.">
+<style>
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18221d;background:#fff;font-synthesis:none;text-rendering:optimizeLegibility;--green:#16834a;--ink:#18221d;--muted:#617067;--line:#e5ebe7;--soft:#f6f9f7;--code:#111916}
+*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:90px}body{margin:0}a{color:var(--green);text-decoration:none}a:hover{text-decoration:underline}button,textarea{font:inherit}.top{height:68px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 max(24px,calc((100vw - 1240px)/2));position:sticky;top:0;background:rgba(255,255,255,.96);backdrop-filter:blur(12px);z-index:10}.brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.04em;color:var(--ink)}.mark{width:30px;height:30px;border-radius:9px;background:var(--green);color:white;display:grid;place-items:center;font-weight:800}.toplinks{display:flex;gap:22px;font-size:13px;font-weight:600;color:var(--muted)}.toplinks a{color:inherit}.layout{max-width:1240px;margin:auto;display:grid;grid-template-columns:220px minmax(0,1fr);gap:64px;padding:42px 24px 100px}.nav{position:sticky;top:102px;align-self:start;max-height:calc(100vh - 120px);overflow:auto}.nav small{display:block;color:#87948c;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin:20px 0 9px}.nav a{display:block;color:#536158;font-size:13px;padding:8px 10px;border-radius:7px}.nav a:hover,.nav a.active{background:#eef7f1;color:#116b3a;text-decoration:none}.content{min-width:0;max-width:860px}.eyebrow{font-size:12px;font-weight:750;letter-spacing:.08em;text-transform:uppercase;color:var(--green)}h1{font-size:clamp(36px,5vw,54px);line-height:1.05;letter-spacing:-.055em;margin:14px 0 18px;max-width:760px}h2{font-size:27px;letter-spacing:-.04em;margin:0 0 12px}h3{font-size:17px;letter-spacing:-.02em;margin:24px 0 8px}p{line-height:1.7;color:#4d5c53;font-size:15px}.lead{font-size:18px;max-width:720px}.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin:25px 0 30px}.btn{border:1px solid var(--line);border-radius:9px;padding:11px 15px;font-weight:700;font-size:13px;cursor:pointer;background:white;color:var(--ink);display:inline-flex;align-items:center;gap:8px}.btn.primary{background:var(--green);color:#fff;border-color:var(--green)}.btn:hover{filter:brightness(.97);text-decoration:none}.pills{display:flex;gap:8px;flex-wrap:wrap}.pill{font-size:11px;border:1px solid var(--line);padding:6px 9px;border-radius:999px;color:#58665d;background:#fff}.callout{border:1px solid #cfe7d7;background:#f3faf5;border-radius:12px;padding:16px 18px;margin:24px 0;color:#27523a}.callout strong{display:block;margin-bottom:5px}.callout p{margin:0;font-size:13px;color:#41614c}.section{padding-top:58px;margin-top:40px;border-top:1px solid var(--line)}.section:first-of-type{margin-top:0}.codebox{background:var(--code);border-radius:12px;overflow:hidden;margin:15px 0 22px;color:#e4eee8}.codehead{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid #29352f;font-size:11px;color:#9baaa1}.copy{background:#26352d;color:#eaf5ed;border:1px solid #39483f;border-radius:6px;padding:6px 9px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap}.copy:hover{background:#33463a}pre{margin:0;padding:17px;overflow:auto;font:12px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap;overflow-wrap:anywhere}code{font: .92em ui-monospace,SFMono-Regular,Menlo,monospace;background:#eef2ef;border-radius:4px;padding:2px 5px;color:#24513a}pre code{background:none;color:inherit;padding:0}.steps{counter-reset:step;display:grid;gap:12px;margin:20px 0}.step{border:1px solid var(--line);border-radius:10px;padding:15px 16px 15px 52px;position:relative}.step:before{counter-increment:step;content:counter(step);position:absolute;left:15px;top:15px;background:#e8f5ec;color:var(--green);font-size:12px;font-weight:800;width:24px;height:24px;display:grid;place-items:center;border-radius:7px}.step strong{font-size:14px}.step p{font-size:13px;margin:5px 0 0}.tablewrap{overflow:auto;border:1px solid var(--line);border-radius:10px;margin:16px 0}table{width:100%;border-collapse:collapse;font-size:13px;min-width:550px}th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)}th{font-size:10px;text-transform:uppercase;letter-spacing:.07em;background:var(--soft);color:#65736a}tr:last-child td{border-bottom:0}td code{white-space:nowrap}.method{display:inline-block;font-size:10px;font-weight:800;letter-spacing:.04em;padding:4px 6px;border-radius:5px;background:#e7f6ec;color:#126c39}.method.post{background:#eaf1ff;color:#2859a8}.method.delete{background:#fff0ed;color:#a63c2d}.endpoint{border:1px solid var(--line);border-radius:10px;margin:12px 0;overflow:hidden}.endpoint summary{padding:14px;cursor:pointer;display:flex;gap:10px;align-items:center;flex-wrap:wrap;list-style:none}.endpoint summary::-webkit-details-marker{display:none}.endpoint summary code{background:transparent;color:var(--ink);font-size:13px}.endpoint .detail{padding:0 16px 15px;border-top:1px solid var(--line)}.endpoint .detail p{font-size:13px}.muted{color:var(--muted);font-size:12px}.field{display:grid;gap:7px;margin:14px 0}.field label{font-size:12px;font-weight:750}.field input{border:1px solid #d8e1db;border-radius:8px;padding:11px 12px;width:100%;font:13px ui-monospace,monospace}.field input:focus{outline:2px solid #b7dfc4;border-color:var(--green)}.callout.warn{background:#fff9ed;border-color:#f0dfb7;color:#76551d}.callout.warn p{color:#7b6742}.footer{border-top:1px solid var(--line);padding:25px;text-align:center;color:#7b887f;font-size:12px}.prompt-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:12px 0}.search{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;margin:12px 0}.hide{display:none!important}
+@media(max-width:850px){.layout{grid-template-columns:1fr;gap:20px;padding-top:26px}.nav{position:static;max-height:none;display:flex;gap:5px;overflow:auto;white-space:nowrap;border-bottom:1px solid var(--line);padding-bottom:12px}.nav small{display:none}.nav a{display:inline-block}.top{padding:0 18px}.toplinks{gap:12px}.toplinks a:nth-child(2){display:none}.layout{padding-left:18px;padding-right:18px}.section{padding-top:36px;margin-top:30px}}@media(max-width:480px){.toplinks a:nth-child(1){display:none}.hero-actions .btn{flex:1;justify-content:center}.lead{font-size:16px}h1{font-size:37px}}
+</style>
+</head>
+<body>
+<header class="top"><a class="brand" href="#top"><span class="mark">M</span><span>MapScrape <span style="font-weight:450;color:#7b887f">/ API</span></span></a><nav class="toplinks"><a href="#quickstart">Início rápido</a><a href="#reference">Referência</a><a href="/openapi.yaml">OpenAPI ↗</a><a href="https://github.com/Tokenizaa/mapscrape-v2" target="_blank" rel="noreferrer">GitHub ↗</a></nav></header>
+<div class="layout" id="top">
+<aside class="nav">
+<small>Começar</small><a href="#overview">Visão geral</a><a href="#quickstart">Início rápido</a><a href="#agent-prompt">Instalar com agente</a><a href="#auth">Autenticação</a>
+<small>API Reference</small><a href="#reference">Endpoints</a><a href="#leads">Leads</a><a href="#jobs">Coletas (jobs)</a><a href="#errors">Erros e paginação</a>
+<small>Para agentes</small><a href="/llms.txt">llms.txt ↗</a><a href="/skill.md">Skill de integração ↗</a><a href="/openapi.yaml">OpenAPI YAML ↗</a>
+</aside>
+<main class="content">
+<div class="eyebrow">Documentação oficial · REST API v1</div>
+<h1>Integre a coleta de dados. Sem instalar o scraper.</h1>
+<p class="lead">O MapScrape executa as coletas e disponibiliza os resultados por API. Conecte seu produto, painel ou agente com HTTPS, uma URL-base e uma credencial individual.</p>
+<div class="hero-actions"><a class="btn primary" href="#quickstart">Começar integração <span>→</span></a><a class="btn" href="#agent-prompt">Copiar prompt para agente</a><a class="btn" href="/openapi.yaml">Baixar OpenAPI</a></div>
+<div class="pills"><span class="pill">HTTPS + JSON</span><span class="pill">Credencial por consumidor</span><span class="pill">Jobs assíncronos</span><span class="pill">Paginação</span></div>
+<div class="callout"><strong>Uma API central para todos os projetos</strong><p>O consumidor não clona este repositório, não instala Puppeteer, não roda outro scraper e não acessa diretamente o banco. Toda coleta e persistência pertencem ao serviço MapScrape.</p></div>
+
+<section class="section" id="overview"><h2>Visão geral</h2><p>O MapScrape é um serviço central. Seus consumidores integram-se por chamadas HTTP ao host implantado. A credencial identifica o consumidor e limita a leitura aos leads e jobs associados a esse projeto.</p>
+<div class="codebox"><div class="codehead"><span>ARQUITETURA</span><button class="copy" data-copy="Google Maps → serviço MapScrape → REST API v1 → sua aplicação">Copiar fluxo</button></div><pre><code>Google Maps
+    ↓ coleta centralizada
+Serviço MapScrape (raspagem + persistência)
+    ↓ HTTPS / JSON + credencial individual
+Seu backend → sua interface / agente</code></pre></div>
+<p>URL de produção atualmente configurada para o serviço: <code>https://mapscrape-v2.vercel.app</code>. Confirme o ambiente antes de usar; a página de documentação não substitui a validação de saúde e funcionamento da coleta.</p></section>
+
+<section class="section" id="quickstart"><h2>Início rápido</h2><p>Para consumir os dados já persistidos, são necessárias duas variáveis de ambiente server-side. A chave deve ser provisionada para cada projeto consumidor, nunca compartilhada entre clientes independentes.</p>
+<div class="field"><label for="base-url">URL-base da API</label><input id="base-url" value="https://mapscrape-v2.vercel.app" autocomplete="url"></div>
+<div class="field"><label for="api-key">Chave individual (opcional para gerar exemplo)</label><input id="api-key" placeholder="Sua MAPSCRAPE_API_KEY — não cole em páginas públicas" type="password" autocomplete="off"></div>
+<div class="codebox"><div class="codehead"><span>EXEMPLO · cURL</span><button class="copy" id="copy-curl">Copiar exemplo</button></div><pre><code id="curl-code">curl -fsS "https://mapscrape-v2.vercel.app/api/v1/leads?limit=20&offset=0" \
+  -H "Authorization: Bearer $MAPSCRAPE_API_KEY" \
+  -H "Accept: application/json"</code></pre></div>
+<div class="steps">
+<div class="step"><strong>Configure os secrets no backend</strong><p><code>MAPSCRAPE_API_BASE_URL</code> e <code>MAPSCRAPE_API_KEY</code>. Nunca exponha a chave em JavaScript do navegador, HTML, logs ou repositório.</p></div>
+<div class="step"><strong>Consulte os leads</strong><p>Use <code>GET /api/v1/leads</code>, filtros e paginação por <code>limit</code> e <code>offset</code>.</p></div>
+<div class="step"><strong>Se precisar de uma nova coleta</strong><p>Crie um job com <code>POST /api/v1/jobs</code>, guarde o ID, consulte seu status e recupere os resultados quando houver conclusão.</p></div>
+</div>
+<div class="callout warn"><strong>Credencial não provisionada?</strong><p>Solicite ao operador autorizado que emita uma chave individual e a grave diretamente no secret manager do projeto. O token administrativo de provisionamento não deve ser fornecido ao agente consumidor nem colado no chat.</p></div></section>
+
+<section class="section" id="agent-prompt"><h2>Instalar a integração com um agente</h2><p>Copie este prompt para OpenCode, Cursor, Claude Code ou outro agente que esteja trabalhando no repositório consumidor. O agente deve adaptar a integração à arquitetura existente, não instalar o MapScrape.</p>
+<div class="prompt-tools"><button class="btn primary" id="copy-prompt">Copiar prompt completo</button><span class="muted" id="prompt-status">Pronto para copiar · sem segredos embutidos</span></div>
+<div class="codebox"><div class="codehead"><span>PROMPT PARA AGENTE DE PROGRAMAÇÃO</span><button class="copy" data-copy-id="agent-prompt-text">Copiar</button></div><pre><code id="agent-prompt-text">Você é o agente de programação deste projeto consumidor. Integre este projeto à API central MapScrape usando a documentação pública em https://mapscrape-v2.vercel.app/docs/ e o contrato OpenAPI em https://mapscrape-v2.vercel.app/openapi.yaml.
+
+OBJETIVO
+Fazer este projeto consumir o serviço MapScrape exclusivamente por HTTP/HTTPS. O MapScrape é responsável pela raspagem, execução do navegador e persistência.
+
+REGRAS OBRIGATÓRIAS
+1. Inspecione a arquitetura, runtime, autenticação, convenções, UI e testes existentes antes de editar.
+2. NÃO clone este repositório MapScrape, não copie seu código, não instale Puppeteer para esta integração, não crie scraper paralelo e não conecte o consumidor diretamente ao banco central.
+3. Use somente a URL-base confirmada e uma chave individual de consumidor. Configure MAPSCRAPE_API_BASE_URL e MAPSCRAPE_API_KEY como secrets server-side.
+4. Nunca peça que o usuário cole a chave da API ou o token administrativo no chat, em arquivo versionado, no frontend ou em logs. Se a chave individual não estiver provisionada, identifique o bloqueio e peça ao operador autorizado que grave a chave diretamente no secret manager do ambiente. Não tente clonar MapScrape para emitir credenciais.
+5. Leia a documentação e OpenAPI atuais. Não invente endpoints, schemas, campos, URLs ou dados.
+6. Implemente um cliente HTTP reutilizável e tipado, com timeout, tratamento de erros e retentativas limitadas para leituras transitórias. Não repita POST de criação de job cegamente.
+7. Implemente busca/paginação com limit, offset e pagination.hasMore. Para detalhes, use GET /api/v1/leads/{id}.
+8. Para nova coleta, use POST /api/v1/jobs, guarde data.jobId, consulte GET /api/v1/jobs/{id} e leia GET /api/v1/jobs/{id}/results. Não mantenha uma requisição web aberta enquanto a coleta executa.
+9. Respeite o isolamento por consumidor: não tente consultar recursos de outros projetos nem contornar autorização.
+10. Adapte a UI existente sem criar menus, páginas ou dashboards duplicados. Trate estados de carregamento, vazio, erro, execução, conclusão e resultado parcial.
+11. Preserve os campos e estruturas retornados; não invente valores para campos ausentes. Use fixtures em testes e nunca crie dados fictícios em produção.
+12. Implemente/atualize testes do cliente, autenticação, paginação, erros e UI. Execute testes, lint, tipos e build. Corrija falhas causadas pela integração.
+13. Não faça deploy, escritas remotas, coletas reais em massa nem alterações de credenciais sem autorização explícita.
+14. No relatório final, separe o que foi testado com mocks, o que foi validado contra a API real e os bloqueios externos. Não declare produção validada sem evidência real.
+
+CONTRATO PRINCIPAL
+GET  /api/v1/health
+GET  /api/v1/leads?query=&limit=50&offset=0
+GET  /api/v1/leads/{id}
+POST /api/v1/jobs
+GET  /api/v1/jobs/{id}
+GET  /api/v1/jobs/{id}/results?limit=50&offset=0
+
+ENTREGA
+Conclua a integração no próprio projeto consumidor, documente as variáveis de ambiente, execute as validações disponíveis e informe os arquivos alterados, comandos executados, resultados reais e bloqueios. Não pare apenas em um plano ou auditoria.</code></pre></div>
+<p class="muted">O prompt é público e não contém chaves. A credencial real deve ser fornecida ao ambiente seguro do projeto pelo operador autorizado.</p></section>
+
+<section class="section" id="auth"><h2>Autenticação</h2><p>Todas as rotas v1 exigem <code>Authorization: Bearer &lt;MAPSCRAPE_API_KEY&gt;</code>, exceto o endpoint público de saúde. Use uma credencial individual por aplicação/consumidor.</p>
+<div class="codebox"><div class="codehead"><span>HEADERS</span><button class="copy" data-copy="Authorization: Bearer $MAPSCRAPE_API_KEY&#10;Accept: application/json">Copiar headers</button></div><pre><code>Authorization: Bearer $MAPSCRAPE_API_KEY
+Accept: application/json</code></pre></div>
+<p>Credenciais individuais são revogáveis e associadas a um <code>consumerProject</code>. Chaves estáticas de compatibilidade compartilham a identidade operacional e não devem ser usadas para isolar consumidores independentes. O token de provisionamento é administrativo e nunca deve ser entregue ao cliente.</p></section>
+
+<section class="section" id="reference"><h2>Referência de endpoints</h2><p>Abra um endpoint para ver finalidade, parâmetros e exemplo de chamada.</p><input class="search" id="endpoint-search" placeholder="Filtrar endpoints por nome ou caminho…" aria-label="Filtrar endpoints">
+<div id="endpoint-list">
+<details class="endpoint" id="health" open><summary><span class="method">GET</span><code>/api/v1/health</code><span class="muted">Saúde do serviço</span></summary><div class="detail"><p>Não exige autenticação. Informa estado do serviço e do banco; não comprova que o navegador de raspagem está operacional.</p><div class="codebox"><div class="codehead"><span>cURL</span><button class="copy" data-copy="curl -i https://mapscrape-v2.vercel.app/api/v1/health">Copiar</button></div><pre><code>curl -i https://mapscrape-v2.vercel.app/api/v1/health</code></pre></div></div></details>
+<details class="endpoint" id="leads"><summary><span class="method">GET</span><code>/api/v1/leads</code><span class="muted">Pesquisar leads</span></summary><div class="detail"><p>Lista os registros acessíveis à credencial atual. Parâmetros: <code>query</code>, <code>jobId</code>, <code>sortBy</code>, <code>sortOrder</code>, <code>limit</code> (1–100, padrão 50), <code>offset</code> (padrão 0).</p><div class="codebox"><div class="codehead"><span>cURL autenticado</span><button class="copy" data-copy="curl -fsS 'https://mapscrape-v2.vercel.app/api/v1/leads?limit=20&offset=0' -H 'Authorization: Bearer $MAPSCRAPE_API_KEY' -H 'Accept: application/json'">Copiar</button></div><pre><code>curl -fsS 'https://mapscrape-v2.vercel.app/api/v1/leads?limit=20&offset=0' \
+  -H 'Authorization: Bearer $MAPSCRAPE_API_KEY' \
+  -H 'Accept: application/json'</code></pre></div><p>A resposta contém <code>data</code> e <code>pagination</code> com <code>total</code>, <code>limit</code>, <code>offset</code> e <code>hasMore</code>.</p></div></details>
+<details class="endpoint"><summary><span class="method">GET</span><code>/api/v1/leads/{id}</code><span class="muted">Detalhes completos do lead</span></summary><div class="detail"><p>Retorna o registro completo, incluindo os campos estruturados persistidos. O servidor responde 404 quando o registro não existe ou não é acessível a esse consumidor.</p></div></details>
+<details class="endpoint" id="jobs"><summary><span class="method post">POST</span><code>/api/v1/jobs</code><span class="muted">Iniciar coleta assíncrona</span></summary><div class="detail"><p>JSON: <code>{"segment":"barbearia","location":"Porto Alegre, RS","limit":20}</code>. <code>segment</code> e <code>location</code> são obrigatórios; <code>limit</code> varia de 1 a 100. A resposta 202 fornece <code>data.jobId</code>, <code>statusUrl</code> e <code>resultsUrl</code>.</p><div class="codebox"><div class="codehead"><span>cURL</span><button class="copy" data-copy="curl -X POST 'https://mapscrape-v2.vercel.app/api/v1/jobs' -H 'Authorization: Bearer $MAPSCRAPE_API_KEY' -H 'Content-Type: application/json' -d '{&quot;segment&quot;:&quot;barbearia&quot;,&quot;location&quot;:&quot;Porto Alegre, RS&quot;,&quot;limit&quot;:20}'">Copiar</button></div><pre><code>curl -X POST 'https://mapscrape-v2.vercel.app/api/v1/jobs' \
+  -H 'Authorization: Bearer $MAPSCRAPE_API_KEY' \
+  -H 'Content-Type: application/json' \
+  -d '{"segment":"barbearia","location":"Porto Alegre, RS","limit":20}'</code></pre></div><p>Não repita automaticamente a criação do job após timeout sem confirmar o resultado da primeira chamada.</p></div></details>
+<details class="endpoint"><summary><span class="method">GET</span><code>/api/v1/jobs/{id}</code><span class="muted">Status e progresso</span></summary><div class="detail"><p>Consulta o estado da coleta e seus contadores. Os estados podem incluir <code>running</code>, <code>completed</code>, <code>partial</code>, <code>stopped</code> e <code>failed</code>.</p></div></details>
+<details class="endpoint"><summary><span class="method">GET</span><code>/api/v1/jobs/{id}/results</code><span class="muted">Resultados da coleta</span></summary><div class="detail"><p>Retorna resultados paginados para um job acessível. Use <code>limit</code> (1–100) e <code>offset</code> (0 ou maior).</p></div></details>
+<details class="endpoint"><summary><span class="method post">POST</span><code>/api/v1/provisioning/credentials</code><span class="muted">Provisionamento administrativo</span></summary><div class="detail"><p>Endpoint administrativo protegido por <code>X-MapScrape-Provisioning-Token</code>. Não deve ser chamado pelo browser nem pelo agente consumidor. Use apenas automação de infraestrutura autorizada para emitir credenciais e gravá-las diretamente no secret manager.</p></div></details>
+</div>
+<p>Contrato completo em <a href="/openapi.yaml">OpenAPI YAML</a>. Os exemplos devem ser conferidos contra o ambiente implantado antes de serem tratados como prova de disponibilidade.</p></section>
+
+<section class="section" id="errors"><h2>Erros, paginação e segurança</h2>
+<div class="tablewrap"><table><thead><tr><th>HTTP</th><th>Significado</th><th>Ação recomendada</th></tr></thead><tbody>
+<tr><td><code>401</code></td><td>Chave ausente ou inválida</td><td>Verifique secret e ambiente; não repita sem corrigir.</td></tr>
+<tr><td><code>404</code></td><td>Recurso inexistente ou inacessível</td><td>Confirme o ID e o consumidor proprietário.</td></tr>
+<tr><td><code>422</code></td><td>Parâmetros inválidos</td><td>Valide tipos, limite e paginação.</td></tr>
+<tr><td><code>429</code></td><td>Limitação de requisições, se aplicada</td><td>Respeite Retry-After se presente; não presuma quotas configuradas por consumidor.</td></tr>
+<tr><td><code>5xx</code></td><td>Falha no serviço ou dependência</td><td>Retente leituras com backoff limitado; evite repetir POST sem idempotência.</td></tr>
+</tbody></table></div>
+<ul><li>Use <code>pagination.hasMore</code> para buscar a página seguinte.</li><li>Não transforme campos vazios em dados inventados: significam ausência de valor persistido.</li><li>Não exponha credenciais em frontend, logs, URLs ou repositórios.</li><li>O health check não comprova navegador conectado nem coleta concluída.</li></ul></section>
+<div class="callout"><strong>Feito para humanos e agentes</strong><p>Esta documentação tem conteúdo legível e arquivos dedicados a ferramentas de IA: <a href="/llms.txt">llms.txt</a>, <a href="/skill.md">skill.md</a> e <a href="/openapi.yaml">OpenAPI</a>.</p></div>
+</main></div>
+<footer class="footer">MapScrape API · Documentação pública · REST v1 · Não inclua segredos em prompts ou exemplos públicos.</footer>
+<script>
+const promptEl=document.getElementById('agent-prompt-text');
+async function copyText(text,button){try{await navigator.clipboard.writeText(text);if(button){const old=button.textContent;button.textContent='Copiado';setTimeout(()=>button.textContent=old,1600)}}catch{const area=document.createElement('textarea');area.value=text;area.style.position='fixed';area.style.opacity='0';document.body.appendChild(area);area.select();document.execCommand('copy');area.remove();if(button){const old=button.textContent;button.textContent='Copiado';setTimeout(()=>button.textContent=old,1600)}}}
+document.querySelectorAll('[data-copy]').forEach(b=>b.addEventListener('click',()=>copyText(b.getAttribute('data-copy'),b)));
+document.querySelectorAll('[data-copy-id]').forEach(b=>b.addEventListener('click',()=>copyText(document.getElementById(b.dataset.copyId).innerText,b)));
+document.getElementById('copy-prompt').addEventListener('click',()=>{copyText(promptEl.innerText,document.getElementById('copy-prompt'));document.getElementById('prompt-status').textContent='Prompt copiado. Cole no seu agente de programação.'});
+const base=document.getElementById('base-url'),key=document.getElementById('api-key'),curl=document.getElementById('curl-code');
+function updateCurl(){const host=(base.value.trim()||'https://mapscrape-v2.vercel.app').replace(/\/+$/,'');curl.textContent='curl -fsS "'+host+'/api/v1/leads?limit=20&offset=0" \\\n  -H "Authorization: Bearer '+(key.value.trim()||'$MAPSCRAPE_API_KEY')+'" \\\n  -H "Accept: application/json"';}
+base.addEventListener('input',updateCurl);key.addEventListener('input',updateCurl);document.getElementById('copy-curl').addEventListener('click',()=>copyText(curl.innerText,document.getElementById('copy-curl')));
+document.getElementById('endpoint-search').addEventListener('input',e=>{const q=e.target.value.toLowerCase();document.querySelectorAll('#endpoint-list details').forEach(d=>d.classList.toggle('hide',!d.innerText.toLowerCase().includes(q)))});
+</script>
+</body></html>
