@@ -12,7 +12,6 @@ describe('SQLite Database Operations', () => {
   it('creates and retrieves a search job', async () => {
     const job: ScrapeJob = {
       id: testJobId,
-      user_id: "dev-user-1",
       segment: 'Cafés Especiais',
       location: 'Curitiba, PR',
       limit_requested: 10,
