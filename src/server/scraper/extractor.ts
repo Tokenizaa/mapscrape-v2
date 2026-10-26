@@ -43,9 +43,11 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
 
     // Maps commonly puts rating and review count together in one accessible label.
     const ratingNode = first([
-      'div.F7nice span[aria-label]',
+      'div.F7nice span[aria-hidden="true"]',
       'span[role="img"][aria-label*="estrelas"]',
       'span[role="img"][aria-label*="stars"]',
+      'div.F7nice span[aria-label*="star"]',
+      'div.F7nice span[aria-label*="estrela"]',
       ...selectors.rating,
     ]);
     const ratingLabel = [attr(ratingNode, 'aria-label'), text(ratingNode)].filter(Boolean).join(' ');
