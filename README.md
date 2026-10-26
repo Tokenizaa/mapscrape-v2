@@ -17,14 +17,14 @@ Para integrar um consumidor, são necessários somente:
 
 Não se deve clonar este repositório dentro de aplicações consumidoras, instalar dependências do scraper nelas, importar módulos internos do MapScrape ou acessar diretamente o banco de dados central. O frontend nunca deve receber a chave da API.
 
-### Documentação oficial
+### Documentação pública
 
-- [Contrato REST API v1](docs/API.md)
-- [Prompt para agentes que integram aplicações consumidoras](docs/INTEGRATION-FOR-LLMS.md)
-- [Instruções permanentes para agentes que trabalham neste repositório](AGENTS.md)
-- [OpenAPI](docs/openapi.yaml)
-- [Interface de leads incorporada](docs/EMBED-LEADS-UI.md)
-- [Provisionamento de consumidores](docs/API.md#provisionamento-automatizado-de-consumidores)
+- [Portal para desenvolvedores e agentes](https://mapscrape-v2.vercel.app/docs/)
+- [Referência OpenAPI YAML](https://mapscrape-v2.vercel.app/openapi.yaml)
+- [Índice para agentes (llms.txt)](https://mapscrape-v2.vercel.app/llms.txt)
+- [Skill de integração para agentes](https://mapscrape-v2.vercel.app/skill.md)
+
+Os arquivos de documentação versionados permanecem neste repositório como fontes de manutenção; o portal público é o ponto de entrada recomendado para consumidores.
 
 ## Endpoints principais
 
