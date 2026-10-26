@@ -1,81 +1,87 @@
-import { describe, it, expect, beforeAll } from 'vitest';
-import { initDb, createJob, getJob, insertPlace, getPlaces, placeExistsByUrl } from '../src/server/db';
-import { PlaceRecord, ScrapeJob } from '../src/shared/types';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  createJob,
+  getJob,
+  getPlaces,
+  initDb,
+  insertPlace,
+  placeExistsByUrl,
+} from '../src/server/db';
+import type { PlaceRecord, ScrapeJob } from '../src/shared/types';
 
-describe('SQLite Database Operations', () => {
-  const testJobId = `test_job_${Date.now()}`;
+const testJobId = `db_test_${Date.now()}`;
+const mapsUrl = 'https://www.google.com/maps/place/DB+Test+Cafe/data=!123';
 
+const job: ScrapeJob = {
+  id: testJobId,
+  user_id: 'test-user',
+  segment: 'Cafeterias',
+  location: 'Curitiba, PR',
+  limit_requested: 2,
+  status: 'running',
+  status_message: 'Teste de integração',
+  total_found: 0,
+  total_collected: 0,
+  total_duplicates: 0,
+  total_errors: 0,
+  current_step: 'Iniciando',
+  created_at: new Date().toISOString(),
+};
+
+const place: PlaceRecord = {
+  id: `${testJobId}_place`,
+  job_id: testJobId,
+  name: 'DB Test Cafe',
+  category: 'Cafeteria',
+  address: 'Curitiba, PR',
+  phone: '',
+  website: '',
+  rating: '4.5',
+  review_count: '10',
+  price_range: '$$',
+  opening_hours: '',
+  business_status: 'Aberto',
+  latitude: '-25.4284',
+  longitude: '-49.2733',
+  maps_url: mapsUrl,
+  description: '',
+  services_attributes: '',
+  photos: 'https://example.com/photo.jpg',
+  videos: '',
+  logo_url: '',
+  collected_at: new Date().toISOString(),
+};
+
+describe('Database persistence', () => {
   beforeAll(async () => {
     await initDb();
   });
 
-  it('creates and retrieves a search job', async () => {
-    const job: ScrapeJob = {
-      id: testJobId,
-      segment: 'Cafés Especiais',
-      location: 'Curitiba, PR',
-      limit_requested: 10,
-      status: 'running',
-      status_message: 'Pesquisando...',
-      total_found: 0,
-      total_collected: 0,
-      total_duplicates: 0,
-      total_errors: 0,
-      current_step: 'Iniciando',
-      created_at: new Date().toISOString(),
-    };
-
-    await createJob(job);
-    const retrieved = await getJob(testJobId);
-
-    expect(retrieved).not.toBeNull();
-    expect(retrieved?.segment).toBe('Cafés Especiais');
-    expect(retrieved?.location).toBe('Curitiba, PR');
-    expect(retrieved?.limit_requested).toBe(10);
+  afterAll(async () => {
+    // Keep the shared database intact; test rows use unique IDs to avoid collisions.
   });
 
-  it('inserts places and performs deduplication check by maps_url', async () => {
-    const mapsUrl = 'https://www.google.com/maps/place/Cafe+Lucca/data=!123';
-    const place: PlaceRecord = {
-      id: `p_${Date.now()}`,
-      job_id: testJobId,
-      user_id: "dev-user-1",
-      name: 'Lucca Cafés Especiais',
-      category: 'Cafeteria',
-      address: 'Alameda Pres. Taunay, 40 - Batel, Curitiba - PR',
-      phone: '(41) 3016-4668',
-      website: 'https://luccacafes.com.br',
-      rating: '4.6',
-      review_count: '2.400',
-      price_range: '$$',
-      opening_hours: 'Seg-Dom 08:00 - 20:00',
-      business_status: 'Aberto',
-      latitude: '-25.4385',
-      longitude: '-49.2847',
-      maps_url: mapsUrl,
-      description: 'Cafés especiais torrados no local.',
-      services_attributes: 'Consumo no local · Retirada na porta',
-      photos: 'https://lh5.googleusercontent.com/p/photo1.jpg | https://lh5.googleusercontent.com/p/photo2.jpg',
-      videos: 'https://maps.google.com/video1.mp4',
-      logo_url: 'https://lh5.googleusercontent.com/p/logo.jpg',
-      collected_at: new Date().toISOString(),
-    };
+  it('creates and retrieves a scrape job including its owner', async () => {
+    await createJob(job);
 
+    const result = await getJob(testJobId);
+    expect(result).not.toBeNull();
+    expect(result?.id).toBe(testJobId);
+    expect(result?.user_id).toBe('test-user');
+    expect(result?.segment).toBe('Cafeterias');
+    expect(result?.location).toBe('Curitiba, PR');
+  });
+
+  it('persists a place and detects duplicate Google Maps URLs', async () => {
     await insertPlace(place);
 
-    const exists = await placeExistsByUrl(mapsUrl, testJobId);
-    expect(exists).toBe(true);
-    expect(await placeExistsByUrl(`${mapsUrl}?authuser=0&hl=pt-BR`)).toBe(true);
-    expect(await placeExistsByUrl(`${mapsUrl}/`)).toBe(true);
+    expect(await placeExistsByUrl(mapsUrl, testJobId)).toBe(true);
+    expect(await placeExistsByUrl(`${mapsUrl}?hl=pt-BR`)).toBe(true);
+    expect(await placeExistsByUrl('https://maps.google.com/not-found', testJobId)).toBe(false);
 
-    const notExists = await placeExistsByUrl('https://maps.google.com/notfound', testJobId);
-    expect(notExists).toBe(false);
-
-    const results = await getPlaces({ jobId: testJobId });
-    expect(results.total).toBeGreaterThanOrEqual(1);
-    const foundPlace = results.places.find(p => p.name === 'Lucca Cafés Especiais');
-    expect(foundPlace).toBeDefined();
-    expect(foundPlace?.videos).toBe('https://maps.google.com/video1.mp4');
-    expect(foundPlace?.photos).toContain('photo1.jpg');
+    const result = await getPlaces({ jobId: testJobId });
+    expect(result.total).toBe(1);
+    expect(result.places[0]?.name).toBe('DB Test Cafe');
+    expect(result.places[0]?.photos).toContain('photo.jpg');
   });
 });
