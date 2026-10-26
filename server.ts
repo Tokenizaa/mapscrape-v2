@@ -10,6 +10,10 @@ import {
   getPlaces,
   getPlacesByIds,
   getAllPlaces,
+  createApiCredential,
+  findActiveApiCredential,
+  revokeApiCredential,
+  listApiCredentials,
 } from './src/server/db';
 import { runScraperJob, stopScrapeJob, isJobRunning } from './src/server/scraper/runner';
 import { generateCsv } from './src/server/scraper/csv';
@@ -18,22 +22,36 @@ import { initAuditLog, listAuditLogs, writeAuditLog } from './src/server/audit-l
 import { readRunReport, readRunReportPdf } from './src/server/run-report';
 
 import pino from 'pino';
-import { timingSafeEqual } from 'node:crypto';
+import { timingSafeEqual, createHash, randomBytes } from 'node:crypto';
 import { waitUntil } from '@vercel/functions';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-function hasValidApiKey(req: Request): boolean {
-  const configured = (process.env.MAPSCRAPE_API_KEYS || '').split(',').map((value) => value.trim()).filter(Boolean);
-  const header = req.header('authorization') || '';
-  const match = /^Bearer\s+(.+)$/i.exec(header);
-  if (!match || configured.length === 0) return false;
-  const supplied = Buffer.from(match[1], 'utf8');
-  return configured.some((candidate) => {
-    const expected = Buffer.from(candidate, 'utf8');
-    return supplied.length === expected.length && timingSafeEqual(supplied, expected);
-  });
+function safeEqual(left: string, right: string): boolean {
+  const a = Buffer.from(left, 'utf8');
+  const b = Buffer.from(right, 'utf8');
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+function hasStaticApiKey(value: string): boolean {
+  const configured = (process.env.MAPSCRAPE_API_KEYS || '').split(',').map((entry) => entry.trim()).filter(Boolean);
+  return configured.some((candidate) => safeEqual(candidate, value));
+}
+
+async function authenticatedConsumer(req: Request): Promise<{ id: string; consumer_project: string } | null> {
+  const match = /^Bearer\\s+(.+)$/i.exec(req.header('authorization') || '');
+  if (!match) return null;
+  const supplied = match[1];
+  if (hasStaticApiKey(supplied)) return { id: 'static-key', consumer_project: 'operator-static-key' };
+  const keyHash = createHash('sha256').update(supplied).digest('hex');
+  return findActiveApiCredential(keyHash);
+}
+
+function hasProvisioningAccess(req: Request): boolean {
+  const expected = process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
+  const provided = req.header('x-mapscrape-provisioning-token') || '';
+  return Boolean(expected && provided && safeEqual(expected, provided));
 }
 
 function apiLead(record: PlaceRecord): Record<string, unknown> {
@@ -457,14 +475,61 @@ export async function createApp() {
     }
   });
 
-  app.use('/api/v1', (req: Request, res: Response, next) => {
-    if (req.path === '/health' && req.method === 'GET') return next();
-    if (!(process.env.MAPSCRAPE_API_KEYS || '').split(',').some((key) => key.trim())) {
-      return res.status(503).json({ error: 'api_not_configured', message: 'MAPSCRAPE_API_KEYS não está configurada no servidor.' });
+  // Credential lifecycle is isolated behind a separate bootstrap token.
+  app.post('/api/v1/provisioning/credentials', async (req: Request, res: Response) => {
+    if (!hasProvisioningAccess(req)) return res.status(401).json({ error: 'provisioning_unauthorized' });
+    const consumerName = typeof req.body?.consumerName === 'string' ? req.body.consumerName.trim() : '';
+    const consumerProject = typeof req.body?.consumerProject === 'string' ? req.body.consumerProject.trim() : '';
+    if (!consumerName || !consumerProject || consumerName.length > 120 || consumerProject.length > 200) {
+      return res.status(422).json({ error: 'invalid_consumer', message: 'consumerName e consumerProject são obrigatórios e possuem limites de tamanho.' });
     }
-    if (!hasValidApiKey(req)) return res.status(401).json({ error: 'unauthorized', message: 'Informe uma chave válida no cabeçalho Authorization: Bearer.' });
-    res.setHeader('Cache-Control', 'no-store');
-    return next();
+    try {
+      const existing = (await listApiCredentials()).find((entry) => entry.consumer_project === consumerProject && entry.status === 'active');
+      if (existing) return res.status(409).json({ error: 'credential_already_exists', message: 'Este projeto já possui uma credencial ativa. Revogue-a antes de emitir outra.', credentialId: existing.id });
+      const secret = randomBytes(32).toString('hex');
+      const id = `msc_${randomBytes(12).toString('hex')}`;
+      await createApiCredential({ id, consumerName, consumerProject, keyHash: createHash('sha256').update(secret).digest('hex'), createdAt: new Date().toISOString() });
+      await safeWriteAuditLog({ category: 'api', event: 'api_credential.issued', message: 'Credencial de API emitida.', metadata: { credentialId: id, consumerProject } });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(201).json({ data: { credentialId: id, apiKey: secret, consumerName, consumerProject, revealOnce: true } });
+    } catch (error) {
+      return res.status(500).json({ error: 'credential_issue_failed', message: error instanceof Error ? error.message : 'Falha ao emitir credencial.' });
+    }
+  });
+
+  app.get('/api/v1/provisioning/credentials', async (req: Request, res: Response) => {
+    if (!hasProvisioningAccess(req)) return res.status(401).json({ error: 'provisioning_unauthorized' });
+    try { res.setHeader('Cache-Control', 'no-store'); return res.json({ data: await listApiCredentials() }); }
+    catch { return res.status(500).json({ error: 'credential_list_failed' }); }
+  });
+
+  app.delete('/api/v1/provisioning/credentials/:id', async (req: Request, res: Response) => {
+    if (!hasProvisioningAccess(req)) return res.status(401).json({ error: 'provisioning_unauthorized' });
+    try {
+      const id = String(req.params.id);
+      const revoked = await revokeApiCredential(id);
+      if (!revoked) return res.status(404).json({ error: 'active_credential_not_found' });
+      await safeWriteAuditLog({ category: 'api', event: 'api_credential.revoked', message: 'Credencial de API revogada.', metadata: { credentialId: id } });
+      return res.status(200).json({ data: { credentialId: id, status: 'revoked' } });
+    } catch { return res.status(500).json({ error: 'credential_revoke_failed' }); }
+  });
+
+  app.use('/api/v1', async (req: Request, res: Response, next) => {
+    if (req.path === '/health' && req.method === 'GET') return next();
+    const hasStaticKeys = (process.env.MAPSCRAPE_API_KEYS || '').split(',').some((key) => key.trim());
+    if (!hasStaticKeys && !process.env.MAPSCRAPE_PROVISIONING_TOKEN) {
+      return res.status(503).json({ error: 'api_not_configured', message: 'Configure as credenciais de API no ambiente do servidor.' });
+    }
+    try {
+      const consumer = await authenticatedConsumer(req);
+      if (!consumer) return res.status(401).json({ error: 'unauthorized', message: 'Informe uma chave de API válida no cabeçalho Authorization: Bearer.' });
+      res.setHeader('Cache-Control', 'no-store');
+      res.setHeader('X-MapScrape-Consumer', consumer.consumer_project);
+      return next();
+    } catch (error) {
+      console.error('API credential lookup failed:', error instanceof Error ? error.message : 'unknown');
+      return res.status(503).json({ error: 'authentication_unavailable' });
+    }
   });
 
   app.get('/api/v1/leads', async (req: Request, res: Response) => {
