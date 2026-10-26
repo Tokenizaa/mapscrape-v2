@@ -74,7 +74,11 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     const addressNode = first(['button[data-item-id="address"]', '[data-item-id="address"]', ...selectors.address]);
     const phoneNode = first(['button[data-item-id^="phone:tel:"]', 'button[data-item-id^="phone:"]', ...selectors.phone]);
     const websiteNode = first(['a[data-item-id="authority"][href]', ...selectors.website]);
-    const priceNode = first(['span[aria-label^="Preço:"]', 'span[aria-label^="Price:"]', ...selectors.priceRange]);
+    const priceNode = first([
+      'span[aria-label^="Preço:"]', 'span[aria-label^="Price:"]',
+      'span[aria-label^="Prix:"]', 'span[aria-label^="Precio:"]',
+      ...selectors.priceRange,
+    ]);
 
     const address = cleanLabel(attr(addressNode, 'aria-label') || text(addressNode));
     const phone = cleanLabel(attr(phoneNode, 'aria-label') || text(phoneNode));
