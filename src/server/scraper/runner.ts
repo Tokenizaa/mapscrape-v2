@@ -322,24 +322,98 @@ export async function runScraperJob(
         break;
       }
 
-      // Scroll feed container
-      await page.evaluate((selectors) => {
-        let container: Element | null = null;
-        for (const sel of selectors.container) {
-          try {
-            container = document.querySelector(sel);
-            if (container) break;
-          } catch {}
-        }
-        if (container) {
-          container.scrollBy({ top: Math.max(600, container.clientHeight * 0.8), behavior: 'instant' as ScrollBehavior });
-        } else {
-          window.scrollBy({ top: 700, behavior: 'instant' });
-        }
-      }, SELECTORS.feed);
+      // Scroll the actual Google Maps results pane. The list is virtualized, so
+      // scrolling the wrong ancestor leaves the same first batch of links in the DOM.
+      const scrollTarget = await page.evaluate(() => {
+        const feed = document.querySelector('div[role="feed"]') as HTMLElement | null;
+        if (!feed) return null;
+        feed.scrollIntoView({ block: 'nearest' });
+        const candidates = [feed, ...Array.from(feed.querySelectorAll('*'))] as HTMLElement[];
+        const scrollable = candidates
+          .filter((el) => el.clientHeight > 100 && el.scrollHeight > el.clientHeight + 20)
+          .sort((a, b) => {
+            const aCanScroll = a.scrollTop < a.scrollHeight - a.clientHeight - 2 ? 1 : 0;
+            const bCanScroll = b.scrollTop < b.scrollHeight - b.clientHeight - 2 ? 1 : 0;
+            if (aCanScroll !== bCanScroll) return bCanScroll - aCanScroll;
+            return (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight);
+          });
+        const target = scrollable[0] || feed;
+        const rect = target.getBoundingClientRect();
+        return {
+          x: Math.max(5, Math.min(window.innerWidth - 5, rect.left + rect.width / 2)),
+          y: Math.max(5, Math.min(window.innerHeight - 5, rect.top + Math.min(rect.height / 2, 300))),
+          beforeTop: target.scrollTop,
+          maxTop: Math.max(0, target.scrollHeight - target.clientHeight),
+          tag: target.tagName,
+          className: String(target.className || '').slice(0, 120),
+          feedLinks: feed.querySelectorAll('a[href*="/maps/place/"]').length,
+        };
+      });
 
-      // Give the Maps virtualized result list time to fetch and render the next batch.
+      let scrollMoved = false;
+      if (scrollTarget) {
+        // Mouse wheel triggers Maps' own scroll handlers and works when the feed
+        // uses a nested/virtualized scroll container.
+        await page.mouse.move(scrollTarget.x, scrollTarget.y);
+        await page.mouse.wheel({ deltaY: 650 });
+        await new Promise((resolve) => setTimeout(resolve, 350));
+        const wheelMoved = await page.evaluate(() => {
+          const feed = document.querySelector('div[role="feed"]') as HTMLElement | null;
+          if (!feed) return false;
+          const candidates = [feed, ...Array.from(feed.querySelectorAll('*'))] as HTMLElement[];
+          return candidates.some((el) => el.clientHeight > 100 && el.scrollHeight > el.clientHeight + 20 &&
+            (el.scrollTop > 0 || el.scrollTop < el.scrollHeight - el.clientHeight - 2));
+        });
+        scrollMoved = wheelMoved;
+
+        if (!scrollMoved) {
+          await page.evaluate(() => {
+            const feed = document.querySelector('div[role="feed"]') as HTMLElement | null;
+            if (!feed) {
+              window.scrollBy({ top: 650, behavior: 'auto' });
+              return;
+            }
+            const candidates = [feed, ...Array.from(feed.querySelectorAll('*'))] as HTMLElement[];
+            const target = candidates
+              .filter((el) => el.clientHeight > 100 && el.scrollHeight > el.clientHeight + 20)
+              .sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0] || feed;
+            target.scrollTop = Math.min(target.scrollHeight, target.scrollTop + Math.max(600, target.clientHeight * 0.8));
+            target.dispatchEvent(new Event('scroll', { bubbles: true }));
+          });
+        }
+      } else {
+        await page.mouse.wheel({ deltaY: 650 });
+      }
+
+      // Give Maps time to append/recycle cards, then capture evidence that the
+      // result pane is progressing rather than repeatedly exposing the first 20.
       await new Promise((resolve) => setTimeout(resolve, 1800));
+      const scrollEvidence = await page.evaluate(() => {
+        const feed = document.querySelector('div[role="feed"]') as HTMLElement | null;
+        const links = Array.from(document.querySelectorAll('div[role="feed"] a[href*="/maps/place/"]'))
+          .map((a) => (a as HTMLAnchorElement).href.split('?')[0].replace(/\/$/, ''));
+        const unique = Array.from(new Set(links));
+        const candidates = feed ? [feed, ...Array.from(feed.querySelectorAll('*'))] as HTMLElement[] : [];
+        const target = candidates
+          .filter((el) => el.clientHeight > 100 && el.scrollHeight > el.clientHeight + 20)
+          .sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0];
+        return {
+          scrollTop: target?.scrollTop ?? 0,
+          scrollHeight: target?.scrollHeight ?? 0,
+          clientHeight: target?.clientHeight ?? 0,
+          visibleUniqueLinks: unique.length,
+          firstUrl: unique[0] || '',
+          lastUrl: unique[unique.length - 1] || '',
+        };
+      });
+      await safeAudit({
+        level: 'info',
+        category: 'scraper',
+        event: 'results.scroll',
+        message: 'Rolagem da lista de resultados executada e medida.',
+        jobId,
+        metadata: { scrollAttempt: scrollAttempts, target: scrollTarget, evidence: scrollEvidence, moved: scrollMoved },
+      });
       await page.waitForFunction(() => document.readyState === 'complete' || !!document.querySelector('div[role="feed"]'), { timeout: 2500 }).catch(() => {});
     }
 
