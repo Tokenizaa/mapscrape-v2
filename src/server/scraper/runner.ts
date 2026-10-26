@@ -1,6 +1,6 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PlaceRecord, ScrapeJob } from '../../shared/types';
-import { getJob, updateJobProgress, insertPlace, placeExistsByUrl, findPlaceByUrl, countPlaces } from '../db';
+import { getJob, updateJobProgress, insertPlace, findPlaceByUrl, countPlaces } from '../db';
 import { writeRunReport } from '../run-report';
 import { extractPlaceDetails } from './extractor';
 import { writeAuditLog } from '../audit-log';
@@ -171,8 +171,16 @@ export async function runScraperJob(
       totalFound = 1;
 
       const placeRecord = await extractPlaceDetails(page, jobId, currentUrl);
-      if (await placeExistsByUrl(currentUrl)) {
+      const existingDirectPlace = await findPlaceByUrl(currentUrl);
+      if (existingDirectPlace) {
         totalDuplicates = 1;
+        await safeAudit({
+          category: 'scraper',
+          event: 'place.duplicate_skipped',
+          message: 'Ficha direta já existe na base; nenhum registro novo foi criado.',
+          jobId,
+          metadata: { mapsUrl: currentUrl, previewName: placeRecord.name, existingPlaceId: existingDirectPlace.id, existingName: existingDirectPlace.name, existingJobId: existingDirectPlace.job_id, existingCollectedAt: existingDirectPlace.collected_at, reason: 'canonical_maps_url_exists' },
+        });
       } else {
         await insertPlace(placeRecord);
         totalCollected = 1;
