@@ -18,7 +18,7 @@ async function safeAudit(input: Parameters<typeof writeAuditLog>[0]): Promise<vo
 }
 
 function missingFields(place: PlaceRecord): string[] {
-  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url'];
+  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'collected_at'];
   return fields.filter((field) => !String(place[field] ?? '').trim());
 }
 
