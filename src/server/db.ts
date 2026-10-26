@@ -212,11 +212,13 @@ export async function updateJobProgress(id: string, updates: Partial<ScrapeJob>)
   });
 }
 
-export async function getJob(id: string): Promise<ScrapeJob | null> {
+export async function getJob(id: string, consumerProject?: string): Promise<ScrapeJob | null> {
   const db = getDb();
   const res = await db.execute({
-    sql: `SELECT * FROM searches WHERE id = ?`,
-    args: [id],
+    sql: consumerProject
+      ? `SELECT * FROM searches WHERE id = ? AND user_id = ?`
+      : `SELECT * FROM searches WHERE id = ?`,
+    args: consumerProject ? [id, consumerProject] : [id],
   });
   if (res.rows.length === 0) return null;
   return res.rows[0] as unknown as ScrapeJob;
@@ -324,6 +326,7 @@ export async function getPlaces(options: {
   sortOrder?: 'asc' | 'desc';
   offset?: number;
   limit?: number;
+  consumerProject?: string;
 }): Promise<{ places: PlaceRecord[]; total: number }> {
   const db = getDb();
   const whereClauses: string[] = [];
@@ -338,6 +341,11 @@ export async function getPlaces(options: {
     const q = `%${options.query.trim()}%`;
     whereClauses.push(`(name LIKE ? OR category LIKE ? OR address LIKE ? OR phone LIKE ? OR website LIKE ?)`);
     args.push(q, q, q, q, q);
+  }
+
+  if (options.consumerProject) {
+    whereClauses.push(`EXISTS (SELECT 1 FROM searches s WHERE s.id = places.job_id AND s.user_id = ?)`);
+    args.push(options.consumerProject);
   }
 
   const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -369,14 +377,14 @@ export async function getPlaces(options: {
   };
 }
 
-export async function getPlacesByIds(ids: string[]): Promise<PlaceRecord[]> {
+export async function getPlacesByIds(ids: string[], consumerProject?: string): Promise<PlaceRecord[]> {
   if (ids.length === 0) return [];
   const db = getDb();
   const placeholders = ids.map(() => '?').join(',');
-  const res = await db.execute({
-    sql: `SELECT * FROM places WHERE id IN (${placeholders}) ORDER BY collected_at DESC`,
-    args: ids,
-  });
+  const sql = consumerProject
+    ? `SELECT places.* FROM places INNER JOIN searches s ON s.id = places.job_id WHERE places.id IN (${placeholders}) AND s.user_id = ? ORDER BY places.collected_at DESC`
+    : `SELECT * FROM places WHERE id IN (${placeholders}) ORDER BY collected_at DESC`;
+  const res = await db.execute({ sql, args: consumerProject ? [...ids, consumerProject] : ids });
   return res.rows as unknown as PlaceRecord[];
 }
 
