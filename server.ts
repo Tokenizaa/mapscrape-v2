@@ -554,6 +554,7 @@ export async function createApp() {
     try {
       const consumer = await authenticatedConsumer(req);
       if (!consumer) return res.status(401).json({ error: 'unauthorized', message: 'Informe uma chave de API válida no cabeçalho Authorization: Bearer.' });
+      (req as Request & { mapscrapeConsumer?: typeof consumer }).mapscrapeConsumer = consumer;
       res.setHeader('Cache-Control', 'no-store');
       res.setHeader('X-MapScrape-Consumer', consumer.consumer_project);
       return next();
@@ -576,6 +577,7 @@ export async function createApp() {
         sortBy: req.query.sortBy ? String(req.query.sortBy) : undefined,
         sortOrder: req.query.sortOrder === 'asc' ? 'asc' : 'desc',
         offset, limit,
+        consumerProject: (req as any).mapscrapeConsumer.consumer_project,
       });
       return res.json({ data: result.places.map(apiLead), pagination: { total: result.total, limit, offset, hasMore: offset + result.places.length < result.total } });
     } catch (error) {
@@ -585,7 +587,7 @@ export async function createApp() {
 
   app.get('/api/v1/leads/:id', async (req: Request, res: Response) => {
     try {
-      const records = await getPlacesByIds([String(req.params.id)]);
+      const records = await getPlacesByIds([String(req.params.id)], (req as any).mapscrapeConsumer.consumer_project);
       if (!records.length) return res.status(404).json({ error: 'lead_not_found', message: 'Lead não encontrado.' });
       return res.json({ data: apiLead(records[0]) });
     } catch (error) {
@@ -602,7 +604,7 @@ export async function createApp() {
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) return res.status(422).json({ error: 'invalid_limit', message: 'limit deve ser inteiro entre 1 e 100.' });
       const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       const job: ScrapeJob = {
-        id: jobId, user_id: 'api-consumer', segment, location, limit_requested: limit,
+        id: jobId, user_id: (req as any).mapscrapeConsumer.consumer_project, segment, location, limit_requested: limit,
         status: 'running', status_message: 'Coleta solicitada via API v1.', total_found: 0,
         total_collected: 0, total_duplicates: 0, total_errors: 0,
         current_step: 'Preparando coleta', created_at: new Date().toISOString(),
@@ -621,7 +623,7 @@ export async function createApp() {
 
   app.get('/api/v1/jobs/:id', async (req: Request, res: Response) => {
     try {
-      const job = await getJob(String(req.params.id));
+      const job = await getJob(String(req.params.id), (req as any).mapscrapeConsumer.consumer_project);
       if (!job) return res.status(404).json({ error: 'job_not_found', message: 'Coleta não encontrada.' });
       return res.json({ data: { ...job, isRunning: isJobRunning(job.id) } });
     } catch (error) {
@@ -631,12 +633,12 @@ export async function createApp() {
 
   app.get('/api/v1/jobs/:id/results', async (req: Request, res: Response) => {
     try {
-      const job = await getJob(String(req.params.id));
+      const job = await getJob(String(req.params.id), (req as any).mapscrapeConsumer.consumer_project);
       if (!job) return res.status(404).json({ error: 'job_not_found', message: 'Coleta não encontrada.' });
       const limit = Number(req.query.limit ?? 50);
       const offset = Number(req.query.offset ?? 0);
       if (!Number.isInteger(limit) || limit < 1 || limit > 100 || !Number.isInteger(offset) || offset < 0) return res.status(422).json({ error: 'invalid_pagination', message: 'Parâmetros de paginação inválidos.' });
-      const result = await getPlaces({ jobId: job.id, limit, offset, sortBy: 'collected_at', sortOrder: 'desc' });
+      const result = await getPlaces({ jobId: job.id, limit, offset, sortBy: 'collected_at', sortOrder: 'desc', consumerProject: (req as any).mapscrapeConsumer.consumer_project });
       return res.json({ data: result.places.map(apiLead), pagination: { total: result.total, limit, offset, hasMore: offset + result.places.length < result.total } });
     } catch (error) {
       return res.status(500).json({ error: 'job_results_failed', message: error instanceof Error ? error.message : 'Falha ao consultar resultados.' });
