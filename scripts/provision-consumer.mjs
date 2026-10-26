@@ -105,13 +105,11 @@ async function revokeCredential(id) {
 }
 
 let credential;
-let secretStored = false;
 try {
   if (!["vercel", "cloudflare"].includes(provider)) throw new Error("TARGET_PROVIDER must be vercel or cloudflare.");
   credential = await issueCredential();
   if (provider === "vercel") await storeInVercel(credential.apiKey);
   else storeInCloudflare(credential.apiKey);
-  secretStored = true;
 
   // Verify the newly installed credential against a read-only endpoint.
   await jsonRequest(`${baseUrl}/api/v1/leads?limit=1&offset=0`, {
