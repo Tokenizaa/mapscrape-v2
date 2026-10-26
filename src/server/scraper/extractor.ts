@@ -1,195 +1,154 @@
 import { Page } from 'puppeteer';
 import { PlaceRecord } from '../../shared/types';
 import {
-  cleanText,
-  normalizeAddress,
-  normalizePhone,
-  normalizeWebsite,
-  normalizeCategory,
-  normalizeRating,
-  normalizeReviewCount,
-  normalizePriceRange,
-  normalizeBusinessStatus,
+  cleanText, normalizeAddress, normalizePhone, normalizeWebsite, normalizeCategory,
+  normalizeRating, normalizeReviewCount, normalizePriceRange, normalizeBusinessStatus,
   extractCoordinates,
 } from './normalizer';
 import { SELECTORS } from './selectors';
 
 /**
- * Extracts the 16 tracked fields from a Google Maps place page.
- * Uses structured DOM inspection and robust fallbacks.
- * If a field is missing, leaves it empty without halting.
+ * Extract only values actually rendered on the public Maps place sheet.
+ * Prefer semantic data-item-id/aria-label attributes over unstable CSS classes.
  */
-export async function extractPlaceDetails(
-  page: Page,
-  jobId: string,
-  targetUrl: string
-): Promise<PlaceRecord> {
-  // Extract raw details inside the browser context
+export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: string): Promise<PlaceRecord> {
   const raw: any = await page.evaluate((selectors: typeof SELECTORS.place) => {
-    if (typeof (window as any).__name === 'undefined') {
-      (window as any).__name = function(f: any) { return f; };
-    }
-    if (typeof (globalThis as any).__name === 'undefined') {
-      (globalThis as any).__name = function(f: any) { return f; };
-    }
+    if (typeof (window as any).__name === 'undefined') (window as any).__name = (f: any) => f;
+    if (typeof (globalThis as any).__name === 'undefined') (globalThis as any).__name = (f: any) => f;
 
-    function getTextBySelectors(selectors: string[]) {
-      for (var i = 0; i < selectors.length; i++) {
-        try {
-          var el = document.querySelector(selectors[i]) as HTMLElement | null;
-          if (el && el.innerText && el.innerText.trim()) {
-            return el.innerText.trim();
-          }
-        } catch(e) {}
+    const text = (el: Element | null): string => (el as HTMLElement | null)?.innerText?.trim() || '';
+    const attr = (el: Element | null, name: string): string => el?.getAttribute(name)?.trim() || '';
+    const first = (sels: string[]): Element | null => {
+      for (const selector of sels) {
+        try { const el = document.querySelector(selector); if (el) return el; } catch {}
+      }
+      return null;
+    };
+    const firstText = (sels: string[]): string => {
+      for (const selector of sels) {
+        try { const el = document.querySelector(selector); const value = text(el); if (value) return value; } catch {}
       }
       return '';
-    }
-
-    function getAttrBySelectors(selectors: string[], attr: string) {
-      for (var i = 0; i < selectors.length; i++) {
-        try {
-          var el = document.querySelector(selectors[i]);
-          if (el) {
-            var val = el.getAttribute(attr);
-            if (val && val.trim()) return val.trim();
-          }
-        } catch(e) {}
+    };
+    const firstAttr = (sels: string[], name: string): string => {
+      for (const selector of sels) {
+        try { const el = document.querySelector(selector); const value = attr(el, name); if (value) return value; } catch {}
       }
       return '';
+    };
+    const cleanLabel = (value: string): string => value.replace(/^(endereço|address|telefone|phone|site|website|preço|price)\s*:\s*/i, '').trim();
+
+    const name = firstText(selectors.title);
+    const category = firstText(selectors.category);
+
+    // Maps commonly puts rating and review count together in one accessible label.
+    const ratingNode = first([
+      'div.F7nice span[aria-label]',
+      'span[role="img"][aria-label*="estrelas"]',
+      'span[role="img"][aria-label*="stars"]',
+      ...selectors.rating,
+    ]);
+    const ratingLabel = [attr(ratingNode, 'aria-label'), text(ratingNode)].filter(Boolean).join(' ');
+    const ratingMatch = ratingLabel.match(/([0-5][.,]\d)/);
+    const rating = ratingMatch?.[1] || firstText(selectors.rating);
+    const reviewNode = first([
+      'div.F7nice button[aria-label]',
+      'button[jsaction*="pane.reviewChart.moreReviews"]',
+      ...selectors.reviews,
+    ]);
+    const reviewLabel = [attr(reviewNode, 'aria-label'), text(reviewNode)].filter(Boolean).join(' ');
+    const reviewMatch = reviewLabel.match(/([\d.,\s]+)\s*(?:avaliações|avaliação|reviews|review|opiniões)/i)
+      || ratingLabel.match(/([\d.,\s]+)\s*(?:avaliações|avaliação|reviews|review|opiniões)/i);
+    const review_count = reviewMatch?.[1]?.trim() || '';
+
+    const addressNode = first(['button[data-item-id="address"]', '[data-item-id="address"]', ...selectors.address]);
+    const phoneNode = first(['button[data-item-id^="phone:tel:"]', 'button[data-item-id^="phone:"]', ...selectors.phone]);
+    const websiteNode = first(['a[data-item-id="authority"][href]', ...selectors.website]);
+    const priceNode = first(['span[aria-label^="Preço:"]', 'span[aria-label^="Price:"]', ...selectors.priceRange]);
+
+    const address = cleanLabel(attr(addressNode, 'aria-label') || text(addressNode));
+    const phone = cleanLabel(attr(phoneNode, 'aria-label') || text(phoneNode));
+    // Save the URL shown by Maps only; never visit it.
+    const website = attr(websiteNode, 'href') || cleanLabel(attr(websiteNode, 'aria-label') || text(websiteNode));
+    const price_range = cleanLabel(attr(priceNode, 'aria-label') || text(priceNode));
+
+    // Capture the visible weekly schedule as rows, rather than one generic wrapper
+    // whose text may only say "Horários" or "Aberto".
+    const hoursTable = first(['table.eKjhbv', 'table[aria-label*="Horário"]', 'table[aria-label*="Hours"]']);
+    let opening_hours = '';
+    if (hoursTable) {
+      opening_hours = Array.from(hoursTable.querySelectorAll('tr'))
+        .map((row) => text(row).replace(/\s+/g, ' ').trim())
+        .filter(Boolean)
+        .join(' | ');
+    }
+    if (!opening_hours) {
+      const hoursButton = first(['button[data-item-id="oh"]', 'button[aria-label*="Horários de funcionamento"]', 'button[aria-label*="Opening hours"]']);
+      opening_hours = text(hoursButton) || attr(hoursButton, 'aria-label');
     }
 
-    // 1. Name
-    var name = getTextBySelectors(selectors.title);
+    const statusCandidates = Array.from(document.querySelectorAll(
+      '[aria-label*="Aberto"], [aria-label*="Fechado"], [aria-label*="Open"], [aria-label*="Closed"], .ZDu9vd, .o0Svhf'
+    ));
+    const statusText = statusCandidates.map((el) => attr(el, 'aria-label') || text(el))
+      .find((value) => /aberto|fechado|open|closed/i.test(value)) || '';
 
-    // 2. Category
-    var category = getTextBySelectors(selectors.category);
+    const description = firstText(selectors.description);
+    const serviceEls = Array.from(document.querySelectorAll(selectors.services.join(', ')));
+    const services_attributes = Array.from(new Set(serviceEls.map(text).filter(Boolean))).join(' · ');
 
-    // 3. Rating & Review Count
-    var rating = getTextBySelectors(selectors.rating);
-    if (!rating) rating = getAttrBySelectors(selectors.rating, 'aria-label');
-
-    var review_count = getTextBySelectors(selectors.reviews);
-    if (!review_count) review_count = getAttrBySelectors(selectors.reviews, 'aria-label');
-    if (review_count === rating) review_count = '';
-
-    // 4. Price range
-    var price_range = getAttrBySelectors(selectors.priceRange, 'aria-label') ||
-      getTextBySelectors(selectors.priceRange);
-
-    // 5. Address
-    var address = getAttrBySelectors(selectors.address, 'aria-label') ||
-      getTextBySelectors(selectors.address);
-
-    // 6. Website
-    var website = getAttrBySelectors(selectors.website, 'href') ||
-      getAttrBySelectors(selectors.website, 'aria-label') ||
-      getTextBySelectors(selectors.website);
-
-    // 7. Phone
-    var phone = getAttrBySelectors(selectors.phone, 'aria-label') ||
-      getTextBySelectors(selectors.phone);
-
-    // 8. Hours and Business status
-    var business_status = '';
-    var opening_hours = '';
-
-    business_status = getTextBySelectors(selectors.businessStatus) ||
-      getAttrBySelectors(selectors.businessStatus, 'aria-label');
-
-    opening_hours = getAttrBySelectors(selectors.hours, 'aria-label') ||
-      getTextBySelectors(selectors.hours);
-
-    // 9. Description
-    var description = getTextBySelectors(selectors.description);
-
-    // 10. Services & Attributes
-    var serviceEls = Array.from(document.querySelectorAll(selectors.services.join(', ')));
-    var services_attributes = serviceEls
-      .map(function(el) { return (el as HTMLElement).innerText.trim(); })
-      .filter(Boolean)
-      .join(' · ');
-
-    // 11. Photos & Media
-    var photoUrls: string[] = [];
-    var seenPhotos: Record<string, boolean> = {};
-    for (var p = 0; p < selectors.photos.length; p++) {
+    const photoUrls: string[] = [];
+    const seenPhotos = new Set<string>();
+    for (const selector of selectors.photos) {
       try {
-        var pEls = document.querySelectorAll(selectors.photos[p]);
-        for (var j = 0; j < pEls.length; j++) {
-          var src = (pEls[j] as HTMLImageElement).src || pEls[j].getAttribute('src') || '';
-          if (src && src.startsWith('http') && !src.includes('cleardot.gif') && !seenPhotos[src]) {
-            seenPhotos[src] = true;
-            photoUrls.push(src);
+        document.querySelectorAll(selector).forEach((el) => {
+          const image = el as HTMLImageElement;
+          const src = image.currentSrc || image.src || attr(el, 'src');
+          if (src.startsWith('http') && !src.includes('cleardot.gif') && !seenPhotos.has(src)) {
+            seenPhotos.add(src); photoUrls.push(src);
           }
-        }
-      } catch(e) {}
+        });
+      } catch {}
     }
 
-    // 12. Videos & Clips
-    var videoUrls: string[] = [];
-    var seenVideos: Record<string, boolean> = {};
-    for (var v = 0; v < selectors.videos.length; v++) {
+    const videoUrls: string[] = [];
+    const seenVideos = new Set<string>();
+    for (const selector of selectors.videos) {
       try {
-        var vEls = document.querySelectorAll(selectors.videos[v]);
-        for (var k = 0; k < vEls.length; k++) {
-          var vEl = vEls[k];
-          var vSrc = (vEl as HTMLVideoElement).currentSrc ||
-            (vEl as HTMLVideoElement).src ||
-            vEl.getAttribute('src') ||
-            vEl.getAttribute('href') ||
-            vEl.getAttribute('data-video-url') || '';
-          if (vSrc && vSrc.startsWith('http') && !vSrc.includes('cleardot.gif') && !seenVideos[vSrc]) {
-            seenVideos[vSrc] = true;
-            videoUrls.push(vSrc);
+        document.querySelectorAll(selector).forEach((el) => {
+          const media = el as HTMLVideoElement;
+          const src = media.currentSrc || media.src || attr(el, 'src') || attr(el, 'href') || attr(el, 'data-video-url');
+          if (src.startsWith('http') && !src.includes('cleardot.gif') && !seenVideos.has(src)) {
+            seenVideos.add(src); videoUrls.push(src);
           }
-        }
-      } catch(e) {}
+        });
+      } catch {}
     }
 
-    // 13. Logo / Avatar
-    var logo_url = '';
-    for (var l = 0; l < selectors.logo.length; l++) {
+    // Do not mislabel the first gallery photo as a logo/avatar.
+    let logo_url = '';
+    for (const selector of selectors.logo) {
       try {
-        var lEl = document.querySelector(selectors.logo[l]) as HTMLImageElement | null;
-        if (lEl) {
-          var lSrc = lEl.src || lEl.getAttribute('src') || '';
-          if (lSrc && lSrc.startsWith('http') && !lSrc.includes('cleardot.gif')) {
-            logo_url = lSrc;
-            break;
-          }
+        const el = document.querySelector(selector) as HTMLImageElement | null;
+        const src = el?.currentSrc || el?.src || '';
+        if (src.startsWith('http') && !src.includes('cleardot.gif') &&
+            /logo|avatar|profile|perfil/i.test((el?.alt || '') + ' ' + (el?.getAttribute('aria-label') || ''))) {
+          logo_url = src; break;
         }
-      } catch(e) {}
-    }
-    if (!logo_url && photoUrls.length > 0) {
-      logo_url = photoUrls[0];
+      } catch {}
     }
 
     return {
-      name: name,
-      category: category,
-      address: address,
-      phone: phone,
-      website: website,
-      rating: rating,
-      review_count: review_count,
-      price_range: price_range,
-      opening_hours: opening_hours,
-      business_status: business_status,
-      description: description,
-      services_attributes: services_attributes,
-      photos: photoUrls.join(' | '),
-      videos: videoUrls.join(' | '),
-      logo_url: logo_url,
-      currentUrl: window.location.href
+      name, category, rating, review_count, price_range, address, website, phone,
+      opening_hours, business_status: statusText, description, services_attributes,
+      photos: photoUrls.join(' | '), videos: videoUrls.join(' | '), logo_url,
+      currentUrl: window.location.href,
     };
   }, SELECTORS.place);
 
   const finalUrl = raw.currentUrl || targetUrl;
   const coords = extractCoordinates(finalUrl);
-
-  const now = new Date().toISOString();
-
-  const record: PlaceRecord = {
+  return {
     id: `place_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     job_id: jobId,
     name: cleanText(raw.name),
@@ -210,8 +169,6 @@ export async function extractPlaceDetails(
     photos: cleanText(raw.photos),
     videos: cleanText(raw.videos),
     logo_url: cleanText(raw.logo_url),
-    collected_at: now,
+    collected_at: new Date().toISOString(),
   };
-
-  return record;
 }
