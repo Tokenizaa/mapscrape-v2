@@ -288,9 +288,18 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
           /see more|mais|ver mais|plus/i.test(button.innerText || button.getAttribute('aria-label') || '')
         );
         if (seeMore) (seeMore as HTMLElement).click();
-        const media = Array.from(card.querySelectorAll('img'))
-          .map((img) => ({ url: (img as HTMLImageElement).currentSrc || (img as HTMLImageElement).src, alt: img.getAttribute('alt') || '' }))
-          .filter((item) => item.url.startsWith('http') && !/NBa7we|w36-h36|avatar/i.test(item.url));
+        const media = [
+          ...Array.from(card.querySelectorAll('img'))
+            .map((img) => ({ type: 'image', url: (img as HTMLImageElement).currentSrc || (img as HTMLImageElement).src, alt: img.getAttribute('alt') || '' }))
+            .filter((item) => item.url.startsWith('http') && !/NBa7we|w36-h36|avatar/i.test(item.url)),
+          ...Array.from(card.querySelectorAll('video, a[href$=".mp4"], a[href$=".webm"], [data-video-url]'))
+            .map((node) => ({
+              type: 'video',
+              url: (node as HTMLVideoElement).currentSrc || (node as HTMLVideoElement).src || attr(node, 'href') || attr(node, 'data-video-url'),
+              alt: attr(node, 'aria-label') || 'Vídeo anexado à avaliação',
+            }))
+            .filter((item) => item.url.startsWith('http')),
+        ];
         const ratingNode = card.querySelector('[role="img"][aria-label*="star"],[role="img"][aria-label*="estrela"],span[aria-label*="star"],span[aria-label*="estrela"]');
         reviews.push({
           id,
@@ -314,7 +323,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       readReviews();
       if (reviews.length === lastCount) stagnant += 1;
       else stagnant = 0;
-      if (stagnant >= 5) break;
+      if (stagnant >= 8) break;
       lastCount = reviews.length;
       if (!reviewContainer) reviewContainer = findReviewContainer();
       if (reviewContainer) reviewContainer.scrollTop = reviewContainer.scrollHeight;
@@ -327,12 +336,19 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     clickByText(/^(?:View \d+ more Topics|Ver \d+ tópicos? a mais|Ver mais tópicos|Mais tópicos|Ver mais temas)$/i);
     await new Promise((resolve) => setTimeout(resolve, 100));
     // Capture the topic chips and their review counts independently of review text.
-    const review_topics = Array.from(document.querySelectorAll('[role="radio"],[role="checkbox"]'))
-      .map((node) => ({
-        label: ((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim(),
-        count: (((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').match(/(\d+)\s*$/) || [])[1] || '',
-      }))
-      .filter((item) => item.label && !/^(all reviews|todas as avaliações|all|todas)$/i.test(item.label));
+    const review_topics = Array.from(document.querySelectorAll(
+      '[role="radio"],[role="checkbox"],button[aria-pressed],button[aria-selected],[data-review-topic]'
+    ))
+      .filter((node) => !node.closest('.jftiEf'))
+      .map((node) => {
+        const label = ((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
+        const count = (label.match(/(\d+)\s*$/) || [])[1] || '';
+        return { label, count, role: node.getAttribute('role') || '', selected: node.getAttribute('aria-pressed') || node.getAttribute('aria-selected') || '' };
+      })
+      .filter((item) => item.label && item.label.length < 100)
+      .filter((item) => !/^(all reviews|todas as avaliações|all|todas|most relevant|mais relevantes|newest|mais recentes|sort by|ordenar por|more reviews|mais avaliações|translate|traduzir|like|gostei|reply|responder)$/i.test(item.label))
+      .filter((item) => !!item.role || !!item.selected || !!item.count)
+      .map(({label,count}) => ({label,count}));
 
     // The About tab contains additional attributes not present in the overview.
     const aboutTabClicked = clickByText(/^(?:About(?:\s|$)|Sobre(?:\s|$)|Informações(?:\s|$))/i);
