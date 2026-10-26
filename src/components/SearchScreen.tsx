@@ -200,6 +200,8 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                     ? 'bg-amber-100 text-amber-800'
                     : currentJob.status === 'completed'
                     ? 'bg-emerald-100 text-emerald-800'
+                    : currentJob.status === 'partial'
+                    ? 'bg-amber-100 text-amber-800'
                     : currentJob.status === 'stopped'
                     ? 'bg-zinc-100 text-zinc-800'
                     : 'bg-red-100 text-red-800'
@@ -207,6 +209,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
               >
                 {currentJob.status === 'running' && 'Em andamento'}
                 {currentJob.status === 'completed' && 'Concluída'}
+                {currentJob.status === 'partial' && 'Parcial'}
                 {currentJob.status === 'stopped' && 'Interrompida'}
                 {currentJob.status === 'failed' && 'Falha'}
               </span>
@@ -237,6 +240,8 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                 className={`h-full transition-all duration-300 ${
                   currentJob.status === 'failed'
                     ? 'bg-red-500'
+                    : currentJob.status === 'partial'
+                    ? 'bg-amber-500'
                     : currentJob.status === 'stopped'
                     ? 'bg-zinc-400'
                     : 'bg-zinc-900'
@@ -294,7 +299,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             <div className="mt-5 text-xs text-zinc-600 bg-zinc-50 border border-zinc-200 rounded-lg p-3 flex items-start gap-2">
               {currentJob.status === 'completed' ? (
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-              ) : currentJob.status === 'failed' ? (
+              ) : currentJob.status === 'failed' || currentJob.status === 'partial' ? (
                 <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
               ) : (
                 <div className="w-2 h-2 rounded-full bg-zinc-400 shrink-0 mt-1.5 ml-1" />
