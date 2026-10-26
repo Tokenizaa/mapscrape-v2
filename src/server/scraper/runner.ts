@@ -1,6 +1,7 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PlaceRecord, ScrapeJob } from '../../shared/types';
-import { getJob, updateJobProgress, insertPlace, placeExistsByUrl } from '../db';
+import { getJob, updateJobProgress, insertPlace, placeExistsByUrl, countPlaces } from '../db';
+import { writeRunReport } from '../run-report';
 import { extractPlaceDetails } from './extractor';
 import { writeAuditLog } from '../audit-log';
 import { SELECTORS } from './selectors';
@@ -59,6 +60,7 @@ export async function runScraperJob(
   let totalCollected = 0;
   let totalDuplicates = 0;
   let totalErrors = 0;
+  let baselineCount = 0;
 
   const emitProgress = async (step: string, updates: Partial<ScrapeJob> = {}) => {
     const jobUpdates: Partial<ScrapeJob> = {
@@ -77,7 +79,8 @@ export async function runScraperJob(
   };
 
   try {
-    await safeAudit({ category: 'scraper', event: 'job.browser_start', message: 'Inicializando Chromium.', jobId, metadata: { segment, location, limitRequested } });
+    baselineCount = await countPlaces();
+    await safeAudit({ category: 'scraper', event: 'job.browser_start', message: 'Inicializando Chromium.', jobId, metadata: { segment, location, limitRequested, databaseCountBefore: baselineCount } });
     await emitProgress('Iniciando navegador Chromium...', { status: 'running' });
 
     browser = await puppeteer.launch({
@@ -176,11 +179,12 @@ export async function runScraperJob(
         await safeAudit({ category: 'scraper', event: 'place.saved', message: 'Ficha salva no SQLite.', jobId, metadata: { placeId: placeRecord.id, name: placeRecord.name, mapsUrl: placeRecord.maps_url, missingFields: missingFields(placeRecord) } });
       }
 
-      await emitProgress('Coleta concluída com sucesso.', {
-        status: 'completed',
+      const directStatus = totalCollected === 0 && totalDuplicates > 0 ? 'partial' : 'completed';
+      await emitProgress('Coleta finalizada.', {
+        status: directStatus,
         status_message: totalCollected === 1
           ? 'Coleta concluída com sucesso (resultado único direto).'
-          : 'A ficha encontrada já estava salva; nenhum registro duplicado foi criado.',
+          : 'A ficha encontrada já estava salva. Nenhum dado novo foi adicionado à base.',
         completed_at: new Date().toISOString(),
       });
       return;
@@ -209,15 +213,17 @@ export async function runScraperJob(
     // Collect place items from feed with scrolling
     await emitProgress('Carregando resultados da lista...');
 
+    // Keep scrolling until we have the requested number of NEW records, not merely links.
     const discoveredUrls: { url: string; previewName: string }[] = [];
     const seenUrlsInRun = new Set<string>();
+    let duplicateUrlsDiscovered = 0;
 
     let scrollAttempts = 0;
     let stagnantRounds = 0;
     let reachedEndOfList = false;
-    const maxScrollAttempts = Math.min(Math.max(limitRequested * 2, 30), 120);
+    const maxScrollAttempts = Math.min(Math.max(limitRequested * 4, 40), 160);
 
-    while (discoveredUrls.length < limitRequested && scrollAttempts < maxScrollAttempts && stagnantRounds < 7 && !handle.cancelled) {
+    while (discoveredUrls.length < limitRequested && scrollAttempts < maxScrollAttempts && stagnantRounds < 8 && !handle.cancelled) {
       scrollAttempts++;
 
       // Extract current place links in the DOM
@@ -249,18 +255,32 @@ export async function runScraperJob(
 
       let newFoundInBatch = 0;
       for (const item of currentLinks) {
-        // Canonicalize URL to ignore session tokens
-        const canonicalUrl = item.url.split('?')[0];
-        if (!seenUrlsInRun.has(canonicalUrl)) {
-          seenUrlsInRun.add(canonicalUrl);
-          discoveredUrls.push(item);
-          newFoundInBatch++;
+        const canonicalUrl = item.url.split('?')[0].replace(/\/$/, '');
+        if (!canonicalUrl || seenUrlsInRun.has(canonicalUrl)) continue;
+        seenUrlsInRun.add(canonicalUrl);
+
+        // Count and log existing records during discovery, then continue scrolling
+        // until the requested number of genuinely new candidates has been found.
+        if (await placeExistsByUrl(canonicalUrl)) {
+          totalDuplicates++;
+          duplicateUrlsDiscovered++;
+          await safeAudit({
+            category: 'scraper',
+            event: 'place.duplicate_skipped',
+            message: 'Ficha já existe na base; ignorada durante a descoberta.',
+            jobId,
+            metadata: { mapsUrl: canonicalUrl, previewName: item.previewName || '', reason: 'canonical_maps_url_exists' },
+          });
+          continue;
         }
+
+        discoveredUrls.push({ ...item, url: canonicalUrl });
+        newFoundInBatch++;
       }
 
-      totalFound = discoveredUrls.length;
-      if (newFoundInBatch > 0) await safeAudit({ category: 'scraper', event: 'results.discovered', message: 'Novos links de fichas encontrados na lista.', jobId, metadata: { totalFound, newInBatch: newFoundInBatch, scrollAttempt: scrollAttempts } });
-      await emitProgress(`Encontrados ${totalFound} estabelecimentos no feed...`);
+      totalFound = discoveredUrls.length + duplicateUrlsDiscovered;
+      if (newFoundInBatch > 0) await safeAudit({ category: 'scraper', event: 'results.discovered', message: 'Novas fichas candidatas encontradas na lista.', jobId, metadata: { totalFound, newCandidates: discoveredUrls.length, newInBatch: newFoundInBatch, duplicatesSeen: duplicateUrlsDiscovered, scrollAttempt: scrollAttempts } });
+      await emitProgress(`Encontrados ${totalFound} links únicos; ${discoveredUrls.length} ainda não estão salvos...`);
 
       if (discoveredUrls.length >= limitRequested) {
         break;
@@ -313,16 +333,21 @@ export async function runScraperJob(
     }
 
     if (discoveredUrls.length === 0) {
-      await emitProgress('Nenhum estabelecimento encontrado nesta região.', {
-        status: 'completed',
-        status_message: 'Nenhum resultado visível na página pública do Google Maps.',
+      const noNewStatus = totalDuplicates > 0 ? 'partial' : 'completed';
+      const noNewMessage = totalDuplicates > 0
+        ? `Nenhum dado novo foi salvo. ${totalDuplicates} fichas já existentes foram ignoradas; a base não cresceu nesta execução.`
+        : 'Nenhum resultado visível na página pública do Google Maps.';
+      await safeAudit({ level: totalDuplicates > 0 ? 'warn' : 'info', category: 'scraper', event: 'job.finished', message: noNewMessage, jobId, metadata: { status: noNewStatus, totalFound, totalCollected, totalDuplicates, totalErrors, scrollAttempts, reachedEndOfList, databaseCountBefore: baselineCount } });
+      await emitProgress(noNewMessage, {
+        status: noNewStatus,
+        status_message: noNewMessage,
         completed_at: new Date().toISOString(),
       });
       return;
     }
 
     const itemsToProcess = discoveredUrls.slice(0, limitRequested);
-    totalFound = itemsToProcess.length;
+    totalFound = Math.max(totalFound, itemsToProcess.length + duplicateUrlsDiscovered);
 
     await emitProgress(
       `Iniciando extração detalhada de ${itemsToProcess.length} fichas de estabelecimentos...`
@@ -347,6 +372,7 @@ export async function runScraperJob(
       const alreadyInDb = await placeExistsByUrl(item.url);
       if (alreadyInDb) {
         totalDuplicates++;
+        await safeAudit({ category: 'scraper', event: 'place.duplicate_skipped', message: 'Ficha já existe no momento da persistência; ignorada para evitar duplicação.', jobId, metadata: { mapsUrl: item.url, previewName, reason: 'duplicate_detected_before_insert' } });
         await emitProgress(
           `[${placeNum}/${itemsToProcess.length}] Duplicado ignorado: ${previewTitle}`
         );
@@ -392,7 +418,7 @@ export async function runScraperJob(
       await new Promise((r) => setTimeout(r, 600));
     }
 
-    const hadPartialFailures = totalErrors > 0 || (discoveredUrls.length < limitRequested && !reachedEndOfList);
+    const hadPartialFailures = totalErrors > 0 || (discoveredUrls.length < limitRequested && !reachedEndOfList) || (totalCollected === 0 && totalDuplicates > 0);
     const finalStatus = handle.cancelled ? 'stopped' : hadPartialFailures ? 'partial' : 'completed';
     const statusMsg = handle.cancelled
       ? `Coleta interrompida. ${totalCollected} registros salvos; ${totalErrors} falhas.`
@@ -400,7 +426,7 @@ export async function runScraperJob(
         ? `Coleta encerrada parcialmente: ${totalCollected} registros salvos, ${totalDuplicates} duplicados, ${totalErrors} falhas. Foram encontrados ${discoveredUrls.length} resultados para um limite de ${limitRequested}; isso não comprova que não existam outros resultados.`
         : `Coleta concluída: ${totalCollected} registros salvos, ${totalDuplicates} duplicados e ${totalErrors} falhas.`;
 
-    await safeAudit({ level: finalStatus === 'partial' ? 'warn' : 'info', category: 'scraper', event: 'job.finished', message: statusMsg, jobId, metadata: { status: finalStatus, totalFound, totalCollected, totalDuplicates, totalErrors, scrollAttempts, reachedEndOfList } });
+    await safeAudit({ level: finalStatus === 'partial' ? 'warn' : 'info', category: 'scraper', event: 'job.finished', message: statusMsg, jobId, metadata: { status: finalStatus, totalFound, totalCollected, totalDuplicates, totalErrors, scrollAttempts, reachedEndOfList, databaseCountBefore: baselineCount, newCandidatesFound: discoveredUrls.length } });
     await emitProgress(statusMsg, {
       status: finalStatus,
       status_message: statusMsg,
@@ -432,6 +458,12 @@ export async function runScraperJob(
       } catch {
         // ignore
       }
+    }
+    try {
+      const reportPath = await writeRunReport(jobId, baselineCount);
+      await safeAudit({ category: 'scraper', event: 'job.report_written', message: 'Relatório JSON de evidências gerado.', jobId, metadata: { reportPath, databaseCountBefore: baselineCount } });
+    } catch (reportError: any) {
+      await safeAudit({ level: 'error', category: 'scraper', event: 'job.report_write_failed', message: reportError?.message || 'Não foi possível gerar relatório JSON.', jobId, metadata: { stack: String(reportError?.stack || '').slice(0, 3000) } });
     }
   }
 }
