@@ -1,0 +1,255 @@
+openapi: 3.1.0
+info:
+  title: MapScrape Leads API
+  version: 1.0.0
+  description: API para consultar leads persistidos e acompanhar coletas do MapScrape. Configure a URL-base real no ambiente consumidor.
+servers:
+  - url: https://{mapscrapeHost}
+    variables:
+      mapscrapeHost:
+        default: mapscrape-v2.vercel.app
+        description: Substitua pelo hostname real do ambiente implantado.
+security:
+  - bearerAuth: []
+paths:
+  /api/v1/health:
+    get:
+      security: []
+      summary: Saúde do serviço e banco
+      responses:
+        '200':
+          description: Serviço e banco disponíveis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string }
+                  service: { type: string }
+                  apiVersion: { type: string }
+                  database: { type: string }
+                  totalLeads: { type: integer }
+                  timestamp: { type: string, format: date-time }
+        '503':
+          description: Banco indisponível
+  /api/v1/leads:
+    get:
+      summary: Pesquisa paginada de leads
+      parameters:
+        - in: query
+          name: query
+          schema: { type: string }
+        - in: query
+          name: jobId
+          schema: { type: string }
+        - in: query
+          name: sortBy
+          schema: { type: string, enum: [name, category, rating, review_count, collected_at] }
+        - in: query
+          name: sortOrder
+          schema: { type: string, enum: [asc, desc] }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Página de leads
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+  /api/v1/leads/{id}:
+    get:
+      summary: Detalhe completo de um lead
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Registro completo
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Lead'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Lead não encontrado
+  /api/v1/jobs:
+    post:
+      summary: Iniciar coleta assíncrona
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [segment, location]
+              properties:
+                segment: { type: string, minLength: 1 }
+                location: { type: string, minLength: 1 }
+                limit: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '202':
+          description: Coleta aceita
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      jobId: { type: string }
+                      status: { type: string }
+                      statusUrl: { type: string }
+                      resultsUrl: { type: string }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+  /api/v1/jobs/{id}:
+    get:
+      summary: Consultar estado e progresso da coleta
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Estado da coleta
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id: { type: string }
+                      status: { type: string, enum: [running, completed, partial, stopped, failed] }
+                      isRunning: { type: boolean }
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Coleta não encontrada
+  /api/v1/jobs/{id}/results:
+    get:
+      summary: Resultados paginados de uma coleta
+      parameters:
+        - $ref: '#/components/parameters/Id'
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 100, default: 50 }
+        - in: query
+          name: offset
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Resultados da coleta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeadPage'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Coleta não encontrada
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: API key
+  parameters:
+    Id:
+      in: path
+      name: id
+      required: true
+      schema: { type: string }
+  responses:
+    Unauthorized:
+      description: Chave ausente ou inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InvalidRequest:
+      description: Parâmetros inválidos
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    LeadPage:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Lead'
+        pagination:
+          type: object
+          required: [total, limit, offset, hasMore]
+          properties:
+            total: { type: integer }
+            limit: { type: integer }
+            offset: { type: integer }
+            hasMore: { type: boolean }
+    Lead:
+      type: object
+      required: [id, job_id, name, category, address, phone, website, rating, review_count, price_range, opening_hours, business_status, latitude, longitude, maps_url, description, services_attributes, collected_at]
+      properties:
+        id: { type: string }
+        job_id: { type: string }
+        name: { type: string }
+        category: { type: string }
+        address: { type: string }
+        phone: { type: string }
+        website: { type: string }
+        rating: { type: string }
+        review_count: { type: string }
+        price_range: { type: string }
+        opening_hours: { type: string }
+        business_status: { type: string }
+        latitude: { type: string }
+        longitude: { type: string }
+        maps_url: { type: string, format: uri }
+        description: { type: string }
+        services_attributes: {}
+        photos:
+          type: array
+          items: { type: string, format: uri }
+        videos:
+          type: array
+          items: { type: string }
+        logo_url: { type: string }
+        social_links:
+          type: array
+          items: { type: string }
+        reviews:
+          type: array
+          items: {}
+        review_topics:
+          type: array
+          items: {}
+        additional_attributes: {}
+        media_items:
+          type: array
+          items: {}
+        plus_code: { type: string }
+        collected_at: { type: string }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+        message: { type: string }
