@@ -1,5 +1,11 @@
 # MapScrape REST API v1
 
+## Objetivo e uso sem clonagem
+
+O MapScrape é o serviço central de coleta. Projetos consumidores integram-se por HTTP/HTTPS usando a URL-base implantada e uma chave própria; não precisam clonar este repositório, instalar Puppeteer nem executar outro scraper. A coleta e a persistência são executadas pelo MapScrape. Configure apenas `MAPSCRAPE_API_BASE_URL` e `MAPSCRAPE_API_KEY` no backend de cada consumidor, depois de provisionar a credencial.
+
+Credenciais individuais isolam os trabalhos e leads pelo identificador `consumerProject`: um consumidor só pode consultar os trabalhos e leads criados pela própria credencial/projeto. Chaves estáticas configuradas em `MAPSCRAPE_API_KEYS` continuam disponíveis para compatibilidade, mas compartilham a identidade `operator-static-key`; não as use para separar consumidores independentes em produção.
+
 ## Base URL
 
 Use a URL de produção configurada para o serviço. Em desenvolvimento, use a origem do servidor local. Não codifique uma URL de produção presumida: defina `MAPSCRAPE_API_BASE_URL` no projeto consumidor.
@@ -142,7 +148,7 @@ Requer autenticação. Retorna os leads persistidos para uma coleta, com a mesma
 - `404 lead_not_found` / `job_not_found`: ID inexistente.
 - `422 invalid_request`, `invalid_limit` ou `invalid_pagination`: parâmetros inválidos.
 - `500`: falha ao consultar ou iniciar a operação.
-- `503 api_not_configured`: `MAPSCRAPE_API_KEYS` não foi configurada no servidor; ou dependência indisponível no endpoint de saúde.
+- `503`: indisponibilidade do banco ou falha na consulta de credenciais. O endpoint de saúde pode retornar `503` quando o banco estiver indisponível.
 
 A versão atual oferece cadastro/revogação de credenciais individuais e trilha de auditoria da emissão/revogação. Ainda não há quotas de consumo por consumidor nem endpoint dedicado para reviews/mídias: esses dados vêm dentro do registro completo. Não trate quotas por consumidor como existentes.
 
