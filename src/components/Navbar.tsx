@@ -1,7 +1,7 @@
 import React from 'react';
-import { Search, Table2, FileDown, History, MapPin } from 'lucide-react';
+import { Search, Table2, FileDown, History, MapPin, ScrollText } from 'lucide-react';
 
-export type ScreenTab = 'search' | 'results' | 'export' | 'history';
+export type ScreenTab = 'search' | 'results' | 'export' | 'history' | 'logs';
 
 interface NavbarProps {
   currentTab: ScreenTab;
