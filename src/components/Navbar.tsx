@@ -73,7 +73,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          <nav className="flex space-x-1 sm:space-x-2" aria-label="Navegação principal">
+          <nav className="flex max-w-[65vw] space-x-1 overflow-x-auto pb-1 sm:max-w-none sm:space-x-2" aria-label="Navegação principal">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = currentTab === tab.id;
@@ -83,7 +83,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   type="button"
                   aria-current={isActive ? 'page' : undefined}
                   onClick={() => onTabChange(tab.id)}
-                  className={`flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
+                  className={`flex shrink-0 items-center gap-2 whitespace-nowrap px-3.5 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
                     isActive
                       ? 'bg-zinc-900 text-white shadow-xs'
                       : 'text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100'
