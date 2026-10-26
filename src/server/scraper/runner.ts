@@ -449,14 +449,28 @@ export async function runScraperJob(
         // until the requested number of genuinely new candidates has been found.
         const existingPlace = await findPlaceByUrl(canonicalUrl);
         if (existingPlace) {
+          if (needsEnrichment(existingPlace)) {
+            // Include incomplete legacy records in the detail-processing queue
+            // so the UI can refresh them rather than silently skipping them.
+            discoveredUrls.push({ ...item, url: canonicalUrl, previewName: existingPlace.name || item.previewName });
+            newFoundInBatch++;
+            await safeAudit({
+              category: 'scraper',
+              event: 'place.enrichment_candidate',
+              message: 'Ficha existente tem campos de avaliação/mídia incompletos; será reprocessada.',
+              jobId,
+              metadata: { mapsUrl: canonicalUrl, existingPlaceId: existingPlace.id, existingName: existingPlace.name, missingFields: missingFields(existingPlace) },
+            });
+            continue;
+          }
           totalDuplicates++;
           duplicateUrlsDiscovered++;
           await safeAudit({
             category: 'scraper',
             event: 'place.duplicate_skipped',
-            message: 'Ficha já existe na base; ignorada durante a descoberta.',
+            message: 'Ficha já existe e os campos de enriquecimento estão preenchidos; ignorada durante a descoberta.',
             jobId,
-            metadata: { mapsUrl: canonicalUrl, previewName: item.previewName || '', existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'canonical_maps_url_exists' },
+            metadata: { mapsUrl: canonicalUrl, previewName: item.previewName || '', existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'duplicate_already_enriched' },
           });
           continue;
         }
