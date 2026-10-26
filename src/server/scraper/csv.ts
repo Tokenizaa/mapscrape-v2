@@ -8,8 +8,8 @@ export function sanitizeCsvCell(value: string | number | null | undefined): stri
   if (value === null || value === undefined) return '';
   let str = String(value);
 
-  // If starts with potential formula characters, prepend single quote
-  if (/^[=+\-@\t\r]/.test(str)) {
+  // Protect formulas even when the cell starts with whitespace/control characters.
+  if (/^[\s\u0000-\u001F]*[=+\-@]/.test(str) || /^[\t\r]/.test(str)) {
     str = `'${str}`;
   }
 
