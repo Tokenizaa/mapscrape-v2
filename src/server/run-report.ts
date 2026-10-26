@@ -38,6 +38,7 @@ export async function writeRunReport(jobId: string, baselineCount: number, updat
     name: place.name,
     maps_url: place.maps_url,
     collected_at: place.collected_at,
+    fields: place,
     missing_fields: missingFields(place),
     populated_fields: Object.keys(place).filter((key) => String((place as unknown as Record<string, unknown>)[key] ?? '').trim()).length,
   }));
