@@ -19,7 +19,20 @@ async function safeAudit(input: Parameters<typeof writeAuditLog>[0]): Promise<vo
 
 function missingFields(place: PlaceRecord): string[] {
   const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes', 'media_items', 'plus_code', 'collected_at'];
-  return fields.filter((field) => !String(place[field] ?? '').trim());
+  return fields.filter((field) => {
+    const value = String(place[field] ?? '').trim();
+    if (!value) return true;
+    if (field === 'reviews' || field === 'review_topics' || field === 'media_items') {
+      try { const parsed = JSON.parse(value); return !Array.isArray(parsed) || parsed.length === 0; } catch { return true; }
+    }
+    if (field === 'additional_attributes') {
+      try {
+        const parsed = JSON.parse(value) as { about_text?: string; labeled_attributes?: unknown[] };
+        return !parsed.about_text?.trim() && !(parsed.labeled_attributes?.length);
+      } catch { return true; }
+    }
+    return false;
+  });
 }
 
 
