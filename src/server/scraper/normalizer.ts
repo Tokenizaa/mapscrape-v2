@@ -86,11 +86,11 @@ export function normalizeBusinessStatus(raw: string | null | undefined): string 
   if (/permanently closed|fermé définitivement|cerrado permanentemente|fechado permanentemente/i.test(cleaned)) {
     return 'Fechado permanentemente';
   }
-  if (/\b(open|ouvert|abierto|aberta|aberto)\b/i.test(cleaned)) {
+  if (/(?:^|[^a-z])(?:open|ouvert|abierto|aberta|aberto)(?:$|[^a-z])/i.test(cleaned)) {
     const next = cleaned.match(/(?:closes|closing|ferme|fermera|fecha)\s+(?:at|à|a|às|as)?\s*([\d: h.]+)/i);
     return next ? `Aberto · fecha às ${next[1].trim()}` : 'Aberto';
   }
-  if (/\b(closed|fermé|fermée|cerrado|cerrada|fechado|fechada)\b/i.test(cleaned)) {
+  if (/(?:^|[^a-z])(?:closed|fermé|fermée|cerrado|cerrada|fechado|fechada)(?:$|[^a-z])/i.test(cleaned)) {
     return 'Fechado';
   }
   return cleaned;
