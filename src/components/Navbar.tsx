@@ -1,7 +1,7 @@
 import React from 'react';
-import { Search, Table2, FileDown, History, MapPin, ScrollText } from 'lucide-react';
+import { Search, Table2, FileDown, History, MapPin } from 'lucide-react';
 
-export type ScreenTab = 'search' | 'results' | 'export' | 'history' | 'logs';
+export type ScreenTab = 'search' | 'results' | 'export' | 'history';
 
 interface NavbarProps {
   currentTab: ScreenTab;
@@ -45,18 +45,12 @@ export const Navbar: React.FC<NavbarProps> = ({
       label: '4. Histórico',
       icon: History,
     },
-    {
-      id: 'logs' as ScreenTab,
-      label: '5. Logs',
-      icon: ScrollText,
-    },
   ];
 
   return (
     <header className="border-b border-zinc-200 bg-white sticky top-0 z-30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          {/* Logo & Identity */}
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-zinc-900 text-white flex items-center justify-center font-bold text-lg shadow-sm">
               <MapPin className="w-5 h-5 text-white" />
@@ -74,14 +68,15 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           </div>
 
-          {/* Navigation Tabs (Strictly 4 screens) */}
-          <nav className="flex space-x-1 sm:space-x-2">
+          <nav className="flex space-x-1 sm:space-x-2" aria-label="Navegação principal">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = currentTab === tab.id;
               return (
                 <button
                   key={tab.id}
+                  type="button"
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => onTabChange(tab.id)}
                   className={`flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg transition-colors duration-150 ${
                     isActive
@@ -92,11 +87,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-zinc-500'}`} />
                   <span>{tab.label}</span>
                   {tab.badge && (
-                    <span
-                      className={`text-[11px] px-1.5 py-0.2 rounded-full font-mono ${
-                        isActive ? 'bg-zinc-800 text-zinc-200' : tab.badgeColor
-                      }`}
-                    >
+                    <span className={`text-[11px] px-1.5 py-0.2 rounded-full font-mono ${isActive ? 'bg-zinc-800 text-zinc-200' : tab.badgeColor}`}>
                       {tab.badge}
                     </span>
                   )}
