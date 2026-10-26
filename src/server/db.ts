@@ -68,6 +68,11 @@ export async function initDb(): Promise<void> {
       videos TEXT DEFAULT '',
       logo_url TEXT DEFAULT '',
       social_links TEXT DEFAULT '',
+      reviews TEXT DEFAULT '[]',
+      review_topics TEXT DEFAULT '[]',
+      additional_attributes TEXT DEFAULT '{}',
+      media_items TEXT DEFAULT '[]',
+      plus_code TEXT DEFAULT '',
       collected_at TEXT NOT NULL,
       FOREIGN KEY (job_id) REFERENCES searches (id) ON DELETE CASCADE
     );
@@ -86,6 +91,16 @@ export async function initDb(): Promise<void> {
   try {
     await db.execute(`ALTER TABLE places ADD COLUMN social_links TEXT DEFAULT '';`);
   } catch {}
+
+  for (const [column, definition] of [
+    ['reviews', `TEXT DEFAULT '[]'`],
+    ['review_topics', `TEXT DEFAULT '[]'`],
+    ['additional_attributes', `TEXT DEFAULT '{}'`],
+    ['media_items', `TEXT DEFAULT '[]'`],
+    ['plus_code', `TEXT DEFAULT ''`],
+  ] as const) {
+    try { await db.execute(`ALTER TABLE places ADD COLUMN ${column} ${definition};`); } catch {}
+  }
 
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
@@ -172,8 +187,8 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
       id, job_id, name, category, address, phone, website,
       rating, review_count, price_range, opening_hours, business_status,
       latitude, longitude, maps_url, description, services_attributes,
-      photos, videos, logo_url, social_links, collected_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      photos, videos, logo_url, social_links, reviews, review_topics, additional_attributes, media_items, plus_code, collected_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       place.id,
       place.job_id,
@@ -196,6 +211,11 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
       place.videos || '',
       place.logo_url || '',
       place.social_links || '',
+      place.reviews || '[]',
+      place.review_topics || '[]',
+      place.additional_attributes || '{}',
+      place.media_items || '[]',
+      place.plus_code || '',
       place.collected_at,
     ],
   });
