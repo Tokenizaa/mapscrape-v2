@@ -19,7 +19,8 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       const candidates = Array.from(document.querySelectorAll('button'));
       const hoursButton = candidates.find((button) => {
         const label = [button.getAttribute('aria-label') || '', button.innerText || ''].join(' ');
-        return /horários de funcionamento|opening hours|horario de apertura|heures d.?ouverture/i.test(label);
+        return button.getAttribute('data-item-id') === 'oh' ||
+          /horários de funcionamento|opening hours|horario de apertura|heures d.?ouverture/i.test(label);
       });
       if (hoursButton) hoursButton.click();
     });
@@ -76,15 +77,15 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     ]);
     const reviewLabel = [attr(reviewNode, 'aria-label'), text(reviewNode)].filter(Boolean).join(' ');
     const parseReviewCount = (value: string): string => {
-      const normalized = value.replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
+      const normalized = value.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
       // Prefer explicitly labelled counts, including localized "mil" / "K" forms.
-      const labeled = normalized.match(/([\\d][\\d\\s.,]*(?:\\s*(?:mil|k|thousand))?)\\s*(?:avaliações?|reviews?|opiniones?|avis|bewertung(?:en)?|recensioni)/i);
+      const labeled = normalized.match(/([\d][\d\s.,]*(?:\s*(?:mil|k|thousand))?)\s*(?:avaliações?|reviews?|opiniones?|avis|bewertung(?:en)?|recensioni)/i);
       if (labeled) return labeled[1].trim();
       // Maps often renders "4,7 (587)" or "4,9 (1,2 mil)" in the rating cluster.
-      const parenthesized = normalized.match(/[([]\\s*([\\d][\\d\\s.,]*(?:\\s*(?:mil|k))?)\\s*[)\\]]/i);
-      if (parenthesized && !/^\\d[.,]\\d$/.test(parenthesized[1].trim())) return parenthesized[1].trim();
+      const parenthesized = normalized.match(/[([]\s*([\d][\d\s.,]*(?:\s*(?:mil|k))?)\s*[)\]]/i);
+      if (parenthesized && !/^\d[.,]\d$/.test(parenthesized[1].trim())) return parenthesized[1].trim();
       // A bare integer/grouped integer is a count; a decimal like 4.7 is not.
-      const bareCount = normalized.match(/^\\(?\\s*(\\d{1,3}(?:[.\\s]\\d{3})+|\\d+)\\s*\\)?$/);
+      const bareCount = normalized.match(/^\(?\s*(\d{1,3}(?:[.\s]\d{3})+|\d+)\s*\)?$/);
       return bareCount?.[1] || '';
     };
     // Google changes nested markup frequently. Read the rating cluster and all
@@ -171,7 +172,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     ].join(', ')));
     const services_attributes = Array.from(new Set(serviceEls
       .map(text)
-      .map((value) => value.replace(/\\s+/g, ' ').trim())
+      .map((value) => value.replace(/\s+/g, ' ').trim())
       .filter((value) => value && value.length < 1200 && !/^(serviços|services|acessibilidade|accessibility)$/i.test(value))))
       .join(' · ');
 
