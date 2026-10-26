@@ -45,6 +45,14 @@ export async function initDb(): Promise<void> {
     );
   `);
 
+  // Migrate databases created before per-user ownership was added to searches.
+  // Existing searches are kept but are unowned until explicitly reassigned.
+  try {
+    await db.execute(`ALTER TABLE searches ADD COLUMN user_id TEXT NOT NULL DEFAULT '';`);
+  } catch {
+    // Column already exists on fresh/current databases.
+  }
+
   await db.execute(`
     CREATE TABLE IF NOT EXISTS places (
       id TEXT PRIMARY KEY,
