@@ -130,11 +130,11 @@ try {
     note: "The secret value was not printed. Redeploy/restart the consumer if its platform requires it to load new secrets.",
   }, null, 2));
 } catch (error) {
-  if (credential?.credentialId && !secretStored) await revokeCredential(credential.credentialId);
+  if (credential?.credentialId) await revokeCredential(credential.credentialId);
   console.error(JSON.stringify({
     status: "failed",
     reason: error instanceof Error ? error.message : "Unknown provisioning failure",
-    credentialRevocationAttempted: Boolean(credential?.credentialId && !secretStored),
+    credentialRevocationAttempted: Boolean(credential?.credentialId),
   }, null, 2));
   process.exitCode = 1;
 }
