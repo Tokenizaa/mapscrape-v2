@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import puppeteer from 'puppeteer';
 import { countPlaces, getAllPlaces, getJob } from './db';
 import { listAuditLogs } from './audit-log';
 import { PlaceRecord } from '../shared/types';
@@ -15,7 +16,39 @@ function missingFields(place: PlaceRecord): string[] {
   return fields.filter((field) => !String(place[field] ?? '').trim());
 }
 
-export async function writeRunReport(jobId: string, baselineCount: number, updateLatest = true): Promise<string> {
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[char] || char);
+}
+
+function renderReportHtml(report: any): string {
+  const saved = report.data_quality.saved_records as any[];
+  const duplicates = report.duplicates as any[];
+  const events = (report.audit.events as any[]).slice(0, 80);
+  const run = report.run;
+  const rows = saved.map((item) => '<tr><td>' + escapeHtml(item.name) + '</td><td>' + escapeHtml(item.fields.category) + '</td><td>' + escapeHtml(item.fields.rating) + ' (' + escapeHtml(item.fields.review_count) + ')</td><td>' + escapeHtml(item.fields.address) + '</td><td>' + escapeHtml(item.fields.phone) + '</td><td>' + escapeHtml(item.fields.website) + '</td><td>' + escapeHtml(item.missing_fields.join(', ') || 'Nenhum') + '</td></tr>').join('');
+  const duplicateRows = duplicates.map((item) => '<tr><td>' + escapeHtml(item.existingName || item.previewName) + '</td><td>' + escapeHtml(item.existingJobId) + '</td><td>' + escapeHtml(item.existingCollectedAt) + '</td><td>' + escapeHtml(item.mapsUrl) + '</td></tr>').join('');
+  const eventRows = events.map((item) => '<tr><td>' + escapeHtml(item.created_at) + '</td><td>' + escapeHtml(item.level) + '</td><td>' + escapeHtml(item.event) + '</td><td>' + escapeHtml(item.message) + '</td></tr>').join('');
+  return '<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>' +
+    '@page{size:A4 landscape;margin:14mm 10mm}body{font:10px Arial,sans-serif;color:#18181b}h1{font-size:22px;margin:0 0 4px}h2{font-size:15px;margin:22px 0 8px}p{color:#52525b;margin:4px 0}.metrics{display:flex;gap:12px;margin:16px 0}.metric{border:1px solid #d4d4d8;border-radius:6px;padding:9px;min-width:110px}.metric strong{display:block;font-size:18px;margin-top:4px}table{width:100%;border-collapse:collapse;table-layout:fixed}th,td{border:1px solid #d4d4d8;padding:5px;text-align:left;vertical-align:top;overflow-wrap:anywhere}th{background:#f4f4f5}tr{break-inside:avoid}.note{margin-top:16px;font-size:9px}' +
+    '</style></head><body><h1>Relatório de execução MapScrape</h1>' +
+    '<p>Gerado em ' + escapeHtml(report.generated_at) + ' · Pesquisa ' + escapeHtml(run.id) + '</p>' +
+    '<p>Consulta: ' + escapeHtml(run.segment) + ' · ' + escapeHtml(run.location) + ' · Status: ' + escapeHtml(run.status) + '</p>' +
+    '<div class="metrics"><div class="metric">Base antes<strong>' + escapeHtml(report.database.total_before) + '</strong></div>' +
+    '<div class="metric">Base depois<strong>' + escapeHtml(report.database.total_after) + '</strong></div>' +
+    '<div class="metric">Crescimento líquido<strong>' + escapeHtml(report.database.net_growth) + '</strong></div>' +
+    '<div class="metric">Salvos nesta pesquisa<strong>' + escapeHtml(report.database.records_saved_by_run) + '</strong></div>' +
+    '<div class="metric">Duplicados<strong>' + escapeHtml(run.total_duplicates) + '</strong></div><div class="metric">Falhas<strong>' + escapeHtml(run.total_errors) + '</strong></div></div>' +
+    '<p>' + escapeHtml(run.status_message) + '</p><h2>Registros salvos e qualidade dos campos</h2>' +
+    '<table><thead><tr><th>Estabelecimento</th><th>Categoria</th><th>Nota / avaliações</th><th>Endereço</th><th>Telefone</th><th>Site</th><th>Campos ausentes</th></tr></thead><tbody>' + (rows || '<tr><td colspan="7">Nenhum registro novo salvo nesta execução.</td></tr>') + '</tbody></table>' +
+    '<h2>Duplicados ignorados</h2><table><thead><tr><th>Estabelecimento existente</th><th>Pesquisa original</th><th>Data da coleta original</th><th>Ficha Maps</th></tr></thead><tbody>' + (duplicateRows || '<tr><td colspan="4">Nenhum duplicado identificado.</td></tr>') + '</tbody></table>' +
+    '<h2>Eventos técnicos recentes (máximo 80)</h2><table><thead><tr><th>Data</th><th>Nível</th><th>Evento</th><th>Mensagem</th></tr></thead><tbody>' + (eventRows || '<tr><td colspan="4">Sem eventos de auditoria.</td></tr>') + '</tbody></table>' +
+    '<p class="note">Este relatório documenta a execução observada. Não comprova que o Google Maps apresentou todos os resultados possíveis. O JSON associado contém os dados completos para análise automatizada.</p></body></html>';
+}
+
+export async function writeRunReport(jobId: string, baselineCount: number, options: { updateLatest?: boolean; generatePdf?: boolean } = {}): Promise<string> {
   const job = await getJob(jobId);
   if (!job) throw new Error(`Cannot write run report: job ${jobId} was not found`);
 
@@ -75,6 +108,7 @@ export async function writeRunReport(jobId: string, baselineCount: number, updat
       saved_records: placeQuality,
     },
     duplicates: duplicateEvents,
+    artifacts: { json_file: jobId + '.json', pdf_file: jobId + '.pdf', pdf_generated: false as boolean },
     audit: {
       returned_count: audit.logs.length,
       total_matching_events: audit.total,
@@ -89,9 +123,36 @@ export async function writeRunReport(jobId: string, baselineCount: number, updat
   };
 
   await fs.mkdir(reportDirectory, { recursive: true });
-  const filePath = path.join(reportDirectory, `${jobId}.json`);
-  await fs.writeFile(filePath, JSON.stringify(report, null, 2) + '\n', 'utf8');
-  if (updateLatest) await fs.writeFile(path.join(reportDirectory, 'latest-audit.json'), JSON.stringify(report, null, 2) + '\n', 'utf8');
+  const filePath = path.join(reportDirectory, jobId + '.json');
+  const pdfPath = path.join(reportDirectory, jobId + '.pdf');
+  if (options.generatePdf !== false) {
+    let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
+    try {
+      report.artifacts.pdf_generated = true;
+      browser = await puppeteer.launch({ headless: true, args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'] });
+      const page = await browser.newPage();
+      await page.setContent(renderReportHtml(report), { waitUntil: 'domcontentloaded' });
+      const pdf = await page.pdf({
+        format: 'A4', landscape: true, printBackground: true, preferCSSPageSize: true,
+        displayHeaderFooter: true,
+        headerTemplate: '<div></div>',
+        footerTemplate: '<div style="font-size:8px;width:100%;text-align:center;color:#71717a;">MapScrape · Relatório de auditoria · <span class="pageNumber"></span>/<span class="totalPages"></span></div>',
+        margin: { top: '12mm', bottom: '14mm', left: '8mm', right: '8mm' },
+      });
+      await fs.writeFile(pdfPath, pdf);
+    } catch (error: any) {
+      report.artifacts.pdf_generated = false;
+      (report.artifacts as any).pdf_error = String(error?.message || error).slice(0, 1000);
+    } finally {
+      if (browser) await browser.close().catch(() => {});
+    }
+  }
+  const json = JSON.stringify(report, null, 2) + '\n';
+  await fs.writeFile(filePath, json, 'utf8');
+  if (options.updateLatest !== false) {
+    await fs.writeFile(path.join(reportDirectory, 'latest-audit.json'), json, 'utf8');
+    if (report.artifacts.pdf_generated) await fs.copyFile(pdfPath, path.join(reportDirectory, 'latest-audit.pdf'));
+  }
   return filePath;
 }
 
