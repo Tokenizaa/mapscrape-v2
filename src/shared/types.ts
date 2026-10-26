@@ -19,6 +19,8 @@ export interface PlaceRecord {
   photos?: string;
   videos?: string;
   logo_url?: string;
+  /** Social profile URLs explicitly present in the Google Maps place sheet, separated by |. */
+  social_links?: string;
   collected_at: string;
 }
 
@@ -72,5 +74,6 @@ export const EXPORTABLE_FIELDS: { key: keyof PlaceRecord; label: string; descrip
   { key: 'photos', label: 'Fotos (URLs)', description: 'URLs das fotos visíveis na ficha' },
   { key: 'videos', label: 'Vídeos (URLs)', description: 'URLs ou fontes de vídeos visíveis na ficha' },
   { key: 'logo_url', label: 'Logo / Foto de perfil', description: 'Imagem ou avatar exibido na ficha' },
+  { key: 'social_links', label: 'Redes sociais (URLs)', description: 'Links sociais explicitamente exibidos na ficha do Google Maps' },
   { key: 'collected_at', label: 'Data e hora da coleta', description: 'Registrada pelo aplicativo' },
 ];
