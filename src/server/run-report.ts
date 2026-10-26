@@ -15,7 +15,7 @@ function missingFields(place: PlaceRecord): string[] {
   return fields.filter((field) => !String(place[field] ?? '').trim());
 }
 
-export async function writeRunReport(jobId: string, baselineCount: number): Promise<string> {
+export async function writeRunReport(jobId: string, baselineCount: number, updateLatest = true): Promise<string> {
   const job = await getJob(jobId);
   if (!job) throw new Error(`Cannot write run report: job ${jobId} was not found`);
 
@@ -90,7 +90,7 @@ export async function writeRunReport(jobId: string, baselineCount: number): Prom
   await fs.mkdir(reportDirectory, { recursive: true });
   const filePath = path.join(reportDirectory, `${jobId}.json`);
   await fs.writeFile(filePath, JSON.stringify(report, null, 2) + '\n', 'utf8');
-  await fs.writeFile(path.join(reportDirectory, 'latest-audit.json'), JSON.stringify(report, null, 2) + '\n', 'utf8');
+  if (updateLatest) await fs.writeFile(path.join(reportDirectory, 'latest-audit.json'), JSON.stringify(report, null, 2) + '\n', 'utf8');
   return filePath;
 }
 
