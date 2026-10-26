@@ -47,7 +47,7 @@ describe('Per-run evidence report', () => {
     await insertPlace(place);
     await updateJobProgress(id, { status: 'completed', completed_at: new Date().toISOString() });
 
-    const reportPath = await writeRunReport(id, baseline, false);
+    const reportPath = await writeRunReport(id, baseline, { updateLatest: false, generatePdf: false });
     expect(reportPath).toContain(`${id}.json`);
     const report = await readRunReport(id) as any;
     expect(report).not.toBeNull();
