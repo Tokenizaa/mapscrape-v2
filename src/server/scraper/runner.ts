@@ -422,7 +422,7 @@ export async function runScraperJob(
         event: 'results.scroll',
         message: 'Rolagem da lista de resultados executada e medida.',
         jobId,
-        metadata: { scrollAttempt: scrollAttempts, target: scrollTarget, evidence: scrollEvidence, moved: scrollMoved },
+        metadata: { scrollAttempt: scrollAttempts, target: scrollTarget, evidence: scrollEvidence, moved: scrollTarget ? Math.abs(scrollEvidence.scrollTop - scrollTarget.beforeTop) > 2 : scrollMoved },
       });
       await page.waitForFunction(() => document.readyState === 'complete' || !!document.querySelector('div[role="feed"]'), { timeout: 2500 }).catch(() => {});
     }
