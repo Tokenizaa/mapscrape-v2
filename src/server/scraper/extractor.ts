@@ -220,8 +220,12 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
         document.querySelectorAll(selector).forEach((el) => {
           const media = el as HTMLVideoElement;
           const src = media.currentSrc || media.src || attr(el, 'src') || attr(el, 'href') || attr(el, 'data-video-url');
+          const accessibleLabel = attr(el, 'aria-label') || (el as HTMLElement).innerText || '';
           if (src.startsWith('http') && !src.includes('cleardot.gif') && !seenVideos.has(src)) {
             seenVideos.add(src); videoUrls.push(src);
+          } else if (/video|vídeo/i.test(accessibleLabel) && !seenVideos.has(accessibleLabel)) {
+            seenVideos.add(accessibleLabel);
+            videoUrls.push(accessibleLabel);
           }
         });
       } catch {}
@@ -328,7 +332,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       .filter((item) => item.label && !/^(all reviews|todas as avaliações|all|todas)$/i.test(item.label));
 
     // The About tab contains additional attributes not present in the overview.
-    clickByText(/^About$|About |Sobre|Informações/i);
+    clickByText(/^(?:About(?:\\s|$)|Sobre(?:\\s|$)|Informações(?:\\s|$))/i);
     await new Promise((resolve) => setTimeout(resolve, 180));
     const aboutText = ((document.querySelector('div[role="main"]') as HTMLElement | null)?.innerText || '')
       .split('\\n').map((line) => line.trim()).filter(Boolean).slice(-180).join('\\n');
