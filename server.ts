@@ -497,6 +497,39 @@ export async function createApp() {
     }
   });
 
+  // Rotate a consumer credential without exposing the previous secret.
+  // The bootstrap token is required; the new key is revealed only in this response.
+  app.post('/api/v1/provisioning/credentials/:id/rotate', async (req: Request, res: Response) => {
+    if (!hasProvisioningAccess(req)) return res.status(401).json({ error: 'provisioning_unauthorized' });
+    const id = String(req.params.id);
+    try {
+      const current = (await listApiCredentials()).find((entry) => entry.id === id && entry.status === 'active');
+      if (!current) return res.status(404).json({ error: 'active_credential_not_found' });
+      // Retire the old key before issuing a replacement so only one key per project remains active.
+      const revoked = await revokeApiCredential(id);
+      if (!revoked) return res.status(409).json({ error: 'credential_rotation_conflict' });
+      const secret = randomBytes(32).toString('hex');
+      const newId = `msc_${randomBytes(12).toString('hex')}`;
+      try {
+        await createApiCredential({
+          id: newId,
+          consumerName: current.consumer_name,
+          consumerProject: current.consumer_project,
+          keyHash: createHash('sha256').update(secret).digest('hex'),
+          createdAt: new Date().toISOString(),
+        });
+      } catch (error) {
+        await safeWriteAuditLog({ level: 'error', category: 'api', event: 'api_credential.rotation_failed', message: 'Falha ao criar a credencial substituta após revogação.', metadata: { previousCredentialId: id, consumerProject: current.consumer_project } });
+        return res.status(500).json({ error: 'credential_rotation_failed', message: 'A chave anterior foi revogada, mas a nova emissão falhou. Execute novamente a emissão para este projeto.' });
+      }
+      await safeWriteAuditLog({ category: 'api', event: 'api_credential.rotated', message: 'Credencial de API rotacionada.', metadata: { previousCredentialId: id, credentialId: newId, consumerProject: current.consumer_project } });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(201).json({ data: { credentialId: newId, previousCredentialId: id, apiKey: secret, consumerName: current.consumer_name, consumerProject: current.consumer_project, revealOnce: true } });
+    } catch {
+      return res.status(500).json({ error: 'credential_rotation_failed' });
+    }
+  });
+
   app.get('/api/v1/provisioning/credentials', async (req: Request, res: Response) => {
     if (!hasProvisioningAccess(req)) return res.status(401).json({ error: 'provisioning_unauthorized' });
     try { res.setHeader('Cache-Control', 'no-store'); return res.json({ data: await listApiCredentials() }); }
@@ -516,10 +549,8 @@ export async function createApp() {
 
   app.use('/api/v1', async (req: Request, res: Response, next) => {
     if (req.path === '/health' && req.method === 'GET') return next();
-    const hasStaticKeys = (process.env.MAPSCRAPE_API_KEYS || '').split(',').some((key) => key.trim());
-    if (!hasStaticKeys && !process.env.MAPSCRAPE_PROVISIONING_TOKEN) {
-      return res.status(503).json({ error: 'api_not_configured', message: 'Configure as credenciais de API no ambiente do servidor.' });
-    }
+    // Individual hashed credentials are persisted in the database; they remain valid
+    // even when no legacy static key or provisioning bootstrap token is configured.
     try {
       const consumer = await authenticatedConsumer(req);
       if (!consumer) return res.status(401).json({ error: 'unauthorized', message: 'Informe uma chave de API válida no cabeçalho Authorization: Bearer.' });
