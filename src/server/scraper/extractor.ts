@@ -357,6 +357,17 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       .split('\n').map((line) => line.trim()).filter(Boolean).slice(-180).join('\n');
     const additional_attributes = {
       about_text: aboutTabClicked ? aboutText.slice(0, 18000) : '',
+      sections: aboutTabClicked ? Array.from(document.querySelectorAll('div[role="main"] h2, div[role="main"] h3'))
+        .map((heading) => {
+          const category = ((heading as HTMLElement).innerText || '').replace(/\s+/g, ' ').trim();
+          const root = heading.parentElement?.parentElement || heading.parentElement;
+          const items = ((root as HTMLElement | null)?.innerText || '')
+            .split('\n').map((line) => line.replace(/\s+/g, ' ').trim())
+            .filter((line) => line && line !== category && line.length < 180);
+          return { category, items: Array.from(new Set(items)) };
+        })
+        .filter((section) => section.category && section.items.length)
+        .slice(0, 60) : [],
       labeled_attributes: aboutTabClicked ? Array.from(document.querySelectorAll('div[role="main"] button, div[role="main"] [role="button"]'))
         .map((node) => ({
           label: node.getAttribute('aria-label') || '',
