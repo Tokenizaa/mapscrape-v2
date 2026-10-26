@@ -256,3 +256,9 @@ export async function getAllPlaces(jobId?: string): Promise<PlaceRecord[]> {
   const res = await db.execute(`SELECT * FROM places ORDER BY collected_at DESC`);
   return res.rows as unknown as PlaceRecord[];
 }
+
+export async function countPlaces(): Promise<number> {
+  const db = getDb();
+  const result = await db.execute('SELECT COUNT(*) AS count FROM places');
+  return Number(result.rows[0]?.count ?? 0);
+}
