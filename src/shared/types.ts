@@ -21,6 +21,16 @@ export interface PlaceRecord {
   logo_url?: string;
   /** Social profile URLs explicitly present in the Google Maps place sheet, separated by |. */
   social_links?: string;
+  /** JSON array of publicly visible reviews captured from the place's Reviews panel. */
+  reviews?: string;
+  /** JSON array of review topic/category chips and counts. */
+  review_topics?: string;
+  /** JSON object of additional public attributes from the About panel. */
+  additional_attributes?: string;
+  /** JSON array of typed media objects for image/video preview rendering. */
+  media_items?: string;
+  /** Plus code shown on the public place sheet, when present. */
+  plus_code?: string;
   collected_at: string;
 }
 
@@ -76,5 +86,10 @@ export const EXPORTABLE_FIELDS: { key: keyof PlaceRecord; label: string; descrip
   { key: 'videos', label: 'Vídeos (URLs)', description: 'URLs ou fontes de vídeos visíveis na ficha' },
   { key: 'logo_url', label: 'Logo / Foto de perfil', description: 'Imagem ou avatar exibido na ficha' },
   { key: 'social_links', label: 'Redes sociais (URLs)', description: 'Links sociais explicitamente exibidos na ficha do Google Maps' },
+  { key: 'reviews', label: 'Avaliações individuais', description: 'Comentários, nota, autor, data, resposta do proprietário e mídia quando visíveis' },
+  { key: 'review_topics', label: 'Categorias dos comentários', description: 'Tópicos sugeridos pelo Google Maps e suas contagens' },
+  { key: 'additional_attributes', label: 'Atributos adicionais', description: 'Informações públicas da aba Sobre, incluindo facilidades e serviços' },
+  { key: 'media_items', label: 'Mídia estruturada', description: 'Itens de mídia com tipo, URL, texto alternativo e miniatura' },
+  { key: 'plus_code', label: 'Plus Code', description: 'Código geográfico apresentado na ficha' },
   { key: 'collected_at', label: 'Data e hora da coleta', description: 'Registrada pelo aplicativo' },
 ];
