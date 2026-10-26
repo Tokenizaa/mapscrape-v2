@@ -99,6 +99,7 @@ async function startServer() {
       });
     } catch (err: any) {
       console.error('Start error:', err);
+      await writeAuditLog({ level: 'error', category: 'api', event: 'job.start_failed', message: err?.message || 'Falha ao iniciar coleta.', metadata: { stack: String(err?.stack || '').slice(0, 4000) } }).catch(() => {});
       return res.status(500).json({ error: err.message || 'Erro ao iniciar coleta.' });
     }
   });
@@ -107,6 +108,7 @@ async function startServer() {
   app.post('/api/scrape/stop/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
     const stopped = stopScrapeJob(id);
+    await writeAuditLog({ level: stopped ? 'warn' : 'info', category: 'scraper', event: stopped ? 'job.stop_requested' : 'job.stop_not_active', message: stopped ? 'Interrupção solicitada pelo usuário.' : 'Solicitação de interrupção para tarefa não ativa.', jobId: id });
     return res.json({
       success: true,
       stopped,
