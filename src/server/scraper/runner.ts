@@ -393,7 +393,7 @@ export async function runScraperJob(
       await page.waitForFunction((known) => {
         const anchors = Array.from(document.querySelectorAll('div[role="feed"] a[href*="/maps/place/"]')) as HTMLAnchorElement[];
         return anchors.some((a) => {
-          const url = a.href.split('?')[0].replace(/\\/$/, '');
+          const url = a.href.split('?')[0].replace(/\/$/, '');
           return url && !known.includes(url);
         });
       }, { timeout: 3000 }, knownUrls).catch(() => {});
