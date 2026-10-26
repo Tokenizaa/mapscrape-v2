@@ -51,6 +51,49 @@ export async function createApp() {
     }
   });
 
+  // Safe production diagnostic: verifies the configured remote Chromium endpoint without exposing credentials.
+  app.get('/api/health/browser', async (_req: Request, res: Response) => {
+    const endpoint = process.env.BROWSER_WS_ENDPOINT?.trim();
+    if (!endpoint) {
+      return res.status(503).json({ status: 'error', reason: 'BROWSER_WS_ENDPOINT ausente ou vazia.' });
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(endpoint);
+    } catch {
+      return res.status(503).json({
+        status: 'error',
+        reason: 'BROWSER_WS_ENDPOINT não é uma URL absoluta válida.',
+        endpointLength: endpoint.length,
+        hasScheme: /^[a-z][a-z0-9+.-]*:/i.test(endpoint),
+      });
+    }
+    const diagnostic = {
+      protocol: parsed.protocol,
+      hostname: parsed.hostname,
+      hasCredentials: Boolean(parsed.username || parsed.password),
+      hasQuery: Boolean(parsed.search),
+      pathDepth: parsed.pathname.split('/').filter(Boolean).length,
+      endpointLength: endpoint.length,
+    };
+    if (!['ws:', 'wss:', 'http:', 'https:', 'ws+unix:'].includes(parsed.protocol)) {
+      return res.status(503).json({ status: 'error', reason: 'Protocolo não aceito pelo Puppeteer/WebSocket.', ...diagnostic });
+    }
+    try {
+      const puppeteer = (await import('puppeteer')).default;
+      const browser = await puppeteer.connect({ browserWSEndpoint: endpoint, protocolTimeout: 10000 });
+      await browser.close();
+      return res.json({ status: 'ok', connection: 'connected-and-closed', ...diagnostic });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Falha desconhecida';
+      return res.status(503).json({
+        status: 'error',
+        reason: message.slice(0, 240),
+        ...diagnostic,
+      });
+    }
+  });
+
   // In-memory SSE connections for live job updates
   const sseClients = new Map<string, Response[]>();
 
