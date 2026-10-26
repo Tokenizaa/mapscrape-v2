@@ -8,8 +8,10 @@ MapScrape coleta e persiste informações publicamente exibidas nas fichas do Go
 - [Prompt de integração para LLMs](docs/INTEGRATION-FOR-LLMS.md)
 - [Como criar a tela de leads com cards e modal completo](docs/EMBED-LEADS-UI.md)
 - [OpenAPI](docs/openapi.yaml)
+- [Provisionamento automatizado de consumidores](docs/API.md#provisionamento-automatizado-de-consumidores)
+- Instalador: `scripts/provision-consumer.mjs` (Vercel e Cloudflare Workers)
 
-A API v1 é implementada em `server.ts`. Configure `MAPSCRAPE_API_KEYS` no ambiente do servidor antes de disponibilizar endpoints autenticados. Gere uma chave forte (por exemplo, `openssl rand -hex 32`) e mantenha-a exclusivamente em um secret server-side; nunca a exponha no browser.
+A API v1 é implementada em `server.ts`. Para compatibilidade, `MAPSCRAPE_API_KEYS` continua aceitando chaves estáticas; para novas integrações, use credenciais individuais emitidas pelo provisionador, armazenadas como hash e revogáveis. Configure `MAPSCRAPE_PROVISIONING_TOKEN` como secret de infraestrutura e use `scripts/provision-consumer.mjs` para gravar a chave diretamente em Vercel ou Cloudflare sem expô-la ao chat ou ao código.
 
 ## Endpoints principais
 
@@ -19,6 +21,8 @@ A API v1 é implementada em `server.ts`. Configure `MAPSCRAPE_API_KEYS` no ambie
 - `POST /api/v1/jobs` — inicia uma coleta.
 - `GET /api/v1/jobs/{id}` — acompanha status e progresso.
 - `GET /api/v1/jobs/{id}/results` — resultados da coleta, paginados.
+- `POST /api/v1/provisioning/credentials` — emite credencial individual (bootstrap token).
+- `GET /api/v1/provisioning/credentials` e `DELETE /api/v1/provisioning/credentials/{id}` — administra/revoga credenciais.
 
 A API v1 requer `Authorization: Bearer <API_KEY>`, exceto o endpoint de saúde. Os endpoints legados permanecem para compatibilidade com a interface existente.
 
