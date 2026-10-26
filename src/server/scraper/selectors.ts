@@ -113,7 +113,7 @@ export const SELECTORS = {
       'img[data-src*="googleusercontent.com"]',
       'button[aria-label*="Ver todas as fotos"] img',
       'button[aria-label*="See all photos"] img',
-      'div[role="main"] img[src^="https://lh3.googleusercontent.com/"],
+      'div[role="main"] img[src^="https://lh3.googleusercontent.com/"]',
       'button[aria-label*="Foto"] img',
       'div.Z5vB5 img',
       'div.RZ66Rb img',
