@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "vite build",
-    "start": "node server.ts",
+    "start": "node --import tsx server.ts",
     "preview": "vite preview",
     "test": "vitest run",
     "clean": "rm -rf dist server.js",
@@ -43,6 +43,7 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "@vercel/node": "^5.5.20"
   }
 }
