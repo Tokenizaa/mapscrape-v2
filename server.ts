@@ -39,6 +39,18 @@ export async function createApp() {
 
   app.use(express.json());
 
+  // Lightweight production health check: createApp() has already initialized the database.
+  app.get('/api/health', async (_req: Request, res: Response) => {
+    try {
+      const { countPlaces } = await import('./src/server/db');
+      const totalPlaces = await countPlaces();
+      return res.json({ status: 'ok', database: 'connected', totalPlaces, timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error('Health check failed:', error);
+      return res.status(503).json({ status: 'degraded', database: 'unavailable' });
+    }
+  });
+
   // In-memory SSE connections for live job updates
   const sseClients = new Map<string, Response[]>();
 
