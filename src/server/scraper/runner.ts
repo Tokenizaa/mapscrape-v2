@@ -387,9 +387,17 @@ export async function runScraperJob(
         await page.mouse.wheel({ deltaY: 650 });
       }
 
-      // Give Maps time to append/recycle cards, then capture evidence that the
-      // result pane is progressing rather than repeatedly exposing the first 20.
-      await new Promise((resolve) => setTimeout(resolve, 1800));
+      // Wait for a result URL that was not in any earlier batch. Merely waiting
+      // for the feed element is insufficient: it already exists when scrolling fails.
+      const knownUrls = Array.from(seenUrlsInRun);
+      await page.waitForFunction((known) => {
+        const anchors = Array.from(document.querySelectorAll('div[role="feed"] a[href*="/maps/place/"]')) as HTMLAnchorElement[];
+        return anchors.some((a) => {
+          const url = a.href.split('?')[0].replace(/\\/$/, '');
+          return url && !known.includes(url);
+        });
+      }, { timeout: 3000 }, knownUrls).catch(() => {});
+      await new Promise((resolve) => setTimeout(resolve, 500));
       const scrollEvidence = await page.evaluate(() => {
         const feed = document.querySelector('div[role="feed"]') as HTMLElement | null;
         const links = Array.from(document.querySelectorAll('div[role="feed"] a[href*="/maps/place/"]'))
