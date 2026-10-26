@@ -164,16 +164,25 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       '[aria-label*="Da empresa"]',
       ...selectors.description,
     ]);
-    const serviceEls = Array.from(document.querySelectorAll([
-      '[aria-label*="Serviços"]',
-      '[aria-label*="Services"]',
-      '[data-item-id*="service"]',
+    const serviceSelectors = [
+      '[aria-label*="Serviços"]', '[aria-label*="Services"]',
+      '[aria-label*="Menu"]', '[aria-label*="Products and services"]',
+      '[data-item-id*="service"]', '[data-item-id*="menu"]',
+      '[role="main"] [class*="service"]', '[role="main"] [class*="Service"]',
       ...selectors.services,
-    ].join(', ')));
-    const services_attributes = Array.from(new Set(serviceEls
-      .map(text)
-      .map((value) => value.replace(/\s+/g, ' ').trim())
-      .filter((value) => value && value.length < 1200 && !/^(serviços|services|acessibilidade|accessibility)$/i.test(value))))
+    ];
+    const serviceEls = Array.from(document.querySelectorAll(serviceSelectors.join(', ')));
+    const serviceLines = serviceEls.flatMap((element) => {
+      const value = text(element).replace(/\\s+/g, ' ').trim();
+      const descendants = Array.from(element.querySelectorAll('li,[role="listitem"],button,[role="button"],a'))
+        .map((child) => text(child).replace(/\\s+/g, ' ').trim())
+        .filter(Boolean);
+      return [value, ...descendants];
+    });
+    const services_attributes = Array.from(new Set(serviceLines
+      .filter((value) => value && value.length < 1200)
+      .filter((value) => !/^(serviços|services|acessibilidade|accessibility|menu|products and services)$/i.test(value))
+      .filter((value) => !/^(ver mais|show more|saiba mais|learn more)$/i.test(value))))
       .join(' · ');
 
     const photoUrls: string[] = [];
@@ -244,9 +253,20 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       (element as HTMLElement).click();
       return true;
     };
-    clickByText(/^Reviews$|Reviews for|Avaliações|Comentários/i);
-    await new Promise((resolve) => setTimeout(resolve, 180));
-    clickByText(/^More reviews|Mais avaliações|Mais comentários|Ver todas as avaliações/i);
+    const reviewTab = Array.from(document.querySelectorAll('button,[role="tab"],[role="button"]')).find((candidate) =>
+      /reviews?|avaliações?|comentários?/i.test([
+        (candidate as HTMLElement).innerText || '',
+        candidate.getAttribute('aria-label') || '',
+        candidate.getAttribute('data-tab') || '',
+      ].join(' ')) &&
+      !/sort|ordenar|translate|traduzir|reply|responder/i.test([
+        (candidate as HTMLElement).innerText || '', candidate.getAttribute('aria-label') || '',
+      ].join(' '))
+    );
+    if (reviewTab) (reviewTab as HTMLElement).click();
+    else clickByText(/^Reviews$|Reviews for|Avaliações|Comentários/i);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    clickByText(/^More reviews|Mais avaliações|Mais comentários|Ver todas as avaliações|See all reviews/i);
     await new Promise((resolve) => setTimeout(resolve, 250));
 
     const reviews: any[] = [];
