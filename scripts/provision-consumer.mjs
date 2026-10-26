@@ -44,6 +44,33 @@ async function jsonRequest(url, options = {}) {
   return body;
 }
 
+async function verifyTargetAccess() {
+  if (provider === "vercel") {
+    const token = required("VERCEL_TOKEN");
+    const projectId = required("VERCEL_PROJECT_ID");
+    const teamId = process.env.VERCEL_TEAM_ID?.trim();
+    const query = teamId ? `?teamId=${encodeURIComponent(teamId)}` : "";
+    await jsonRequest(`https://api.vercel.com/v9/projects/${encodeURIComponent(projectId)}${query}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (consumerProject !== projectId && consumerProject !== `${teamId || "vercel"}/${projectId}`) {
+      throw new Error("CONSUMER_PROJECT must match VERCEL_PROJECT_ID (or teamId/projectId) to bind the credential to the verified project.");
+    }
+    return;
+  }
+
+  const token = required("CLOUDFLARE_API_TOKEN");
+  const accountId = required("CLOUDFLARE_ACCOUNT_ID");
+  const workerName = required("CLOUDFLARE_WORKER_NAME");
+  const expectedProject = `${accountId}/${workerName}`;
+  if (consumerProject !== expectedProject) {
+    throw new Error("For Cloudflare, CONSUMER_PROJECT must equal CLOUDFLARE_ACCOUNT_ID/CLOUDFLARE_WORKER_NAME.");
+  }
+  await jsonRequest(`https://api.cloudflare.com/client/v4/accounts/${encodeURIComponent(accountId)}/workers/scripts/${encodeURIComponent(workerName)}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 async function issueCredential() {
   const result = await jsonRequest(`${baseUrl}/api/v1/provisioning/credentials`, {
     method: "POST",
@@ -107,6 +134,8 @@ async function revokeCredential(id) {
 let credential;
 try {
   if (!["vercel", "cloudflare"].includes(provider)) throw new Error("TARGET_PROVIDER must be vercel or cloudflare.");
+  // Prove that this agent can access the actual target project before issuing a credential.
+  await verifyTargetAccess();
   credential = await issueCredential();
   if (provider === "vercel") await storeInVercel(credential.apiKey);
   else storeInCloudflare(credential.apiKey);
