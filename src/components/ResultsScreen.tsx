@@ -173,7 +173,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     return place.videos.split(' | ').filter((u) => u.startsWith('http'));
   };
 
-  const parseJsonField = <T,>(value?: string, fallback: T): T => {
+  const parseJsonField = <T,>(value: string | undefined, fallback: T): T => {
     if (!value?.trim()) return fallback;
     try { return JSON.parse(value) as T; } catch { return fallback; }
   };
