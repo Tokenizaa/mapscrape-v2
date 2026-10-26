@@ -51,46 +51,44 @@ export async function createApp() {
     }
   });
 
-  // Safe production diagnostic: verifies the configured remote Chromium endpoint without exposing credentials.
+  // Safe production diagnostic uses the same normalized WebSocket URL as the scraper.
   app.get('/api/health/browser', async (_req: Request, res: Response) => {
-    const endpoint = process.env.BROWSER_WS_ENDPOINT?.trim();
-    if (!endpoint) {
-      return res.status(503).json({ status: 'error', reason: 'BROWSER_WS_ENDPOINT ausente ou vazia.' });
-    }
-    let parsed: URL;
+    let endpoint: string;
     try {
-      parsed = new URL(endpoint);
-    } catch {
-      return res.status(503).json({
-        status: 'error',
-        reason: 'BROWSER_WS_ENDPOINT não é uma URL absoluta válida.',
-        endpointLength: endpoint.length,
-        hasScheme: /^[a-z][a-z0-9+.-]*:/i.test(endpoint),
-      });
-    }
-    const diagnostic = {
-      protocol: parsed.protocol,
-      hostname: parsed.hostname,
-      hasCredentials: Boolean(parsed.username || parsed.password),
-      hasQuery: Boolean(parsed.search),
-      pathDepth: parsed.pathname.split('/').filter(Boolean).length,
-      endpointLength: endpoint.length,
-    };
-    if (!['ws:', 'wss:', 'http:', 'https:', 'ws+unix:'].includes(parsed.protocol)) {
-      return res.status(503).json({ status: 'error', reason: 'Protocolo não aceito pelo Puppeteer/WebSocket.', ...diagnostic });
-    }
-    try {
+      const { getBrowserWSEndpoint, getBrowserEndpointDiagnostic } = await import('./src/server/browserless-endpoint');
+      endpoint = getBrowserWSEndpoint();
+      const diagnostic = getBrowserEndpointDiagnostic(endpoint);
       const puppeteer = (await import('puppeteer')).default;
-      const browser = await puppeteer.connect({ browserWSEndpoint: endpoint, protocolTimeout: 10000 });
+      const browser = await puppeteer.connect({ browserWSEndpoint: endpoint, protocolTimeout: 30000 });
       await browser.close();
       return res.json({ status: 'ok', connection: 'connected-and-closed', ...diagnostic });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Falha desconhecida';
-      return res.status(503).json({
-        status: 'error',
-        reason: message.slice(0, 240),
-        ...diagnostic,
-      });
+      // Never return the configured URL or query string: it contains the token.
+      let diagnostic: Record<string, string | boolean | number> = {};
+      try {
+        const { getBrowserEndpointDiagnostic } = await import('./src/server/browserless-endpoint');
+        if (endpoint!) diagnostic = getBrowserEndpointDiagnostic(endpoint);
+      } catch {
+        const configured = process.env.BROWSER_WS_ENDPOINT?.trim();
+        if (!configured) {
+          return res.status(503).json({ status: 'error', reason: 'BROWSER_WS_ENDPOINT ausente ou vazia.' });
+        }
+        try {
+          const raw = new URL(configured);
+          diagnostic = {
+            protocol: raw.protocol,
+            hostname: raw.hostname,
+            hasCredentials: Boolean(raw.username || raw.password),
+            hasQuery: Boolean(raw.search),
+            pathDepth: raw.pathname.split('/').filter(Boolean).length,
+            endpointLength: configured.length,
+          };
+        } catch {
+          diagnostic = { reason: 'URL configurada inválida', endpointLength: configured.length };
+        }
+      }
+      return res.status(503).json({ status: 'error', reason: message.slice(0, 240), ...diagnostic });
     }
   });
 
