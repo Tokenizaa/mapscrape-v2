@@ -167,20 +167,22 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
   });
 }
 
-export async function placeExistsByUrl(url: string, _jobId?: string): Promise<boolean> {
-  if (!url || !url.trim()) return false;
+export async function findPlaceByUrl(url: string): Promise<PlaceRecord | null> {
+  if (!url || !url.trim()) return null;
   const db = getDb();
-
-  // Deduplicate globally, not only inside the current search. Google Maps
-  // often appends tracking/query parameters to the same place URL.
   const cleanUrl = url.trim().split('?')[0].replace(/\/$/, '');
-  if (!cleanUrl) return false;
+  if (!cleanUrl) return null;
   const res = await db.execute({
-    sql: `SELECT id FROM places WHERE rtrim(substr(maps_url, 1, instr(maps_url || '?', '?') - 1), '/') = ? LIMIT 1`,
+    sql: `SELECT * FROM places WHERE rtrim(substr(maps_url, 1, instr(maps_url || '?', '?') - 1), '/') = ? LIMIT 1`,
     args: [cleanUrl],
   });
-  return res.rows.length > 0;
+  return res.rows.length ? res.rows[0] as unknown as PlaceRecord : null;
 }
+
+export async function placeExistsByUrl(url: string, _jobId?: string): Promise<boolean> {
+  return (await findPlaceByUrl(url)) !== null;
+}
+
 export async function getPlaces(options: {
   jobId?: string;
   query?: string;
