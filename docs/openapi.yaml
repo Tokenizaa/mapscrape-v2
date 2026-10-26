@@ -38,11 +38,6 @@ paths:
         - provisioningToken: []
       summary: Emitir uma credencial individual de consumidor (exibida uma única vez)
       description: Requer autorização bootstrap mantida apenas em secrets de infraestrutura confiáveis. A chave retornada deve ser gravada diretamente no provedor do consumidor.
-      parameters:
-        - in: header
-          name: X-MapScrape-Provisioning-Token
-          required: true
-          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -77,11 +72,6 @@ paths:
       security:
         - provisioningToken: []
       summary: Listar metadados de credenciais
-      parameters:
-        - in: header
-          name: X-MapScrape-Provisioning-Token
-          required: true
-          schema: { type: string }
       responses:
         '200':
           description: Lista sem valores secretos
@@ -92,11 +82,6 @@ paths:
       security:
         - provisioningToken: []
       summary: Revogar uma credencial individual
-      parameters:
-        - in: header
-          name: X-MapScrape-Provisioning-Token
-          required: true
-          schema: { type: string }
         - $ref: '#/components/parameters/Id'
       responses:
         '200':
