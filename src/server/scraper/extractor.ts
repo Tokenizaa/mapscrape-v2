@@ -36,7 +36,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       }
       return '';
     };
-    const cleanLabel = (value: string): string => value.replace(/^(endereço|address|telefone|phone|site|website|preço|price)\s*:\s*/i, '').trim();
+    const cleanLabel = (value: string): string => value.replace(/^(endereço|address|adresse|dirección|telefone|phone|téléphone|teléfono|site|website|sito web|sitio web|preço|price|prix)\s*:\s*/i, '').trim();
 
     const name = firstText(selectors.title);
     const category = firstText(selectors.category);
@@ -110,10 +110,12 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     }
 
     const statusCandidates = Array.from(document.querySelectorAll(
-      '[aria-label*="Aberto"], [aria-label*="Fechado"], [aria-label*="Open"], [aria-label*="Closed"], .ZDu9vd, .o0Svhf'
+      '[aria-label*="Aberto"], [aria-label*="Fechado"], [aria-label*="Open"], [aria-label*="Closed"],' +
+      '[aria-label*="Fermé"], [aria-label*="Ouvert"], [aria-label*="Cerrado"], [aria-label*="Abierto"],' +
+      '.ZDu9vd, .o0Svhf'
     ));
     const statusText = statusCandidates.map((el) => attr(el, 'aria-label') || text(el))
-      .find((value) => /aberto|fechado|open|closed/i.test(value)) || '';
+      .find((value) => /aberto|fechado|open|closed|fermé|fermée|ouvert|abierto|cerrado/i.test(value)) || '';
 
     const description = firstText(selectors.description);
     const serviceEls = Array.from(document.querySelectorAll(selectors.services.join(', ')));
