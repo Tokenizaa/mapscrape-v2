@@ -173,9 +173,9 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     ];
     const serviceEls = Array.from(document.querySelectorAll(serviceSelectors.join(', ')));
     const serviceLines = serviceEls.flatMap((element) => {
-      const value = text(element).replace(/\\s+/g, ' ').trim();
+      const value = text(element).replace(/\s+/g, ' ').trim();
       const descendants = Array.from(element.querySelectorAll('li,[role="listitem"],button,[role="button"],a'))
-        .map((child) => text(child).replace(/\\s+/g, ' ').trim())
+        .map((child) => text(child).replace(/\s+/g, ' ').trim())
         .filter(Boolean);
       return [value, ...descendants];
     });
@@ -473,7 +473,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     // labelled logo. Preserve a real business-owned image as the profile-image
     // fallback; never substitute a reviewer avatar.
     if (!logo_url) {
-      logo_url = photoUrls.find((url) => /googleusercontent\\.com/i.test(url)) || '';
+      logo_url = photoUrls.find((url) => /googleusercontent\.com/i.test(url)) || '';
     }
 
     videoUrls.forEach((url) => media_items.push({ type: 'video', url, thumbnail_url: '', title: '' }));
