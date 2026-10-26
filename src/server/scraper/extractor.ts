@@ -61,7 +61,8 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     const reviewLabel = [attr(reviewNode, 'aria-label'), text(reviewNode)].filter(Boolean).join(' ');
     const reviewMatch = reviewLabel.match(/([\d.,\s]+)\s*(?:avaliações|avaliação|reviews|review|opiniões)/i)
       || ratingLabel.match(/([\d.,\s]+)\s*(?:avaliações|avaliação|reviews|review|opiniões)/i);
-    const review_count = reviewMatch?.[1]?.trim() || '';
+    const reviewCountFallback = reviewLabel.match(/\(?([\d.,]+)\)?/);
+    const review_count = reviewMatch?.[1]?.trim() || reviewCountFallback?.[1] || '';
 
     const addressNode = first(['button[data-item-id="address"]', '[data-item-id="address"]', ...selectors.address]);
     const phoneNode = first(['button[data-item-id^="phone:tel:"]', 'button[data-item-id^="phone:"]', ...selectors.phone]);
