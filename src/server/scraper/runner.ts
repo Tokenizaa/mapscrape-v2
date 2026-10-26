@@ -357,13 +357,15 @@ export async function runScraperJob(
         await page.mouse.move(scrollTarget.x, scrollTarget.y);
         await page.mouse.wheel({ deltaY: 650 });
         await new Promise((resolve) => setTimeout(resolve, 350));
-        const wheelMoved = await page.evaluate(() => {
+        const wheelMoved = await page.evaluate((beforeTop) => {
           const feed = document.querySelector('div[role="feed"]') as HTMLElement | null;
           if (!feed) return false;
           const candidates = [feed, ...Array.from(feed.querySelectorAll('*'))] as HTMLElement[];
-          return candidates.some((el) => el.clientHeight > 100 && el.scrollHeight > el.clientHeight + 20 &&
-            (el.scrollTop > 0 || el.scrollTop < el.scrollHeight - el.clientHeight - 2));
-        });
+          const target = candidates
+            .filter((el) => el.clientHeight > 100 && el.scrollHeight > el.clientHeight + 20)
+            .sort((a, b) => (b.scrollHeight - b.clientHeight) - (a.scrollHeight - a.clientHeight))[0] || feed;
+          return Math.abs(target.scrollTop - beforeTop) > 2;
+        }, scrollTarget.beforeTop);
         scrollMoved = wheelMoved;
 
         if (!scrollMoved) {
