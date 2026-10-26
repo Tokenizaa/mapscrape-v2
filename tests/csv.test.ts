@@ -10,6 +10,11 @@ describe('CSV Module and Formula Sanitization', () => {
     expect(sanitizeCsvCell('@IMPORTXML("url")')).toBe('"\'@IMPORTXML(""url"")"');
   });
 
+  it('protects formulas preceded by whitespace or control characters', () => {
+    expect(sanitizeCsvCell('  =1+1')).toBe("'  =1+1");
+    expect(sanitizeCsvCell('\t@SUM(A1)')).toBe("'\t@SUM(A1)");
+  });
+
   it('escapes quotes and handles commas and newlines properly', () => {
     expect(sanitizeCsvCell('Padaria, Confeitaria e Bar')).toBe('"Padaria, Confeitaria e Bar"');
     expect(sanitizeCsvCell('Restaurante "O Pescador"')).toBe('"Restaurante ""O Pescador"""');
