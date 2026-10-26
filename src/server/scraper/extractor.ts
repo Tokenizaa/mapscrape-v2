@@ -59,10 +59,17 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       ...selectors.reviews,
     ]);
     const reviewLabel = [attr(reviewNode, 'aria-label'), text(reviewNode)].filter(Boolean).join(' ');
-    const reviewMatch = reviewLabel.match(/([\d.,\s]+)\s*(?:avaliações|avaliação|reviews|review|opiniões)/i)
-      || ratingLabel.match(/([\d.,\s]+)\s*(?:avaliações|avaliação|reviews|review|opiniões)/i);
-    const reviewCountFallback = reviewLabel.match(/\(?([\d.,]+)\)?/);
-    const review_count = reviewMatch?.[1]?.trim() || reviewCountFallback?.[1] || '';
+    const parseReviewCount = (value: string): string => {
+      const labeled = value.match(/([\d\s.,]+)\s*(?:avaliações?|reviews?|opiniones?|avis|bewertung(?:en)?|recensioni)/i);
+      if (labeled) return labeled[1].trim();
+      // Maps often renders "4,7 (587)" with the count in parentheses.
+      const parenthesized = value.match(/[([]\s*([\d\s.,]+)\s*[)\]]/);
+      if (parenthesized) return parenthesized[1].trim();
+      // A bare integer/grouped integer is a count; a decimal like 4.7 is not.
+      const bareCount = value.trim().match(/^\(?\s*(\d{1,3}(?:[.\s]\d{3})+|\d+)\s*\)?$/);
+      return bareCount?.[1] || '';
+    };
+    const review_count = parseReviewCount(reviewLabel) || parseReviewCount(ratingLabel);
 
     const addressNode = first(['button[data-item-id="address"]', '[data-item-id="address"]', ...selectors.address]);
     const phoneNode = first(['button[data-item-id^="phone:tel:"]', 'button[data-item-id^="phone:"]', ...selectors.phone]);
@@ -77,7 +84,15 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
 
     // Capture the visible weekly schedule as rows, rather than one generic wrapper
     // whose text may only say "Horários" or "Aberto".
-    const hoursTable = first(['table.eKjhbv', 'table[aria-label*="Horário"]', 'table[aria-label*="Hours"]']);
+    const hoursTable = first([
+      'table[aria-label*="Horário"]', 'table[aria-label*="Hours"]',
+      'table[aria-label*="Heures"]', 'table[aria-label*="Horario"]',
+      'table.eKjhbv',
+    ]) || Array.from(document.querySelectorAll('table')).find((table) =>
+      Array.from(table.querySelectorAll('tr')).some((row) =>
+        /segunda|terça|quarta|quinta|sexta|sábado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday|lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche/i.test(text(row))
+      )
+    ) || null;
     let opening_hours = '';
     if (hoursTable) {
       opening_hours = Array.from(hoursTable.querySelectorAll('tr'))
@@ -86,7 +101,11 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
         .join(' | ');
     }
     if (!opening_hours) {
-      const hoursButton = first(['button[data-item-id="oh"]', 'button[aria-label*="Horários de funcionamento"]', 'button[aria-label*="Opening hours"]']);
+      const hoursButton = first([
+        'button[data-item-id="oh"]', 'button[aria-label*="Horários de funcionamento"]',
+        'button[aria-label*="Opening hours"]', 'button[aria-label*="Heures d’ouverture"]',
+        'button[aria-label*="Horario de apertura"]',
+      ]);
       opening_hours = text(hoursButton) || attr(hoursButton, 'aria-label');
     }
 
