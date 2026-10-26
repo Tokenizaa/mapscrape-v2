@@ -239,7 +239,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
         .find((candidate) => pattern.test([
           (candidate as HTMLElement).innerText || '',
           candidate.getAttribute('aria-label') || '',
-        ].join(' ').replace(/\\s+/g, ' ').trim()));
+        ].join(' ').replace(/\s+/g, ' ').trim()));
       if (!element) return false;
       (element as HTMLElement).click();
       return true;
@@ -324,27 +324,27 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     readReviews();
 
     // Expand the list of review topic/category chips before capturing labels/counts.
-    clickByText(/^(?:View \\d+ more Topics|Ver \\d+ tópicos? a mais|Ver mais tópicos|Mais tópicos|Ver mais temas)$/i);
+    clickByText(/^(?:View \d+ more Topics|Ver \d+ tópicos? a mais|Ver mais tópicos|Mais tópicos|Ver mais temas)$/i);
     await new Promise((resolve) => setTimeout(resolve, 100));
     // Capture the topic chips and their review counts independently of review text.
     const review_topics = Array.from(document.querySelectorAll('[role="radio"],[role="checkbox"]'))
       .map((node) => ({
-        label: ((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').replace(/\\s+/g, ' ').trim(),
-        count: (((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').match(/(\\d+)\\s*$/) || [])[1] || '',
+        label: ((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim(),
+        count: (((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').match(/(\d+)\s*$/) || [])[1] || '',
       }))
       .filter((item) => item.label && !/^(all reviews|todas as avaliações|all|todas)$/i.test(item.label));
 
     // The About tab contains additional attributes not present in the overview.
-    clickByText(/^(?:About(?:\\s|$)|Sobre(?:\\s|$)|Informações(?:\\s|$))/i);
+    clickByText(/^(?:About(?:\s|$)|Sobre(?:\s|$)|Informações(?:\s|$))/i);
     await new Promise((resolve) => setTimeout(resolve, 180));
     const aboutText = ((document.querySelector('div[role="main"]') as HTMLElement | null)?.innerText || '')
-      .split('\\n').map((line) => line.trim()).filter(Boolean).slice(-180).join('\\n');
+      .split('\n').map((line) => line.trim()).filter(Boolean).slice(-180).join('\n');
     const additional_attributes = {
       about_text: aboutText.slice(0, 18000),
       labeled_attributes: Array.from(document.querySelectorAll('div[role="main"] button, div[role="main"] [role="button"]'))
         .map((node) => ({
           label: node.getAttribute('aria-label') || '',
-          value: ((node as HTMLElement).innerText || '').replace(/\\s+/g, ' ').trim(),
+          value: ((node as HTMLElement).innerText || '').replace(/\s+/g, ' ').trim(),
         }))
         .filter((item) => item.label || item.value)
         .filter((item) => item.value.length < 500)
@@ -391,7 +391,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     ];
     const plusCodeNode = Array.from(document.querySelectorAll('[aria-label*="Plus code"],[aria-label*="Plus Code"],[data-item-id*="oloc"]'))
       .find((node) => /plus code/i.test(node.getAttribute('aria-label') || ''));
-    const plus_code = plusCodeNode?.getAttribute('aria-label')?.replace(/^plus code:\\s*/i, '') || '';
+    const plus_code = plusCodeNode?.getAttribute('aria-label')?.replace(/^plus code:\s*/i, '') || '';
 
     // Do not mislabel the first gallery photo as a logo/avatar.
     let logo_url = '';
