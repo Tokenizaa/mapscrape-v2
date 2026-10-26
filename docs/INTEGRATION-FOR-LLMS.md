@@ -1,6 +1,6 @@
 # Prompt de integração do MapScrape para LLMs
 
-Copie o prompt a seguir para o agente de programação que está trabalhando no repositório consumidor. A URL-base e a credencial devem ser fornecidas pelo operador de forma segura; a LLM não deve inventá-las.
+Copie o prompt a seguir para o agente de programação que está trabalhando no repositório consumidor. Este documento é para integrar um cliente HTTP à API central MapScrape, não para instalar o serviço. O consumidor NÃO deve clonar este repositório, copiar seu código, instalar Puppeteer, executar outro scraper nem conectar diretamente ao banco central. A URL-base e a credencial devem ser fornecidas pelo operador de forma segura; a LLM não deve inventá-las.
 
 ---
 
@@ -11,7 +11,7 @@ Você está trabalhando no repositório do projeto consumidor. Integre-o à API 
 ### Regras
 
 1. Inspecione a arquitetura, linguagem, runtime, autenticação, padrões de serviço, telas e testes existentes antes de editar.
-2. Não altere o repositório MapScrape a partir desta tarefa. Faça as alterações apenas no projeto consumidor.
+2. Faça as alterações apenas no projeto consumidor. Não clone nem copie o repositório MapScrape, não instale suas dependências e não implemente um scraper paralelo. O consumidor deve chamar a API central exclusivamente por HTTP/HTTPS.
 3. Não invente URL, endpoint, nome de campo, segredo, capacidade ou dado de lead.
 4. Leia o contrato OpenAPI e confirme a versão disponível no ambiente de destino.
 5. Configure `MAPSCRAPE_API_BASE_URL` e `MAPSCRAPE_API_KEY` em secrets/variáveis de ambiente server-side. Nunca envie a chave ao browser, bundle frontend, logs ou URLs.
@@ -28,16 +28,13 @@ Você está trabalhando no repositório do projeto consumidor. Integre-o à API 
 
 ### Provisionamento automatizado
 
-Não peça ao usuário para copiar uma chave MapScrape para o chat ou para o código. Primeiro identifique o provedor do projeto e use `scripts/provision-consumer.mjs` do repositório MapScrape, executado no ambiente seguro do consumidor.
+Não peça ao usuário para copiar uma chave MapScrape para o chat ou para o código. O projeto consumidor não deve clonar MapScrape para executar o provisionador. A emissão da credencial é uma operação do serviço central/infraestrutura autorizada. O consumidor recebe somente a URL-base confirmada e a chave individual gravada diretamente como secret server-side pelo operador ou pelo pipeline autorizado.
 
-O ambiente de execução deve receber estes secrets por mecanismo autorizado de organização/CI:
-- `MAPSCRAPE_BASE_URL`: URL de produção confirmada.
-- `MAPSCRAPE_PROVISIONING_TOKEN`: autorização bootstrap, compartilhada apenas com agentes/CI confiáveis.
-- `CONSUMER_NAME` e `CONSUMER_PROJECT`: identificação estável do projeto.
-- `TARGET_PROVIDER=vercel` ou `TARGET_PROVIDER=cloudflare`.
-- Token do provedor com permissão mínima para gravar secrets no projeto de destino.
+Somente o serviço central/infraestrutura autorizada precisa do token bootstrap e das permissões para emitir credenciais. No projeto consumidor, configure apenas:
+- `MAPSCRAPE_API_BASE_URL`: URL-base confirmada da API implantada.
+- `MAPSCRAPE_API_KEY`: chave individual emitida para esse consumidor, gravada como secret server-side.
 
-O instalador emite uma chave exclusiva, grava diretamente `MAPSCRAPE_API_KEY` no provedor, verifica a API e não imprime o segredo. Se não houver bootstrap token ou permissão do provedor, pare e explique qual autorização de infraestrutura está ausente; não solicite que a chave de API seja colada no chat. Não declare a integração validada sem o teste real.
+Nunca adicione `MAPSCRAPE_PROVISIONING_TOKEN` ao consumidor. Se a chave individual ainda não existir, solicite ao operador autorizado que a emita e grave diretamente no secret manager do provedor. Não solicite que a chave seja colada no chat, em arquivo ou no repositório. Não declare a integração validada sem um teste real autenticado.
 
 ### Cliente TypeScript de referência
 
@@ -159,7 +156,7 @@ export class MapScrapeClient {
 - `422`: corrigir parâmetros.
 - `429`: respeitar `Retry-After` se o servidor enviar; reduzir frequência. Não assumir que o limite por consumidor já está configurado.
 - `5xx` e timeout: retentativas limitadas com backoff para operações de leitura. Não repetir criação de coleta cegamente.
-- `503 api_not_configured`: a API não foi configurada no servidor MapScrape; encaminhar para operação.
+- `503`: serviço ou banco indisponível; verificar a resposta real e encaminhar para operação. Não presumir um código de erro específico sem confirmação do contrato implantado.
 
 ### Checklist final
 
