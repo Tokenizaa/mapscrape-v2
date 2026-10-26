@@ -401,7 +401,7 @@ export async function runScraperJob(
       // for the feed element is insufficient: it already exists when scrolling fails.
       const knownUrls = Array.from(seenUrlsInRun);
       await page.waitForFunction((known) => {
-        const anchors = Array.from(document.querySelectorAll('div[role="feed"] a[href*="/maps/place/"]')) as HTMLAnchorElement[];
+        const anchors = Array.from(document.querySelectorAll('a[href*="/maps/place/"]')) as HTMLAnchorElement[];
         return anchors.some((a) => {
           const url = a.href.split('?')[0].replace(/\/$/, '');
           return url && !known.includes(url);
@@ -410,7 +410,7 @@ export async function runScraperJob(
       await new Promise((resolve) => setTimeout(resolve, 500));
       const scrollEvidence = await page.evaluate(() => {
         const feed = document.querySelector('div[role="feed"]') as HTMLElement | null;
-        const links = Array.from(document.querySelectorAll('div[role="feed"] a[href*="/maps/place/"]'))
+        const links = Array.from(document.querySelectorAll('a[href*="/maps/place/"]'))
           .map((a) => (a as HTMLAnchorElement).href.split('?')[0].replace(/\/$/, ''));
         const unique = Array.from(new Set(links));
         const candidates = feed ? [feed, ...Array.from(feed.querySelectorAll('*'))] as HTMLElement[] : [];
@@ -439,7 +439,6 @@ export async function runScraperJob(
         jobId,
         metadata: { scrollAttempt: scrollAttempts, target: scrollTarget, evidence: scrollEvidence, moved: scrollTarget ? Math.abs(scrollEvidence.scrollTop - scrollTarget.beforeTop) > 2 : scrollMoved },
       });
-      await page.waitForFunction(() => document.readyState === 'complete' || !!document.querySelector('div[role="feed"]'), { timeout: 2500 }).catch(() => {});
     }
 
     if (discoveredUrls.length === 0) {
