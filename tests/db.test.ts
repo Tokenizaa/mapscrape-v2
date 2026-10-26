@@ -3,6 +3,7 @@ import {
   createJob,
   getJob,
   getPlaces,
+  getPlacesByIds,
   initDb,
   insertPlace,
   placeExistsByUrl,
@@ -70,6 +71,8 @@ describe('Database persistence', () => {
     expect(result?.user_id).toBe('test-user');
     expect(result?.segment).toBe('Cafeterias');
     expect(result?.location).toBe('Curitiba, PR');
+    expect(await getJob(testJobId, 'test-user')).not.toBeNull();
+    expect(await getJob(testJobId, 'other-consumer')).toBeNull();
   });
 
   it('persists a place and detects duplicate Google Maps URLs', async () => {
@@ -83,5 +86,12 @@ describe('Database persistence', () => {
     expect(result.total).toBe(1);
     expect(result.places[0]?.name).toBe('DB Test Cafe');
     expect(result.places[0]?.photos).toContain('photo.jpg');
+
+    const ownerResults = await getPlaces({ jobId: testJobId, consumerProject: 'test-user' });
+    const otherResults = await getPlaces({ jobId: testJobId, consumerProject: 'other-consumer' });
+    expect(ownerResults.total).toBe(1);
+    expect(otherResults.total).toBe(0);
+    expect(await getPlacesByIds([place.id], 'test-user')).toHaveLength(1);
+    expect(await getPlacesByIds([place.id], 'other-consumer')).toHaveLength(0);
   });
 });
