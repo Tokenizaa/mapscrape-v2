@@ -1,6 +1,6 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PlaceRecord, ScrapeJob } from '../../shared/types';
-import { getJob, updateJobProgress, insertPlace, findPlaceByUrl, countPlaces, getLastCollectedPlaceForSearch } from '../db';
+import { getJob, updateJobProgress, insertPlace, updatePlace, findPlaceByUrl, countPlaces, getLastCollectedPlaceForSearch } from '../db';
 import { writeRunReport } from '../run-report';
 import { extractPlaceDetails } from './extractor';
 import { writeAuditLog } from '../audit-log';
@@ -591,11 +591,75 @@ export async function runScraperJob(
         // database lookup or progress update can fail just like extraction.
         const existingPlace = await findPlaceByUrl(item.url);
         if (existingPlace) {
+          // Legacy rows may predate full review/media extraction. Enrich those
+          // records in place instead of permanently skipping them as duplicates.
+          const needsEnrichment = ['review_count', 'opening_hours', 'reviews', 'review_topics', 'additional_attributes', 'media_items']
+            .some((field) => missingFields(existingPlace).includes(field as keyof PlaceRecord));
+          if (needsEnrichment) {
+            await emitProgress(`[${placeNum}/${itemsToProcess.length}] Atualizando ficha existente: ${existingPlace.name}...`);
+            await page.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await page.waitForSelector('h1', { timeout: 12000 }).catch(() => {});
+            await new Promise((resolve) => setTimeout(resolve, 700));
+            const fresh = await extractPlaceDetails(page, jobId, item.url);
+            const mergeDelimited = (oldValue?: string, newValue?: string) =>
+              Array.from(new Set([...(oldValue || '').split(' | '), ...(newValue || '').split(' | ')]
+                .map((value) => value.trim()).filter(Boolean)).values()).join(' | ');
+            const freshReviews = (() => { try { return JSON.parse(fresh.reviews || '[]'); } catch { return []; } })();
+            const oldReviews = (() => { try { return JSON.parse(existingPlace.reviews || '[]'); } catch { return []; } })();
+            const freshTopics = (() => { try { return JSON.parse(fresh.review_topics || '[]'); } catch { return []; } })();
+            const oldTopics = (() => { try { return JSON.parse(existingPlace.review_topics || '[]'); } catch { return []; } })();
+            const freshMedia = (() => { try { return JSON.parse(fresh.media_items || '[]'); } catch { return []; } })();
+            const oldMedia = (() => { try { return JSON.parse(existingPlace.media_items || '[]'); } catch { return []; } })();
+            const freshAttributes = (() => { try { return JSON.parse(fresh.additional_attributes || '{}'); } catch { return {}; } })();
+            const oldAttributes = (() => { try { return JSON.parse(existingPlace.additional_attributes || '{}'); } catch { return {}; } })();
+            const merged: PlaceRecord = {
+              ...existingPlace,
+              ...fresh,
+              id: existingPlace.id,
+              job_id: existingPlace.job_id,
+              name: fresh.name || existingPlace.name,
+              category: fresh.category || existingPlace.category,
+              address: fresh.address || existingPlace.address,
+              phone: fresh.phone || existingPlace.phone,
+              website: fresh.website || existingPlace.website,
+              rating: fresh.rating || existingPlace.rating,
+              review_count: fresh.review_count || existingPlace.review_count,
+              price_range: fresh.price_range || existingPlace.price_range,
+              opening_hours: fresh.opening_hours || existingPlace.opening_hours,
+              business_status: fresh.business_status || existingPlace.business_status,
+              latitude: fresh.latitude || existingPlace.latitude,
+              longitude: fresh.longitude || existingPlace.longitude,
+              maps_url: fresh.maps_url || existingPlace.maps_url,
+              description: fresh.description || existingPlace.description,
+              services_attributes: fresh.services_attributes || existingPlace.services_attributes,
+              photos: mergeDelimited(existingPlace.photos, fresh.photos),
+              videos: mergeDelimited(existingPlace.videos, fresh.videos),
+              logo_url: fresh.logo_url || existingPlace.logo_url,
+              social_links: mergeDelimited(existingPlace.social_links, fresh.social_links),
+              reviews: JSON.stringify(freshReviews.length ? freshReviews : oldReviews),
+              review_topics: JSON.stringify(freshTopics.length ? freshTopics : oldTopics),
+              additional_attributes: JSON.stringify(
+                freshAttributes.about_text || freshAttributes.labeled_attributes?.length ? freshAttributes : oldAttributes
+              ),
+              media_items: JSON.stringify(freshMedia.length ? freshMedia : oldMedia),
+              plus_code: fresh.plus_code || existingPlace.plus_code,
+              collected_at: fresh.collected_at || new Date().toISOString(),
+            };
+            await updatePlace(existingPlace.id, merged);
+            totalCollected++;
+            await safeAudit({
+              category: 'scraper',
+              event: 'place.enriched',
+              message: 'Ficha existente atualizada com campos públicos adicionais.',
+              jobId,
+              metadata: { placeId: existingPlace.id, name: merged.name, reviewCount: merged.review_count, reviewsCaptured: freshReviews.length, topicsCaptured: freshTopics.length, mediaCaptured: freshMedia.length, missingFields: missingFields(merged) },
+            });
+            await emitProgress(`[${placeNum}/${itemsToProcess.length}] Ficha enriquecida: ${merged.name}`);
+            continue;
+          }
           totalDuplicates++;
-          await safeAudit({ category: 'scraper', event: 'place.duplicate_skipped', message: 'Ficha já existe no momento da persistência; ignorada para evitar duplicação.', jobId, metadata: { mapsUrl: item.url, previewName: item.previewName || previewTitle, existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'duplicate_detected_before_insert' } });
-          await emitProgress(
-            `[${placeNum}/${itemsToProcess.length}] Duplicado ignorado: ${previewTitle}`
-          );
+          await safeAudit({ category: 'scraper', event: 'place.duplicate_skipped', message: 'Ficha já existe e os campos de enriquecimento estão preenchidos; ignorada.', jobId, metadata: { mapsUrl: item.url, previewName: item.previewName || previewTitle, existingPlaceId: existingPlace.id, existingName: existingPlace.name, existingJobId: existingPlace.job_id, existingCollectedAt: existingPlace.collected_at, reason: 'duplicate_already_enriched' } });
+          await emitProgress(`[${placeNum}/${itemsToProcess.length}] Duplicado ignorado: ${previewTitle}`);
           continue;
         }
 
