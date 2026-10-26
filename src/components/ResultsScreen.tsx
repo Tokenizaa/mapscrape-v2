@@ -150,7 +150,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     try {
       const formatted = Object.entries(selectedPlace)
         .map(([key, value]) => `${key}: ${value == null || value === '' ? '—' : String(value)}`)
-        .join('\\n');
+        .join('\n');
       await navigator.clipboard.writeText(formatted);
       setCopiedDetails(true);
       setTimeout(() => setCopiedDetails(false), 2000);
