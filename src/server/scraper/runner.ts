@@ -114,13 +114,9 @@ export async function runScraperJob(
     await page.evaluateOnNewDocument(() => {
       (window as any).__name = (f: any) => f;
       (globalThis as any).__name = (f: any) => f;
-      // Keep browser language aligned with the search URL so accessible labels
-      // are more predictable, while the extractor still supports other locales.
-      try {
-        Object.defineProperty(navigator, 'language', { configurable: true, get: () => 'pt-BR' });
-        Object.defineProperty(navigator, 'languages', { configurable: true, get: () => ['pt-BR', 'pt', 'en'] });
-      } catch {}
     });
+    await page.emulateLocale('pt-BR');
+    await page.emulateTimezone('America/Sao_Paulo');
     await page.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' });
     await page.setViewport({ width: 1366, height: 768 });
     const fullQuery = `${segment.trim()} ${location.trim()}`.trim();
@@ -174,6 +170,12 @@ export async function runScraperJob(
       totalFound = 1;
 
       const placeRecord = await extractPlaceDetails(page, jobId, currentUrl);
+      if (!placeRecord.name.trim()) {
+        throw new Error('A ficha direta abriu sem nome identificável; registro não salvo.');
+      }
+      if (!placeRecord.maps_url.includes('/maps/place/')) {
+        placeRecord.maps_url = currentUrl;
+      }
       const existingDirectPlace = await findPlaceByUrl(currentUrl);
       if (existingDirectPlace) {
         totalDuplicates = 1;
