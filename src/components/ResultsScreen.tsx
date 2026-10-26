@@ -179,6 +179,26 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     return place.videos.split(' | ').filter((u) => u.startsWith('http'));
   };
 
+  const parseJsonField = <T,>(value?: string, fallback: T): T => {
+    if (!value?.trim()) return fallback;
+    try { return JSON.parse(value) as T; } catch { return fallback; }
+  };
+
+  const getVideoEmbedUrl = (url: string): string | null => {
+    try {
+      const parsed = new URL(url);
+      if (parsed.hostname.includes('youtube.com') && parsed.pathname === '/watch') {
+        const id = parsed.searchParams.get('v');
+        return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+      }
+      if (parsed.hostname === 'youtu.be') {
+        const id = parsed.pathname.slice(1);
+        return id ? `https://www.youtube-nocookie.com/embed/${id}` : null;
+      }
+    } catch {}
+    return null;
+  };
+
   return (
     <div className="max-w-7xl mx-auto py-2 sm:py-6 space-y-6">
       {/* Header Bar */}
@@ -902,40 +922,78 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
                               <ExternalLink className="h-3.5 w-3.5" />
                             </a>
                           ) : key === 'photos' && value.includes('http') ? (
-                            <div className="space-y-2">
-                              <span className="text-xs font-mono text-zinc-500 block truncate">{value}</span>
-                              <div className="flex flex-wrap gap-2 pt-1">
-                                {value.split(' | ').slice(0, 4).map((url, uIdx) => (
-                                  <a
-                                    key={uIdx}
-                                    href={url}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="block h-16 w-20 rounded-lg overflow-hidden border border-zinc-750 hover:opacity-80"
-                                  >
-                                    <img src={url} alt={`Foto ${uIdx + 1}`} className="w-full h-full object-cover" />
-                                  </a>
-                                ))}
-                              </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {value.split(' | ').filter((url) => url.startsWith('http')).map((url, uIdx) => (
+                                <a key={uIdx} href={url} target="_blank" rel="noopener noreferrer" className="group block aspect-[4/3] rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900">
+                                  <img src={url} alt={`Foto do estabelecimento ${uIdx + 1}`} loading="lazy" referrerPolicy="no-referrer" className="h-full w-full object-cover group-hover:scale-105 transition-transform" />
+                                </a>
+                              ))}
                             </div>
-                          ) : key === 'videos' && value.includes('http') ? (
-                            <div className="space-y-2">
-                              <span className="text-xs font-mono text-zinc-400 block truncate">{value}</span>
-                              <div className="flex flex-wrap gap-2 pt-1">
-                                {value.split(' | ').map((vUrl, vIdx) => (
-                                  <a
-                                    key={vIdx}
-                                    href={vUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 text-xs font-medium hover:bg-indigo-500/20"
-                                  >
-                                    <PlayCircle className="w-4 h-4 text-indigo-400" />
-                                    <span>Abrir Vídeo #{vIdx + 1}</span>
-                                  </a>
-                                ))}
-                              </div>
+                          ) : key === 'videos' && value.trim() ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {value.split(' | ').map((vUrl, vIdx) => {
+                                const embedUrl = getVideoEmbedUrl(vUrl);
+                                return embedUrl ? (
+                                  <div key={vIdx} className="overflow-hidden rounded-xl border border-zinc-800 bg-black">
+                                    <iframe src={embedUrl} title={`Vídeo do estabelecimento ${vIdx + 1}`} className="aspect-video w-full" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen />
+                                  </div>
+                                ) : vUrl.startsWith('http') && /\\.(mp4|webm|ogg)(?:$|[?#])/i.test(vUrl) ? (
+                                  <video key={vIdx} src={vUrl} controls preload="metadata" className="w-full rounded-xl border border-zinc-800 bg-black" />
+                                ) : (
+                                  <div key={vIdx} className="flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900 p-3">
+                                    <PlayCircle className="h-8 w-8 shrink-0 text-indigo-400" />
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-semibold text-zinc-200">Vídeo identificado na ficha</p>
+                                      <p className="text-xs text-zinc-500 break-words">{vUrl.startsWith('http') ? vUrl : 'O Maps indica mídia de vídeo, mas não expõe uma URL direta reproduzível.'}</p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
                             </div>
+                          ) : key === 'logo_url' && value.startsWith('http') ? (
+                            <a href={value} target="_blank" rel="noopener noreferrer" className="inline-flex rounded-xl border border-zinc-800 bg-zinc-900 p-2">
+                              <img src={value} alt={`Imagem de perfil de ${selectedPlace.name}`} loading="lazy" referrerPolicy="no-referrer" className="max-h-36 max-w-full rounded-lg object-contain" />
+                            </a>
+                          ) : key === 'reviews' ? (
+                            (() => {
+                              const reviews = parseJsonField<Array<{id?:string;author?:string;author_avatar_url?:string;author_profile_url?:string;author_metadata?:string;rating?:string;date?:string;text?:string;owner_response?:string;media?:Array<{url:string;alt?:string}>}>>(value, []);
+                              return reviews.length ? (
+                                <div className="space-y-3">
+                                  <p className="text-xs text-zinc-500">{reviews.length} comentários capturados na ficha pública</p>
+                                  {reviews.map((review, index) => (
+                                    <article key={review.id || index} className="rounded-xl border border-zinc-800 bg-zinc-900 p-3.5 space-y-2.5">
+                                      <div className="flex items-start gap-3">
+                                        {review.author_avatar_url && <img src={review.author_avatar_url} alt="" className="h-9 w-9 rounded-full object-cover" loading="lazy" referrerPolicy="no-referrer" />}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="font-semibold text-zinc-100">{review.author || 'Autor não identificado'}</p>
+                                          <p className="text-xs text-zinc-500">{[review.author_metadata, review.date].filter(Boolean).join(' · ') || 'Data ou perfil não informado'}</p>
+                                        </div>
+                                        {review.rating && <span className="shrink-0 text-sm text-amber-300">{review.rating}</span>}
+                                      </div>
+                                      {review.text && <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-200">{review.text}</p>}
+                                      {review.owner_response && <div className="rounded-lg border-l-2 border-emerald-500 bg-zinc-950 p-3"><p className="text-xs font-semibold text-emerald-300 mb-1">Resposta do proprietário</p><p className="whitespace-pre-wrap text-sm text-zinc-300">{review.owner_response}</p></div>}
+                                      {!!review.media?.length && <div className="grid grid-cols-3 gap-2">{review.media.map((item, mediaIndex) => <a key={mediaIndex} href={item.url} target="_blank" rel="noopener noreferrer"><img src={item.url} alt={item.alt || 'Mídia da avaliação'} loading="lazy" className="aspect-square w-full rounded-lg object-cover" referrerPolicy="no-referrer" /></a>)}</div>}
+                                      {review.author_profile_url && <a href={review.author_profile_url} target="_blank" rel="noopener noreferrer" className="text-xs text-emerald-400 hover:underline">Abrir perfil público do autor</a>}
+                                    </article>
+                                  ))}
+                                </div>
+                              ) : <span className="text-zinc-500 italic">Nenhum comentário foi capturado; isso não significa que não existam.</span>;
+                            })()
+                          ) : key === 'review_topics' ? (
+                            (() => {
+                              const topics = parseJsonField<Array<{label:string;count?:string}>>(value, []);
+                              return topics.length ? <div className="flex flex-wrap gap-2">{topics.map((topic, index) => <span key={index} className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200">{topic.label}{topic.count ? ` · ${topic.count}` : ''}</span>)}</div> : <span className="text-zinc-500 italic">Nenhuma categoria de comentário capturada.</span>;
+                            })()
+                          ) : key === 'additional_attributes' ? (
+                            (() => {
+                              const attributes = parseJsonField<{about_text?:string;labeled_attributes?:Array<{label?:string;value?:string}>}>(value, {});
+                              return <div className="space-y-3">{attributes.about_text && <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-300">{attributes.about_text}</p>}{!!attributes.labeled_attributes?.length && <div className="space-y-2">{attributes.labeled_attributes.map((item,index)=><div key={index} className="rounded-lg bg-zinc-900 px-3 py-2"><p className="text-xs text-zinc-500">{item.label || 'Atributo'}</p><p className="text-sm text-zinc-200">{item.value || '—'}</p></div>)}</div>}</div>;
+                            })()
+                          ) : key === 'media_items' ? (
+                            (() => {
+                              const items = parseJsonField<Array<{type:string;url:string;thumbnail_url?:string;title?:string}>>(value, []);
+                              return items.length ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{items.map((item,index)=><div key={index} className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">{item.type === 'video' && item.url.startsWith('http') ? <video src={item.url} controls preload="metadata" poster={item.thumbnail_url || undefined} className="aspect-video w-full bg-black" /> : item.url.startsWith('http') ? <img src={item.url} alt={item.title || `Mídia ${index+1}`} loading="lazy" referrerPolicy="no-referrer" className="aspect-video w-full object-cover" /> : <div className="p-3 text-sm text-zinc-400">Vídeo listado na ficha, sem URL pública direta.</div>}</div>)}</div> : <span className="text-zinc-500 italic">Nenhuma mídia estruturada capturada.</span>;
+                            })()
                           ) : (
                             value
                           )
