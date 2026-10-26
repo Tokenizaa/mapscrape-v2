@@ -12,6 +12,22 @@ import { SELECTORS } from './selectors';
  * Prefer semantic data-item-id/aria-label attributes over unstable CSS classes.
  */
 export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: string): Promise<PlaceRecord> {
+  // Google Maps collapses the weekly schedule by default. Expand it before reading
+  // the DOM so we capture all visible days instead of only the current-day row.
+  try {
+    await page.evaluate(() => {
+      const candidates = Array.from(document.querySelectorAll('button'));
+      const hoursButton = candidates.find((button) => {
+        const label = [button.getAttribute('aria-label') || '', button.innerText || ''].join(' ');
+        return /horários de funcionamento|opening hours|horario de apertura|heures d.?ouverture/i.test(label);
+      });
+      if (hoursButton) hoursButton.click();
+    });
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  } catch {
+    // Expansion is best-effort; extraction should continue if the UI changes.
+  }
+
   const raw: any = await page.evaluate((selectors: typeof SELECTORS.place) => {
     if (typeof (window as any).__name === 'undefined') (window as any).__name = (f: any) => f;
     if (typeof (globalThis as any).__name === 'undefined') (globalThis as any).__name = (f: any) => f;
@@ -60,16 +76,33 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     ]);
     const reviewLabel = [attr(reviewNode, 'aria-label'), text(reviewNode)].filter(Boolean).join(' ');
     const parseReviewCount = (value: string): string => {
-      const labeled = value.match(/([\d\s.,]+)\s*(?:avaliações?|reviews?|opiniones?|avis|bewertung(?:en)?|recensioni)/i);
+      const normalized = value.replace(/\\u00a0/g, ' ').replace(/\\s+/g, ' ').trim();
+      // Prefer explicitly labelled counts, including localized "mil" / "K" forms.
+      const labeled = normalized.match(/([\\d][\\d\\s.,]*(?:\\s*(?:mil|k|thousand))?)\\s*(?:avaliações?|reviews?|opiniones?|avis|bewertung(?:en)?|recensioni)/i);
       if (labeled) return labeled[1].trim();
-      // Maps often renders "4,7 (587)" with the count in parentheses.
-      const parenthesized = value.match(/[([]\s*([\d\s.,]+)\s*[)\]]/);
-      if (parenthesized) return parenthesized[1].trim();
+      // Maps often renders "4,7 (587)" or "4,9 (1,2 mil)" in the rating cluster.
+      const parenthesized = normalized.match(/[([]\\s*([\\d][\\d\\s.,]*(?:\\s*(?:mil|k))?)\\s*[)\\]]/i);
+      if (parenthesized && !/^\\d[.,]\\d$/.test(parenthesized[1].trim())) return parenthesized[1].trim();
       // A bare integer/grouped integer is a count; a decimal like 4.7 is not.
-      const bareCount = value.trim().match(/^\(?\s*(\d{1,3}(?:[.\s]\d{3})+|\d+)\s*\)?$/);
+      const bareCount = normalized.match(/^\\(?\\s*(\\d{1,3}(?:[.\\s]\\d{3})+|\\d+)\\s*\\)?$/);
       return bareCount?.[1] || '';
     };
-    const review_count = parseReviewCount(reviewLabel) || parseReviewCount(ratingLabel);
+    // Google changes nested markup frequently. Read the rating cluster and all
+    // review-related accessible labels instead of trusting one CSS selector.
+    const ratingCluster = first(['div.F7nice', 'div[role="main"] div.F7nice']);
+    const reviewSources = [
+      reviewLabel,
+      ratingLabel,
+      text(ratingCluster),
+      attr(ratingCluster, 'aria-label'),
+      ...Array.from(document.querySelectorAll(
+        'button[jsaction*="pane.reviewChart.moreReviews"], [aria-label*="avaliações"], [aria-label*="reviews"], [aria-label*="opiniones"], [aria-label*="recensioni"]'
+      )).map((el) => [attr(el, 'aria-label'), text(el)].filter(Boolean).join(' ')),
+      ...Array.from(ratingCluster?.querySelectorAll('span,button') || []).map((el) =>
+        [attr(el, 'aria-label'), text(el)].filter(Boolean).join(' ')
+      ),
+    ].filter(Boolean);
+    const review_count = reviewSources.map(parseReviewCount).find(Boolean) || '';
 
     const addressNode = first(['button[data-item-id="address"]', '[data-item-id="address"]', ...selectors.address]);
     const phoneNode = first(['button[data-item-id^="phone:tel:"]', 'button[data-item-id^="phone:"]', ...selectors.phone]);
@@ -121,9 +154,26 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     const statusText = statusCandidates.map((el) => attr(el, 'aria-label') || text(el))
       .find((value) => /aberto|fechado|open|closed|fermé|fermée|ouvert|abierto|cerrado/i.test(value)) || '';
 
-    const description = firstText(selectors.description);
-    const serviceEls = Array.from(document.querySelectorAll(selectors.services.join(', ')));
-    const services_attributes = Array.from(new Set(serviceEls.map(text).filter(Boolean))).join(' · ');
+    // Prefer explicit business description/summary fields and avoid generic
+    // container text that merely repeats navigation labels.
+    const description = firstText([
+      '[data-item-id="description"]',
+      '[aria-label*="Descrição"]',
+      '[aria-label*="From the business"]',
+      '[aria-label*="Da empresa"]',
+      ...selectors.description,
+    ]);
+    const serviceEls = Array.from(document.querySelectorAll([
+      '[aria-label*="Serviços"]',
+      '[aria-label*="Services"]',
+      '[data-item-id*="service"]',
+      ...selectors.services,
+    ].join(', ')));
+    const services_attributes = Array.from(new Set(serviceEls
+      .map(text)
+      .map((value) => value.replace(/\\s+/g, ' ').trim())
+      .filter((value) => value && value.length < 1200 && !/^(serviços|services|acessibilidade|accessibility)$/i.test(value))))
+      .join(' · ');
 
     const photoUrls: string[] = [];
     const seenPhotos = new Set<string>();
