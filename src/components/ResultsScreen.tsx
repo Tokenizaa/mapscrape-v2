@@ -65,7 +65,13 @@ const detailFields: { key: keyof PlaceRecord; label: string }[] = [
   { key: 'longitude', label: 'Longitude' },
   { key: 'photos', label: 'Fotos (URLs)' },
   { key: 'videos', label: 'Vídeos (URLs)' },
-  { key: 'logo_url', label: 'Logo / Imagem' },
+  { key: 'logo_url', label: 'Logo / Imagem de perfil' },
+  { key: 'social_links', label: 'Redes sociais' },
+  { key: 'reviews', label: 'Avaliações e comentários' },
+  { key: 'review_topics', label: 'Categorias dos comentários' },
+  { key: 'additional_attributes', label: 'Atributos adicionais da ficha' },
+  { key: 'media_items', label: 'Galeria de mídia' },
+  { key: 'plus_code', label: 'Plus Code' },
   { key: 'collected_at', label: 'Data e hora da coleta' },
 ];
 
@@ -142,21 +148,9 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   const copyFullPlaceDetails = async () => {
     if (!selectedPlace) return;
     try {
-      const formatted = [
-        `Nome: ${selectedPlace.name || '—'}`,
-        `Categoria: ${selectedPlace.category || '—'}`,
-        `Endereço: ${selectedPlace.address || '—'}`,
-        `Telefone: ${selectedPlace.phone || '—'}`,
-        `Site: ${selectedPlace.website || '—'}`,
-        `Nota: ${selectedPlace.rating || '—'} (${selectedPlace.review_count || '0'} avaliações)`,
-        `Status: ${selectedPlace.business_status || '—'}`,
-        `Horários: ${selectedPlace.opening_hours || '—'}`,
-        `Fotos: ${selectedPlace.photos || '—'}`,
-        `Vídeos: ${selectedPlace.videos || '—'}`,
-        `Logo: ${selectedPlace.logo_url || '—'}`,
-        `Coletado em: ${selectedPlace.collected_at}`,
-        `Link: ${selectedPlace.maps_url || '—'}`,
-      ].join('\n');
+      const formatted = Object.entries(selectedPlace)
+        .map(([key, value]) => `${key}: ${value == null || value === '' ? '—' : String(value)}`)
+        .join('\\n');
       await navigator.clipboard.writeText(formatted);
       setCopiedDetails(true);
       setTimeout(() => setCopiedDetails(false), 2000);
@@ -992,7 +986,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
                           ) : key === 'media_items' ? (
                             (() => {
                               const items = parseJsonField<Array<{type:string;url:string;thumbnail_url?:string;title?:string}>>(value, []);
-                              return items.length ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{items.map((item,index)=><div key={index} className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">{item.type === 'video' && item.url.startsWith('http') ? <video src={item.url} controls preload="metadata" poster={item.thumbnail_url || undefined} className="aspect-video w-full bg-black" /> : item.url.startsWith('http') ? <img src={item.url} alt={item.title || `Mídia ${index+1}`} loading="lazy" referrerPolicy="no-referrer" className="aspect-video w-full object-cover" /> : <div className="p-3 text-sm text-zinc-400">Vídeo listado na ficha, sem URL pública direta.</div>}</div>)}</div> : <span className="text-zinc-500 italic">Nenhuma mídia estruturada capturada.</span>;
+                              return items.length ? <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{items.map((item,index)=><div key={index} className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">{item.type === 'video' && item.url.startsWith('http') && /\\.(mp4|webm|ogg)(?:$|[?#])/i.test(item.url) ? <video src={item.url} controls preload="metadata" poster={item.thumbnail_url || undefined} className="aspect-video w-full bg-black" /> : item.type === 'video' && item.url.startsWith('http') && getVideoEmbedUrl(item.url) ? <iframe src={getVideoEmbedUrl(item.url)!} title={item.title || `Vídeo ${index+1}`} className="aspect-video w-full" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /> : item.type === 'video' ? <a href={selectedPlace.maps_url} target="_blank" rel="noopener noreferrer" className="relative flex aspect-video items-center justify-center bg-zinc-950 text-indigo-300"><PlayCircle className="h-12 w-12" /><span className="absolute inset-x-2 bottom-2 rounded bg-black/75 px-2 py-1 text-center text-xs">Abrir vídeo no Google Maps</span></a> : item.url.startsWith('http') ? <a href={item.url} target="_blank" rel="noopener noreferrer"><img src={item.url} alt={item.title || `Mídia ${index+1}`} loading="lazy" referrerPolicy="no-referrer" className="aspect-video w-full object-cover" /></a> : <div className="p-3 text-sm text-zinc-400">Mídia identificada, sem URL pública direta.</div>}</div>)}</div> : <span className="text-zinc-500 italic">Nenhuma mídia estruturada capturada.</span>;
                             })()
                           ) : (
                             value
