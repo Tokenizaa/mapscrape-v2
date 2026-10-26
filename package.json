@@ -49,6 +49,7 @@
     "@fastify/busboy": "^3.2.2",
     "path-to-regexp": "^6.2.3",
     "cookie": "^0.7.2",
-    "ajv": "^8.17.1"
+    "ajv": "^8.17.1",
+    "undici": "^6.28.1"
   }
 }
