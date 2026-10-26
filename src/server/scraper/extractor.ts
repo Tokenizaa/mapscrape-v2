@@ -79,7 +79,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     const parseReviewCount = (value: string): string => {
       const normalized = value.replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
       // Prefer explicitly labelled counts, including localized "mil" / "K" forms.
-      const labeled = normalized.match(/([\d][\d\s.,]*(?:\s*(?:mil|k|thousand))?)\s*(?:avaliações?|reviews?|opiniones?|avis|bewertung(?:en)?|recensioni)/i);
+      const labeled = normalized.match(/(\d{1,3}(?:[.\s]\d{3})+|\d+(?:[.,]\d+)?(?:\s*(?:mil|k|thousand))?)\s*(?:avaliações?|reviews?|opiniones?|avis|bewertung(?:en)?|recensioni)/i);
       if (labeled) return labeled[1].trim();
       // Maps often renders "4,7 (587)" or "4,9 (1,2 mil)" in the rating cluster.
       const parenthesized = normalized.match(/[([]\s*([\d][\d\s.,]*(?:\s*(?:mil|k))?)\s*[)\]]/i);
