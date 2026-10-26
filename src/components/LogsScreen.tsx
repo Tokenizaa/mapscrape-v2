@@ -26,6 +26,7 @@ export const LogsScreen: React.FC = () => {
   const [level, setLevel] = useState('');
   const [category, setCategory] = useState('');
   const [query, setQuery] = useState('');
+  const [jobId, setJobId] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -38,6 +39,7 @@ export const LogsScreen: React.FC = () => {
       if (level) params.set('level', level);
       if (category) params.set('category', category);
       if (query.trim()) params.set('query', query.trim());
+      if (jobId.trim()) params.set('jobId', jobId.trim());
       const response = await fetch(`/api/logs?${params.toString()}`);
       if (!response.ok) throw new Error('Não foi possível carregar os logs.');
       const data = await response.json();
@@ -48,7 +50,7 @@ export const LogsScreen: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [level, category, query]);
+  }, [level, category, query, jobId]);
 
   useEffect(() => { void loadLogs(); }, [loadLogs]);
 
@@ -57,6 +59,7 @@ export const LogsScreen: React.FC = () => {
     if (level) params.set('level', level);
     if (category) params.set('category', category);
     if (query.trim()) params.set('query', query.trim());
+    if (jobId.trim()) params.set('jobId', jobId.trim());
     window.location.href = `/api/logs/export?${params.toString()}`;
   };
 
@@ -107,6 +110,13 @@ export const LogsScreen: React.FC = () => {
           <option value="server">Servidor</option>
           <option value="api">API</option>
         </select>
+      </div>
+
+      <div className="mb-4 flex flex-col gap-3 rounded-xl border border-zinc-200 bg-white p-4 sm:flex-row sm:items-end sm:justify-between">
+        <label className="flex-1 text-xs font-medium text-zinc-600">ID da pesquisa (opcional)
+          <input value={jobId} onChange={(e) => setJobId(e.target.value)} placeholder="job_..." className="mt-1 block w-full rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm font-normal outline-none focus:border-zinc-400 focus:bg-white" />
+        </label>
+        <button onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}`; }} disabled={!jobId.trim()} className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40">Baixar relatório JSON da pesquisa</button>
       </div>
 
       <div className="flex items-center justify-between mb-3 text-xs text-zinc-500">
