@@ -419,6 +419,12 @@ export async function getAllPlaces(jobId?: string): Promise<PlaceRecord[]> {
   return res.rows as unknown as PlaceRecord[];
 }
 
+export async function listPlaceCategories(): Promise<string[]> {
+  const db = getDb();
+  const result = await db.execute("SELECT DISTINCT trim(category) AS category FROM places WHERE trim(category) <> '' ORDER BY lower(trim(category)) ASC");
+  return result.rows.map((row) => String(row.category || '')).filter(Boolean);
+}
+
 export async function countPlaces(): Promise<number> {
   const db = getDb();
   const result = await db.execute('SELECT COUNT(*) AS count FROM places');
