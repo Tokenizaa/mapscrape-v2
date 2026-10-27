@@ -49,6 +49,27 @@ async function authenticatedConsumer(req: Request): Promise<{ id: string; consum
   return findActiveApiCredential(keyHash);
 }
 
+/**
+ * Express middleware for legacy REST routes. The resolver above is also used
+ * by /api/v1, so keep authentication lookup separate from middleware behavior.
+ */
+async function requireAuthenticatedConsumer(req: Request, res: Response, next: express.NextFunction): Promise<void> {
+  try {
+    const consumer = await authenticatedConsumer(req);
+    if (!consumer) {
+      res.status(401).json({ error: 'unauthorized', message: 'Informe uma chave de API válida no cabeçalho Authorization: Bearer.' });
+      return;
+    }
+    (req as Request & { mapscrapeConsumer?: typeof consumer }).mapscrapeConsumer = consumer;
+    res.setHeader('Cache-Control', 'no-store');
+    res.setHeader('X-MapScrape-Consumer', consumer.consumer_project);
+    next();
+  } catch (error) {
+    console.error('API credential lookup failed:', error instanceof Error ? error.message : 'unknown');
+    res.status(503).json({ error: 'authentication_unavailable' });
+  }
+}
+
 function hasProvisioningAccess(req: Request): boolean {
   const expected = process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
   const provided = req.header('x-mapscrape-provisioning-token') || '';
@@ -162,7 +183,7 @@ export async function createApp() {
   // --- API Endpoints ---
 
   // 1. Start scraping job
-  app.post('/api/scrape/start', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.post('/api/scrape/start', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { segment, projectName, location, limit } = req.body;
 
@@ -270,7 +291,7 @@ export async function createApp() {
   });
 
   // 5. Query places (with search, sort, pagination)
-  app.get('/api/places', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.get('/api/places', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { jobId, query, category, sortBy, sortOrder, offset, limit } = req.query;
       const consumer = (req as any).mapscrapeConsumer;
@@ -292,13 +313,13 @@ export async function createApp() {
   });
 
   // Distinct categories from persisted place records for the directory filter.
-  app.get('/api/categories', authenticatedConsumer, async (_req: Request, res: Response) => {
+  app.get('/api/categories', requireAuthenticatedConsumer, async (_req: Request, res: Response) => {
     try { return res.json({ categories: await listPlaceCategories() }); }
     catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao consultar categorias.' }); }
   });
 
   // 6. Get all places for a job (or overall)
-  app.get('/api/places/all', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.get('/api/places/all', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { jobId } = req.query;
       const consumer = (req as any).mapscrapeConsumer;
@@ -310,7 +331,7 @@ export async function createApp() {
   });
 
   // 7. List past searches history
-  app.get('/api/history', authenticatedConsumer, async (_req: Request, res: Response) => {
+  app.get('/api/history', requireAuthenticatedConsumer, async (_req: Request, res: Response) => {
     try {
       const history = await listJobs();
       return res.json(history);
@@ -320,7 +341,7 @@ export async function createApp() {
   });
 
   // 8. Delete past search
-  app.delete('/api/history/:id', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.delete('/api/history/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       await deleteJob(id);
@@ -331,7 +352,7 @@ export async function createApp() {
   });
 
   // 9. Export CSV
-  app.post('/api/export/csv', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.post('/api/export/csv', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { jobId, placeIds, fields, filename } = req.body;
 
@@ -360,7 +381,7 @@ export async function createApp() {
   });
 
   // Download the JSON evidence report generated for a collection run.
-  app.get('/api/reports/:jobId', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.get('/api/reports/:jobId', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const report = await readRunReport(String(req.params.jobId || ''));
       if (!report) return res.status(404).json({ error: 'Relatório ainda não existe para esta pesquisa.' });
@@ -372,7 +393,7 @@ export async function createApp() {
     }
   });
 
-  app.get('/api/reports/:jobId/pdf', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.get('/api/reports/:jobId/pdf', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const jobId = String(req.params.jobId || '');
       const pdf = await readRunReportPdf(jobId);
@@ -386,7 +407,7 @@ export async function createApp() {
   });
 
   // Field coverage is calculated from persisted records, not the current UI page.
-  app.get('/api/field-coverage', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.get('/api/field-coverage', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const jobId = req.query.jobId ? String(req.query.jobId) : undefined;
       const consumer = (req as any).mapscrapeConsumer;
@@ -435,7 +456,7 @@ export async function createApp() {
   });
 
   // 10. Structured audit log query
-  app.get('/api/logs', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.get('/api/logs', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const result = await listAuditLogs({
         limit: req.query.limit ? Number(req.query.limit) : 100,
@@ -453,7 +474,7 @@ export async function createApp() {
   });
 
   // Download newline-delimited JSON, easy to attach to GitHub issues or commit as evidence.
-  app.get('/api/logs/export', authenticatedConsumer, async (req: Request, res: Response) => {
+  app.get('/api/logs/export', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const result = await listAuditLogs({
         limit: 500,
