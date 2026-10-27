@@ -18,7 +18,7 @@ import { BRAZILIAN_STATES, POPULAR_CATEGORIES } from '../shared/brazilLocations'
 interface SearchScreenProps {
   currentJob: ScrapeJob | null;
   isScraping: boolean;
-  onStartScrape: (segment: string, location: string, limit: number) => Promise<void>;
+  onStartScrape: (projectName: string, segment: string, location: string, limit: number) => Promise<void>;
   onStopScrape: () => Promise<void>;
   onGoToResults: () => void;
 }
@@ -31,6 +31,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   onGoToResults,
 }) => {
   const [segment, setSegment] = useState('');
+  const [projectName, setProjectName] = useState('');
   const [locationMode, setLocationMode] = useState<'brazil' | 'custom'>('brazil');
 
   // Brazil selector state
@@ -90,7 +91,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
       return;
     }
     setValidationError('');
-    await onStartScrape(segment.trim(), finalLoc, limit);
+    await onStartScrape(projectName.trim() || `${segment.trim()} · ${finalLoc}`, segment.trim(), finalLoc, limit);
   };
 
   const limitPresets = [10, 20, 50, 100];
@@ -123,6 +124,12 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
       <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl shadow-xl shadow-black/40 p-6 sm:p-9 space-y-8 backdrop-blur-sm">
         <form onSubmit={handleStart} className="space-y-8">
           
+          <div className="space-y-3">
+            <label htmlFor="project-name" className="block text-base sm:text-lg font-semibold text-zinc-100">Projeto / pasta <span className="text-zinc-500 text-sm font-normal">(opcional)</span></label>
+            <input id="project-name" value={projectName} onChange={(e) => setProjectName(e.target.value)} maxLength={120} placeholder="Ex.: Prospecção de clínicas em São Paulo" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm sm:text-base text-zinc-100 outline-none focus:border-emerald-500" />
+            <p className="text-xs text-zinc-500">A coleta será salva nesta pasta. Se deixar vazio, o sistema cria o nome a partir do segmento e da localização.</p>
+          </div>
+
           {/* Seção 1: Segmento do Estabelecimento */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
