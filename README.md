@@ -1,5 +1,9 @@
 # MapScrape v2
 
+## Uso normal versus integração externa
+
+A interface nativa deve permitir criar projetos, definir categorias, executar pesquisas e consultar resultados sem pedir uma chave de consumidor. A chave individual é para um sistema externo que integra com a REST API. Para emiti-la, abra **Integrações → Credenciais de API**, informe **Nome do cliente** e **Nome do projeto**, clique em **Gerar chave** e copie o segredo uma única vez para o secret manager do cliente. A emissão e revogação devem permanecer protegidas por autenticação administrativa real; não exponha `MAPSCRAPE_PROVISIONING_TOKEN` nem crie um proxy público sem autenticação.
+
 **MapScrape é um serviço central de raspagem acessado por API.** Aplicações consumidoras integram-se por HTTPS e não devem clonar este repositório, instalar Puppeteer ou manter um scraper paralelo. Este repositório contém o serviço que executa as coletas, persiste os dados e disponibiliza os resultados autenticados.
 
 ## Como outros projetos devem usar o MapScrape
