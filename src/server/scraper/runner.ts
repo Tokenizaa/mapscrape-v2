@@ -46,7 +46,7 @@ function isBrowserConnected(browser: Browser): boolean {
 }
 
 function missingFields(place: PlaceRecord): string[] {
-  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'booking_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes', 'media_items', 'plus_code', 'postal_code', 'country', 'city', 'state', 'source_place_id', 'source_url', 'popular_times', 'rating_distribution', 'review_highlights', 'field_status', 'collected_at'];
+  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'booking_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes', 'media_items', 'plus_code', 'attributes', 'accessibility_attributes', 'next_opening_text', 'next_open_day', 'next_open_time', 'visible_photos_count', 'postal_code', 'country', 'city', 'state', 'source_place_id', 'source_url', 'popular_times', 'rating_distribution', 'review_highlights', 'field_status', 'collected_at'];
   return fields.filter((field) => {
     const value = String(place[field] ?? '').trim();
     if (!value) return true;
@@ -66,7 +66,8 @@ function missingFields(place: PlaceRecord): string[] {
 
 const ENRICHMENT_FIELDS: (keyof PlaceRecord)[] = [
   'review_count', 'opening_hours', 'booking_url', 'reviews', 'review_topics', 'additional_attributes', 'media_items',
-  'popular_times', 'rating_distribution', 'review_highlights', 'postal_code', 'country', 'city', 'state', 'source_place_id',
+  'popular_times', 'rating_distribution', 'review_highlights', 'attributes', 'accessibility_attributes',
+  'next_opening_text', 'next_open_day', 'next_open_time', 'visible_photos_count', 'postal_code', 'country', 'city', 'state', 'source_place_id',
 ];
 
 function needsEnrichment(place: PlaceRecord): boolean {
@@ -104,6 +105,10 @@ function mergePlaceRecords(existing: PlaceRecord, fresh: PlaceRecord): PlaceReco
   const oldRatingDistribution = parseJsonObject(existing.rating_distribution);
   const freshHighlights = parseJsonArray(fresh.review_highlights);
   const oldHighlights = parseJsonArray(existing.review_highlights);
+  const freshAttributesList = parseJsonArray(fresh.attributes);
+  const oldAttributesList = parseJsonArray(existing.attributes);
+  const freshAccessibility = parseJsonArray(fresh.accessibility_attributes);
+  const oldAccessibility = parseJsonArray(existing.accessibility_attributes);
   const freshFieldStatus = parseJsonObject(fresh.field_status);
   const oldFieldStatus = parseJsonObject(existing.field_status);
 
@@ -140,6 +145,12 @@ function mergePlaceRecords(existing: PlaceRecord, fresh: PlaceRecord): PlaceReco
         .map((item) => [String(item.type || '') + ':' + String(item.url || item.title || ''), item])).values()
     )),
     plus_code: fresh.plus_code || existing.plus_code,
+    attributes: JSON.stringify(freshAttributesList.length ? freshAttributesList : oldAttributesList),
+    accessibility_attributes: JSON.stringify(freshAccessibility.length ? freshAccessibility : oldAccessibility),
+    next_opening_text: fresh.next_opening_text || existing.next_opening_text || '',
+    next_open_day: fresh.next_open_day || existing.next_open_day || '',
+    next_open_time: fresh.next_open_time || existing.next_open_time || '',
+    visible_photos_count: fresh.visible_photos_count || existing.visible_photos_count || '',
     postal_code: fresh.postal_code || existing.postal_code || '',
     country: fresh.country || existing.country || '',
     city: fresh.city || existing.city || '',
