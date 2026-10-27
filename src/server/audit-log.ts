@@ -90,6 +90,7 @@ export async function listAuditLogs(options: {
   category?: string;
   jobId?: string;
   query?: string;
+  consumerProject?: string;
 } = {}): Promise<{ logs: AuditEvent[]; total: number }> {
   const db = getDb();
   const where: string[] = [];
@@ -97,6 +98,7 @@ export async function listAuditLogs(options: {
   if (options.level) { where.push('level = ?'); args.push(options.level); }
   if (options.category) { where.push('category = ?'); args.push(options.category); }
   if (options.jobId) { where.push('job_id = ?'); args.push(options.jobId); }
+  if (options.consumerProject) { where.push('EXISTS (SELECT 1 FROM searches s WHERE s.id = audit_logs.job_id AND s.user_id = ?)'); args.push(options.consumerProject); }
   if (options.query?.trim()) {
     const q = `%${options.query.trim().slice(0, 200)}%`;
     where.push('(message LIKE ? OR event LIKE ? OR metadata LIKE ? OR job_id LIKE ?)');
