@@ -54,6 +54,15 @@ export async function initDb(): Promise<void> {
   }
 
   await db.execute(`
+    CREATE TABLE IF NOT EXISTS run_reports (
+      job_id TEXT PRIMARY KEY,
+      report_json TEXT NOT NULL,
+      generated_at TEXT NOT NULL,
+      FOREIGN KEY (job_id) REFERENCES searches (id) ON DELETE CASCADE
+    );
+  `);
+
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS places (
       id TEXT PRIMARY KEY,
       job_id TEXT NOT NULL,
@@ -421,4 +430,26 @@ export async function getLastCollectedPlaceForSearch(segment: string, location: 
     args: [segment, location],
   });
   return result.rows.length ? result.rows[0] as unknown as PlaceRecord : null;
+}
+
+
+/** Persist run evidence in the remote database; serverless filesystems are ephemeral/read-only. */
+export async function saveRunReport(jobId: string, reportJson: string, generatedAt: string): Promise<void> {
+  const db = getDb();
+  await db.execute({
+    sql: `INSERT INTO run_reports (job_id, report_json, generated_at)
+          VALUES (?, ?, ?)
+          ON CONFLICT(job_id) DO UPDATE SET report_json = excluded.report_json, generated_at = excluded.generated_at`,
+    args: [jobId, reportJson, generatedAt],
+  });
+}
+
+export async function getRunReport(jobId: string): Promise<string | null> {
+  const db = getDb();
+  const result = await db.execute({
+    sql: 'SELECT report_json FROM run_reports WHERE job_id = ? LIMIT 1',
+    args: [jobId],
+  });
+  const row = result.rows[0] as unknown as { report_json?: string } | undefined;
+  return typeof row?.report_json === 'string' ? row.report_json : null;
 }
