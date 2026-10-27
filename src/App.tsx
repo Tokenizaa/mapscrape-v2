@@ -13,13 +13,17 @@ import { LogsScreen } from './components/LogsScreen';
 import { DashboardScreen } from './components/DashboardScreen';
 import { ProjectsScreen } from './components/ProjectsScreen';
 import { CredentialsScreen } from './components/CredentialsScreen';
+import { AuthScreen } from './components/AuthScreen';
 import { PlaceRecord, ScrapeJob } from './shared/types';
 import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-react';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<ScreenTab>('dashboard');
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [hasApiKey, setHasApiKey] = useState(() => Boolean(window.sessionStorage.getItem('mapscrape_api_key')));
+  const [hasApiKey, setHasApiKey] = useState(() => Boolean(window.sessionStorage.getItem('mapscrape_session_token') || window.sessionStorage.getItem('mapscrape_api_key')));
+  const [authUser, setAuthUser] = useState<{ id: string; email: string; name: string; role: 'admin' | 'user' } | null>(() => {
+    try { return JSON.parse(window.sessionStorage.getItem('mapscrape_user') || 'null'); } catch { return null; }
+  });
   const [apiKeyError, setApiKeyError] = useState('');
   const [isConnectingApi, setIsConnectingApi] = useState(false);
 
@@ -48,11 +52,23 @@ export default function App() {
 
   const handleDisconnectApiKey = () => {
     window.sessionStorage.removeItem('mapscrape_api_key');
+    window.sessionStorage.removeItem('mapscrape_session_token');
+    window.sessionStorage.removeItem('mapscrape_user');
+    setAuthUser(null);
     setHasApiKey(false);
     setJobs([]);
     setPlaces([]);
     setTotalPlaces(0);
     setApiKeyInput('');
+  };
+
+  const handleAuthenticated = (token: string, user: { id: string; email: string; name: string; role: 'admin' | 'user' }) => {
+    window.sessionStorage.removeItem('mapscrape_api_key');
+    window.sessionStorage.setItem('mapscrape_session_token', token);
+    window.sessionStorage.setItem('mapscrape_user', JSON.stringify(user));
+    setAuthUser(user);
+    setHasApiKey(true);
+    setApiKeyError('');
   };
 
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
@@ -123,9 +139,10 @@ export default function App() {
 
   // Initial load
   useEffect(() => {
+    if (!hasApiKey) return;
     loadHistory();
     loadPlaces();
-  }, [loadHistory, loadPlaces]);
+  }, [hasApiKey, loadHistory, loadPlaces]);
 
   // Poll persistent job state. Serverless instances do not share in-memory SSE clients.
   const subscribeToJobStream = useCallback((jobId: string) => {
@@ -286,6 +303,8 @@ export default function App() {
     logs: 'Auditoria & Logs',
   };
 
+  if (!hasApiKey) return <AuthScreen onAuthenticated={handleAuthenticated} />;
+
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans antialiased selection:bg-emerald-500/20 selection:text-emerald-300">
       {/* Sidebar Navigation */}
@@ -297,6 +316,7 @@ export default function App() {
         isScrapingActive={isScraping}
         currentJob={currentJob}
         onStopScrape={handleStopScrape}
+        isAdmin={authUser?.role === 'admin'}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
@@ -371,7 +391,7 @@ export default function App() {
             </section>
           ) : (
             <div className="mb-4 flex justify-end">
-              <button type="button" onClick={handleDisconnectApiKey} className="text-xs text-zinc-500 hover:text-zinc-200">Desconectar chave desta aba</button>
+              <span className="mr-3 text-xs text-zinc-400">{authUser?.name || authUser?.email || 'Sessão de API'}</span><button type="button" onClick={handleDisconnectApiKey} className="text-xs text-zinc-400 hover:text-zinc-100">Sair da conta</button>
             </div>
           )}
           {currentTab === 'dashboard' && <DashboardScreen totalPlaces={totalPlaces} jobs={jobs} currentJob={currentJob} isScraping={isScraping} onNavigate={setCurrentTab} />}
