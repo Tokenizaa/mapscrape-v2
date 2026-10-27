@@ -4,6 +4,13 @@ Este documento descreve o contrato implementado em `server.ts` para consumidores
 
 ## 1. Arquitetura e limites
 
+### Uso da plataforma versus integração externa
+
+O uso normal do aplicativo MapScrape — criar projetos, cadastrar categorias, iniciar pesquisas e consultar resultados — não deve exigir que o operador emita ou cole uma chave de consumidor. A chave de consumidor é destinada a um sistema externo independente que chama a REST API.
+
+Para cadastrar um sistema externo, o operador informa **nome do cliente** e **nome do projeto consumidor** em Integrações → Credenciais de API, gera a chave e a copia uma única vez para o gerenciador de segredos do sistema cliente. O token de provisionamento é segredo administrativo da infraestrutura: nunca deve ser solicitado a um consumidor nem exposto em JavaScript público. A tela de emissão deve ser acessível somente por sessão administrativa autenticada; não implemente um proxy público que injete esse token sem autorização.
+
+
 MapScrape é um serviço central de coleta. O projeto consumidor faz chamadas HTTPS para a API; não clona este repositório, não instala Puppeteer, não cria um scraper paralelo e não acessa o banco central diretamente. Fluxo de coleta: criar/selecionar projeto e categoria → iniciar job → guardar `jobId` → consultar status → buscar resultados paginados.
 
 Configure no **backend** do consumidor:
@@ -37,7 +44,7 @@ Request JSON:
 ```json
 {"consumerName":"Beleza Digital","consumerProject":"beleza-digital"}
 ```
-`consumerName`: string não vazia, máximo 120 caracteres. `consumerProject`: string não vazia, máximo 200. Retorna `201` com `data.credentialId`, `data.apiKey`, `data.consumerName`, `data.consumerProject` e `data.revealOnce: true`. A chave completa aparece uma única vez; guarde-a diretamente no secret manager. Um projeto com credencial ativa retorna `409 credential_already_exists`.
+`consumerName` (rótulo da interface: **Nome do cliente**): string não vazia, máximo 120 caracteres. `consumerProject` (rótulo da interface: **Nome do projeto**): string não vazia, máximo 200. Retorna `201` com `data.credentialId`, `data.apiKey`, `data.consumerName`, `data.consumerProject` e `data.revealOnce: true`. A chave completa aparece uma única vez; guarde-a diretamente no secret manager. Um projeto com credencial ativa retorna `409 credential_already_exists`.
 
 ### GET /api/v1/provisioning/credentials
 Lista metadados de credenciais; não retorna chaves em texto claro.
