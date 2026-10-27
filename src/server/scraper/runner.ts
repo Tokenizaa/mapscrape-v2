@@ -17,6 +17,28 @@ async function safeAudit(input: Parameters<typeof writeAuditLog>[0]): Promise<vo
   try { await writeAuditLog(input); } catch { /* Diagnostics must never break collection. */ }
 }
 
+async function connectScraperBrowser(): Promise<Browser> {
+  if (process.env.VERCEL) {
+    const { getBrowserWSEndpoint, getBrowserEndpointDiagnostic } = await import('../browserless-endpoint');
+    const endpoint = getBrowserWSEndpoint();
+    try {
+      return await puppeteer.connect({ browserWSEndpoint: endpoint, protocolTimeout: 60000 });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'falha desconhecida';
+      throw new Error(`Falha ao conectar ao Chromium remoto. Diagnóstico seguro do endpoint: ${JSON.stringify(getBrowserEndpointDiagnostic(endpoint))}. Erro Puppeteer: ${message}`);
+    }
+  }
+  return puppeteer.launch({
+    headless: true,
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--lang=pt-BR,pt'],
+  });
+}
+
+function isTransientBrowserError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error ?? '');
+  return /connection closed|target closed|detached frame|session closed|websocket is not open|protocol error|browser has disconnected|cannot find context/i.test(message);
+}
+
 function missingFields(place: PlaceRecord): string[] {
   const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes', 'media_items', 'plus_code', 'collected_at'];
   return fields.filter((field) => {
@@ -197,35 +219,7 @@ export async function runScraperJob(
     await safeAudit({ category: 'scraper', event: 'job.browser_start', message: 'Inicializando Chromium.', jobId, metadata: { segment, location, limitRequested, databaseCountBefore: baselineCount } });
     await emitProgress('Iniciando navegador Chromium...', { status: 'running' });
 
-    if (process.env.VERCEL) {
-      // Convert an HTTP-style Browserless URL to the Puppeteer WebSocket endpoint.
-      // The endpoint contains a secret token; only sanitized diagnostics are logged.
-      const { getBrowserWSEndpoint, getBrowserEndpointDiagnostic } = await import('../browserless-endpoint');
-      let browserWSEndpoint: string;
-      try {
-        browserWSEndpoint = getBrowserWSEndpoint();
-      } catch (error) {
-        throw new Error(error instanceof Error ? error.message : 'Endpoint Browserless inválido.');
-      }
-      const endpointDiagnostic = JSON.stringify(getBrowserEndpointDiagnostic(browserWSEndpoint));
-      try {
-        browser = await puppeteer.connect({ browserWSEndpoint, protocolTimeout: 30000 });
-      } catch (error) {
-        const message = error instanceof Error ? error.message : 'falha desconhecida';
-        throw new Error(`Falha ao conectar ao Chromium remoto. Diagnóstico seguro do endpoint: ${endpointDiagnostic}. Erro Puppeteer: ${message}`);
-      }
-    } else {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu',
-          '--lang=pt-BR,pt',
-        ],
-      });
-    }
+    browser = await connectScraperBrowser();
 
     handle.cancel = () => {
       handle.cancelled = true;
@@ -379,6 +373,8 @@ export async function runScraperJob(
     // Keep scrolling until we have the requested number of NEW records, not merely links.
     const discoveredUrls: { url: string; previewName: string }[] = [];
     const seenUrlsInRun = new Set<string>();
+    const eligibleUrlsInRun = new Set<string>();
+    const retriedItems = new Set<number>();
     let duplicateUrlsDiscovered = 0;
 
     // Resume at the most recently saved URL for this exact segment/location pair.
@@ -396,7 +392,7 @@ export async function runScraperJob(
     let reachedEndOfList = false;
     const maxScrollAttempts = Math.min(Math.max(limitRequested * 4, 40), 160);
 
-    while (discoveredUrls.length < limitRequested && scrollAttempts < maxScrollAttempts && stagnantRounds < 8 && !handle.cancelled) {
+    while (eligibleUrlsInRun.size < limitRequested && scrollAttempts < maxScrollAttempts && stagnantRounds < 8 && !handle.cancelled) {
       scrollAttempts++;
 
       // Search ordering can change. Give deep histories time to reach the checkpoint;
@@ -449,8 +445,8 @@ export async function runScraperJob(
         seenUrlsInRun.add(canonicalUrl);
         newUniqueLinksInBatch++;
 
-        // Ignore all prior results up to the saved checkpoint. Once the checkpoint
-        // appears, candidates following it in the feed are eligible for collection.
+        // Ignore prior results up to the saved checkpoint. Once resumed, count each
+        // unique candidate against the requested limit, including duplicates.
         if (!resumeReached) {
           if (canonicalUrl === resumeUrl) {
             resumeReached = true;
@@ -462,6 +458,9 @@ export async function runScraperJob(
           }
           continue;
         }
+
+        if (eligibleUrlsInRun.size >= limitRequested) continue;
+        eligibleUrlsInRun.add(canonicalUrl);
 
         // Count and log existing records during discovery, then continue scrolling
         // until the requested number of genuinely new candidates has been found.
@@ -497,11 +496,11 @@ export async function runScraperJob(
         newFoundInBatch++;
       }
 
-      totalFound = discoveredUrls.length + duplicateUrlsDiscovered;
+      totalFound = eligibleUrlsInRun.size;
       if (newFoundInBatch > 0) await safeAudit({ category: 'scraper', event: 'results.discovered', message: 'Novas fichas candidatas encontradas na lista.', jobId, metadata: { totalFound, newCandidates: discoveredUrls.length, newInBatch: newFoundInBatch, duplicatesSeen: duplicateUrlsDiscovered, scrollAttempt: scrollAttempts } });
-      await emitProgress(`Encontrados ${totalFound} links únicos; ${discoveredUrls.length} ainda não estão salvos...`);
+      await emitProgress(`Limite: ${limitRequested} fichas. Avaliadas ${totalFound}; elegíveis para extração ${discoveredUrls.length}; duplicados ${duplicateUrlsDiscovered}.`);
 
-      if (discoveredUrls.length >= limitRequested) {
+      if (eligibleUrlsInRun.size >= limitRequested) {
         break;
       }
 
@@ -678,7 +677,7 @@ export async function runScraperJob(
     }
 
     const itemsToProcess = discoveredUrls.slice(0, limitRequested);
-    totalFound = Math.max(totalFound, itemsToProcess.length + duplicateUrlsDiscovered);
+    totalFound = Math.min(eligibleUrlsInRun.size, limitRequested);
 
     await emitProgress(
       `Iniciando extração detalhada de ${itemsToProcess.length} fichas de estabelecimentos...`
@@ -701,6 +700,9 @@ export async function runScraperJob(
       let detailPage: Page | null = null;
 
       try {
+        // Recover a lost remote session before opening the next detail tab.
+        if (!browser || !browser.isConnected()) browser = await connectScraperBrowser();
+
         // Keep every per-place operation inside the isolation boundary: a
         // database lookup or progress update can fail just like extraction.
         const existingPlace = await findPlaceByUrl(item.url);
@@ -803,6 +805,17 @@ export async function runScraperJob(
           `[${placeNum}/${itemsToProcess.length}] Coletado: ${placeRecord.name}`
         );
       } catch (placeErr: any) {
+        if (isTransientBrowserError(placeErr) && !retriedItems.has(i)) {
+          retriedItems.add(i);
+          await safeAudit({ level: 'warn', category: 'scraper', event: 'browser.transient_failure_retry', message: 'Falha transitória do Chromium; reconectando e repetindo esta ficha uma única vez.', jobId, metadata: { mapsUrl: item.url, attempt: 2, error: placeErr?.message || String(placeErr) } });
+          try {
+            browser = await connectScraperBrowser();
+            i--;
+            continue;
+          } catch (reconnectError) {
+            placeErr = reconnectError;
+          }
+        }
         totalErrors++;
         await safeAudit({ level: 'error', category: 'scraper', event: 'place.extraction_failed', message: placeErr?.message || 'Falha ao extrair ficha.', jobId, metadata: { mapsUrl: item.url, previewName: item.previewName || previewTitle, stack: String(placeErr?.stack || '').slice(0, 4000) } }).catch(() => {});
         console.error(`Erro ao coletar ficha ${item.url}:`, placeErr.message);
@@ -830,10 +843,10 @@ export async function runScraperJob(
     const statusMsg = handle.cancelled
       ? `Coleta interrompida. ${totalCollected} registros salvos; ${totalErrors} falhas.`
       : hadPartialFailures
-        ? `Coleta encerrada parcialmente: ${totalCollected} registros salvos, ${totalDuplicates} duplicados, ${totalErrors} falhas. Foram encontrados ${discoveredUrls.length} resultados para um limite de ${limitRequested}; isso não comprova que não existam outros resultados.`
+        ? `Coleta encerrada parcialmente: ${totalCollected} registros salvos, ${totalDuplicates} duplicados, ${totalErrors} falhas. Foram avaliadas ${Math.min(eligibleUrlsInRun.size, limitRequested)} fichas, dentro do limite solicitado de ${limitRequested}; isso não comprova que não existam outros resultados.`
         : `Coleta concluída: ${totalCollected} registros salvos, ${totalDuplicates} duplicados e ${totalErrors} falhas.`;
 
-    await safeAudit({ level: finalStatus === 'partial' ? 'warn' : 'info', category: 'scraper', event: 'job.finished', message: statusMsg, jobId, metadata: { status: finalStatus, totalFound, totalCollected, totalDuplicates, totalErrors, scrollAttempts, reachedEndOfList, databaseCountBefore: baselineCount, newCandidatesFound: discoveredUrls.length } });
+    await safeAudit({ level: finalStatus === 'partial' ? 'warn' : 'info', category: 'scraper', event: 'job.finished', message: statusMsg, jobId, metadata: { status: finalStatus, totalFound, totalCollected, totalDuplicates, totalErrors, scrollAttempts, reachedEndOfList, databaseCountBefore: baselineCount, newCandidatesFound: discoveredUrls.length, eligibleCandidatesEvaluated: eligibleUrlsInRun.size, requestedLimit: limitRequested } });
     await emitProgress(statusMsg, {
       status: finalStatus,
       status_message: statusMsg,
