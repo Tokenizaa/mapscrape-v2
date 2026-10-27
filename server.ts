@@ -164,7 +164,7 @@ export async function createApp() {
   // 1. Start scraping job
   app.post('/api/scrape/start', async (req: Request, res: Response) => {
     try {
-      const { segment, location, limit } = req.body;
+      const { segment, projectName, location, limit } = req.body;
 
       if (!segment || typeof segment !== 'string' || !segment.trim()) {
         return res.status(400).json({ error: 'O campo segmento é obrigatório.' });
@@ -180,6 +180,7 @@ export async function createApp() {
         id: jobId,
         user_id: (req as any).user?.id || "dev-user-1",
         segment: segment.trim(),
+        project_name: typeof projectName === 'string' && projectName.trim() ? projectName.trim().slice(0, 120) : `${segment.trim()} · ${location.trim()}`,
         location: location.trim(),
         limit_requested: limitNum,
         status: 'running',
