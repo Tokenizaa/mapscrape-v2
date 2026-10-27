@@ -475,7 +475,7 @@ export async function runScraperJob(
       let newUniqueLinksInBatch = 0;
       for (const item of currentLinks) {
         const canonicalUrl = item.url.split('?')[0].replace(/\/$/, '');
-        if (!canonicalUrl || seenUrlsInRun.has(canonicalUrl)) continue;
+        if (!canonicalUrl || seenUrlsInRun.has(canonicalUrl) || eligibleUrlsInRun.has(canonicalUrl)) continue;
         seenUrlsInRun.add(canonicalUrl);
         newUniqueLinksInBatch++;
 
