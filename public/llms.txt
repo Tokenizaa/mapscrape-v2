@@ -1,29 +1,40 @@
-# MapScrape API documentation
+# MapScrape REST API v1
 
-MapScrape is a central scraping service. Consumer applications call it over HTTPS; they must not clone this repository, install Puppeteer, run a second scraper, or access the central database directly.
+MapScrape is a central collection service. Consumer apps integrate over HTTPS; do not clone this repository, install Puppeteer, run a parallel scraper, or access the central database.
 
-## Start here
-- Public developer portal: https://mapscrape-v2.vercel.app/docs/
-- REST API v1 contract: https://mapscrape-v2.vercel.app/openapi.yaml
-- API health: https://mapscrape-v2.vercel.app/api/v1/health
-- API reference in source: https://github.com/Tokenizaa/mapscrape-v2/blob/main/docs/API.md
-- Agent integration prompt: https://mapscrape-v2.vercel.app/docs/#agent-prompt
+## Canonical docs
+- Developer portal: https://mapscrape-v2.vercel.app/docs/
+- OpenAPI 3.1: https://mapscrape-v2.vercel.app/openapi.yaml
+- Full REST contract: https://github.com/Tokenizaa/mapscrape-v2/blob/main/docs/API.md
+- Project/category contract: https://github.com/Tokenizaa/mapscrape-v2/blob/main/docs/PROJECTS-CATEGORIES-API.md
+- Agent skill: https://mapscrape-v2.vercel.app/skill.md
+- Public health: https://mapscrape-v2.vercel.app/api/v1/health
 
-## Consumer configuration
-- MAPSCRAPE_API_BASE_URL: confirmed deployed API base URL.
-- MAPSCRAPE_API_KEY: individual consumer credential stored only as a server-side secret.
+## Environment and authentication
+Set MAPSCRAPE_API_BASE_URL and MAPSCRAPE_API_KEY only as server-side secrets. Consumer endpoints require Authorization: Bearer <MAPSCRAPE_API_KEY>, except GET /api/v1/health. Do not expose keys in VITE_*/NEXT_PUBLIC_ bundles, URLs, logs, prompts, or version control. MAPSCRAPE_PROVISIONING_TOKEN is administrative and must never be given to consumer agents.
 
-Never expose API keys in browser code, URLs, logs, prompts, or version control. Do not give the administrative MAPSCRAPE_PROVISIONING_TOKEN to consumer agents. If a credential is missing, an authorized operator must provision it and store it directly in the consumer secret manager.
-
-## Main endpoints
+## Consumer endpoints
 - GET /api/v1/health
-- GET /api/v1/leads
+- GET, POST /api/v1/projects
+- GET, POST /api/v1/categories
+- GET /api/v1/leads?query=&jobId=&sortBy=&sortOrder=&limit=50&offset=0
 - GET /api/v1/leads/{id}
 - POST /api/v1/jobs
 - GET /api/v1/jobs/{id}
-- GET /api/v1/jobs/{id}/results
+- GET /api/v1/jobs/{id}/results?limit=50&offset=0
 
-Authenticated endpoints use Authorization: Bearer <MAPSCRAPE_API_KEY>. Individual credentials are scoped to the consumer project. Jobs are asynchronous; create a job, poll status, then retrieve paginated results.
+## Lead fields
+id, job_id, name, category, address, phone, website, rating, review_count, price_range, opening_hours, business_status, latitude, longitude, maps_url, description, services_attributes, photos, videos, logo_url, booking_url, social_links, reviews, review_topics, additional_attributes, media_items, plus_code, collected_at.
+Most scalar values, including rating/review_count/latitude/longitude, are strings. photos/videos/social_links are arrays. Other structured values may be object/array or a preserved string in legacy/invalid JSON data. Empty values mean no persisted value, not a negative claim about the business.
 
-## Agent requirements
-Read the public portal and OpenAPI contract before implementing. Adapt the existing consumer architecture, write tests, run lint/typecheck/build, and distinguish mocked tests from real API validation. Never clone or embed MapScrape in the consumer project.
+## Collection lifecycle
+POST /api/v1/jobs accepts JSON with required non-empty segment and location; optional limit integer 1..100 (default 20), projectName and categoryName. It returns 202 with data.jobId, statusUrl, resultsUrl. A 202 means accepted, not completed. Poll GET /api/v1/jobs/{id} until status is completed, partial, stopped or failed, then page through results. Do not blindly retry POST after timeout; no Idempotency-Key is implemented.
+
+## Pagination and scope
+List/results response: {data:[...], pagination:{total,limit,offset,hasMore}}. limit 1..100, offset >=0. Each individual credential is scoped to one consumer; resources outside that scope are not exposed.
+
+## Admin-only credential lifecycle
+POST /api/v1/provisioning/credentials; GET /api/v1/provisioning/credentials; DELETE /api/v1/provisioning/credentials/{id}; POST /api/v1/provisioning/credentials/{id}/rotate. These require X-MapScrape-Provisioning-Token and authorized infrastructure. Issued apiKey is revealed once; rotate revokes the old key before issuing a replacement. Never call from browser or provide bootstrap token to a consumer agent.
+
+## Agent instructions
+Read the portal, OpenAPI, and full contract before coding. Inspect the consumer architecture, create a typed server-side client with timeout and normalized errors, handle auth/pagination/job states, preserve unknown fields, add tests, and distinguish mocked tests from real production validation. Never invent schema fields or claim end-to-end collection success from health/202 alone.
