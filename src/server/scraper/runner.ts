@@ -46,7 +46,7 @@ function isBrowserConnected(browser: Browser): boolean {
 }
 
 function missingFields(place: PlaceRecord): string[] {
-  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes', 'media_items', 'plus_code', 'collected_at'];
+  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'booking_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes', 'media_items', 'plus_code', 'collected_at'];
   return fields.filter((field) => {
     const value = String(place[field] ?? '').trim();
     if (!value) return true;
@@ -121,11 +121,15 @@ function mergePlaceRecords(existing: PlaceRecord, fresh: PlaceRecord): PlaceReco
     photos: mergeDelimited(existing.photos, fresh.photos),
     videos: mergeDelimited(existing.videos, fresh.videos),
     logo_url: fresh.logo_url || existing.logo_url,
+    booking_url: fresh.booking_url || existing.booking_url || '',
     social_links: mergeDelimited(existing.social_links, fresh.social_links),
     reviews: JSON.stringify(freshReviews.length ? freshReviews : oldReviews),
     review_topics: JSON.stringify(freshTopics.length ? freshTopics : oldTopics),
     additional_attributes: JSON.stringify(hasFreshAttributes ? freshAttributes : oldAttributes),
-    media_items: JSON.stringify(freshMedia.length ? freshMedia : oldMedia),
+    media_items: JSON.stringify(Array.from(
+      new Map([...oldMedia, ...freshMedia].filter((item) => item && typeof item === 'object')
+        .map((item) => [String(item.type || '') + ':' + String(item.url || item.title || ''), item])).values()
+    )),
     plus_code: fresh.plus_code || existing.plus_code,
     collected_at: fresh.collected_at || existing.collected_at || new Date().toISOString(),
   };
