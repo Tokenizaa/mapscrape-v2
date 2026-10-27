@@ -490,7 +490,16 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     // Build typed media entries so the UI can render photos as images and video
     // items with a playable preview where the public page exposes a source.
     const media_items = [
-      ...photoUrls.map((url) => ({ type: 'image', url, thumbnail_url: url, title: '' })),
+      ...photoUrls.map((url) => ({
+        type: 'image',
+        url,
+        // Google Maps image URLs commonly support size variants. Keep the original
+        // URL intact and request a bounded thumbnail only when its URL is transformable.
+        thumbnail_url: /=[wh]\d+/i.test(url)
+          ? url.replace(/=w\d+-h\d+[^&]*/i, '=w400-h300-k-no')
+          : url,
+        title: '',
+      })),
     ];
     const plusCodeNode = Array.from(document.querySelectorAll('[aria-label*="Plus code"],[aria-label*="Plus Code"],[data-item-id*="oloc"]'))
       .find((node) => /plus code/i.test(node.getAttribute('aria-label') || ''));
