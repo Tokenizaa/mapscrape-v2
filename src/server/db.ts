@@ -268,22 +268,24 @@ export async function getJob(id: string, consumerProject?: string): Promise<Scra
   return res.rows[0] as unknown as ScrapeJob;
 }
 
-export async function listJobs(): Promise<ScrapeJob[]> {
+export async function listJobs(consumerProject?: string): Promise<ScrapeJob[]> {
   const db = getDb();
-  const res = await db.execute(`SELECT * FROM searches ORDER BY created_at DESC`);
+  const res = await db.execute({
+    sql: consumerProject
+      ? `SELECT * FROM searches WHERE user_id = ? ORDER BY created_at DESC`
+      : `SELECT * FROM searches ORDER BY created_at DESC`,
+    args: consumerProject ? [consumerProject] : [],
+  });
   return res.rows as unknown as ScrapeJob[];
 }
 
-export async function deleteJob(id: string): Promise<void> {
+export async function deleteJob(id: string, consumerProject?: string): Promise<boolean> {
   const db = getDb();
-  await db.execute({
-    sql: `DELETE FROM places WHERE job_id = ?`,
-    args: [id],
-  });
-  await db.execute({
-    sql: `DELETE FROM searches WHERE id = ?`,
-    args: [id],
-  });
+  const job = await getJob(id, consumerProject);
+  if (!job) return false;
+  await db.execute({ sql: `DELETE FROM places WHERE job_id = ?`, args: [id] });
+  await db.execute({ sql: `DELETE FROM searches WHERE id = ?`, args: [id] });
+  return true;
 }
 
 export async function insertPlace(place: PlaceRecord): Promise<void> {
@@ -439,16 +441,17 @@ export async function getPlacesByIds(ids: string[], consumerProject?: string): P
   return res.rows as unknown as PlaceRecord[];
 }
 
-export async function getAllPlaces(jobId?: string): Promise<PlaceRecord[]> {
+export async function getAllPlaces(jobId?: string, consumerProject?: string): Promise<PlaceRecord[]> {
   const db = getDb();
-  if (jobId) {
-    const res = await db.execute({
-      sql: `SELECT * FROM places WHERE job_id = ? ORDER BY collected_at DESC`,
-      args: [jobId],
-    });
-    return res.rows as unknown as PlaceRecord[];
-  }
-  const res = await db.execute(`SELECT * FROM places ORDER BY collected_at DESC`);
+  const where: string[] = [];
+  const args: unknown[] = [];
+  if (jobId) { where.push('p.job_id = ?'); args.push(jobId); }
+  if (consumerProject) { where.push('s.user_id = ?'); args.push(consumerProject); }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const res = await db.execute({
+    sql: `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id ${whereSql} ORDER BY p.collected_at DESC`,
+    args,
+  });
   return res.rows as unknown as PlaceRecord[];
 }
 
