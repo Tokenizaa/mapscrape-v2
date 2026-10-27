@@ -8,7 +8,7 @@
     "build": "vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=server.bundle.mjs",
     "start": "node --import tsx server.ts",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --fileParallelism=false",
     "clean": "rm -rf dist server.js server.bundle.mjs",
     "lint": "tsc --noEmit"
   },
