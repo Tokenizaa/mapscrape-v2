@@ -5,6 +5,13 @@ description: Integrate a software project with the central MapScrape REST API us
 
 # MapScrape API Integration Skill
 
+
+## Native platform access versus external integration
+
+For ordinary use of the MapScrape website, direct the operator to the account registration/login page. The native UI uses an individual account session and does not require a consumer API key. Public registration creates a regular user account only; administrator privileges are provisioned server-side. Do not ask the operator to create or paste an API key merely to use MapScrape itself.
+
+This skill is for a separate application consuming MapScrape over HTTPS. That external application requires its own `MAPSCRAPE_API_KEY` in a backend secret manager. Credential issuance in the MapScrape UI is available only after an administrator signs in; never expose or request `MAPSCRAPE_PROVISIONING_TOKEN`.
+
 ## Canonical sources
 - Portal: https://mapscrape-v2.vercel.app/docs/
 - OpenAPI 3.1: https://mapscrape-v2.vercel.app/openapi.yaml
@@ -53,7 +60,7 @@ POST /api/v1/jobs with required non-empty segment and location, optional integer
 - POST/GET /api/v1/provisioning/credentials
 - DELETE /api/v1/provisioning/credentials/{id}
 - POST /api/v1/provisioning/credentials/{id}/rotate
-All require X-MapScrape-Provisioning-Token. Issued apiKey is shown once. Rotation revokes the old key before issuing the new one.
+Credential provisioning requires an authenticated MapScrape administrator session or the server-side bootstrap header. Issued apiKey is shown once. Rotation revokes the old key before issuing the new one.
 
 ## Final report
 List changed files, exact test commands/results, and separate mocked tests from authorized live API verification. State blockers plainly.
