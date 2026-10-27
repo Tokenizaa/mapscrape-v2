@@ -168,6 +168,28 @@ export async function initDb(): Promise<void> {
     try { await db.execute(`ALTER TABLE searches ADD COLUMN ${column} ${definition};`); } catch {}
   }
 
+  // Backfill project/category IDs for legacy searches without changing their owner or results.
+  const legacySearches = await db.execute(`
+    SELECT id, user_id, project_name, segment, location, project_id, category_id
+    FROM searches
+    WHERE project_id IS NULL OR category_id IS NULL
+  `);
+  for (const row of legacySearches.rows as unknown as Array<{
+    id: string; user_id: string; project_name: string; segment: string; location: string;
+    project_id: string | null; category_id: string | null;
+  }>) {
+    const scope = row.user_id?.trim() || 'legacy-unassigned';
+    const projectName = row.project_name?.trim() || `${row.segment} · ${row.location}`;
+    const project = row.project_id ? null : await resolveProject(scope, projectName);
+    const category = row.category_id ? null : await resolveSearchCategory(scope, row.segment || 'Sem categoria');
+    if (project || category) {
+      await db.execute({
+        sql: `UPDATE searches SET project_id = COALESCE(project_id, ?), category_id = COALESCE(category_id, ?) WHERE id = ?`,
+        args: [project?.id || null, category?.id || null, row.id],
+      });
+    }
+  }
+
 }
 
 export async function createApiCredential(input: {
