@@ -1,4 +1,5 @@
 import express, { Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
@@ -172,7 +173,9 @@ export async function createApp() {
 
   app.use(express.json());
 
-  app.post('/api/auth/register', async (req: Request, res: Response) => {
+  const accountAuthLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'too_many_attempts', message: 'Muitas tentativas. Aguarde 15 minutos e tente novamente.' } });
+
+  app.post('/api/auth/register', accountAuthLimiter, async (req: Request, res: Response) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const displayName = typeof req.body?.name === 'string' ? req.body.name.trim().replace(/\s+/g, ' ') : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
@@ -192,7 +195,7 @@ export async function createApp() {
     }
   });
 
-  app.post('/api/auth/login', async (req: Request, res: Response) => {
+  app.post('/api/auth/login', accountAuthLimiter, async (req: Request, res: Response) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
     if (!sessionSecret()) return res.status(503).json({ error: 'auth_not_configured', message: 'A autenticação ainda não foi configurada pelo administrador.' });
