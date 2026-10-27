@@ -73,24 +73,6 @@ function needsEnrichment(place: PlaceRecord): boolean {
   return ENRICHMENT_FIELDS.some((field) => missing.includes(field));
 }
 
-/** Build a minimal, explicitly partial record when a single field extraction fails.
- * A Maps result title + canonical URL are enough to preserve the candidate; all
- * unavailable fields remain empty and are eligible for later reconciliation.
- */
-function createPartialPlaceRecord(name: string, jobId: string, url: string): PlaceRecord {
-  return {
-    id: `place_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-    job_id: jobId,
-    name: name.trim(),
-    category: '', address: '', phone: '', website: '', rating: '',
-    review_count: '', price_range: '', opening_hours: '', business_status: '',
-    latitude: '', longitude: '', maps_url: url, description: '',
-    services_attributes: '', photos: '', videos: '', logo_url: '', social_links: '',
-    reviews: '[]', review_topics: '[]', additional_attributes: '{}',
-    media_items: '[]', plus_code: '', collected_at: new Date().toISOString(),
-  };
-}
-
 function parseJsonArray(value?: string): any[] {
   try { const parsed = JSON.parse(value || '[]'); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
 }
@@ -730,20 +712,9 @@ export async function runScraperJob(
             await detailPage.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
             await detailPage.waitForSelector('h1', { timeout: 12000 }).catch(() => {});
             await new Promise((resolve) => setTimeout(resolve, 700));
-            let fresh: PlaceRecord;
-            try {
-              fresh = await extractPlaceDetails(detailPage, jobId, item.url);
-            } catch (extractionError) {
-              // Do not lose an existing record because one optional field/panel
-              // failed to render. Empty fallback fields never overwrite valid data.
-              fresh = createPartialPlaceRecord(existingPlace.name || item.previewName, jobId, item.url);
-              await safeAudit({
-                level: 'warn', category: 'scraper', event: 'place.partial_extraction',
-                message: 'Falha na extração detalhada; preservando registro existente e continuando a coleta.',
-                jobId,
-                metadata: { mapsUrl: item.url, placeId: existingPlace.id, error: extractionError instanceof Error ? extractionError.message : 'Falha de extração' },
-              });
-            }
+            // A failed extraction is not a valid enrichment. Keep the old record unchanged
+            // and let the outer handler retry transient browser failures or record the failure.
+            const fresh: PlaceRecord = await extractPlaceDetails(detailPage, jobId, item.url);
             if (!fresh.name.trim()) fresh.name = existingPlace.name || item.previewName;
             const merged = mergePlaceRecords(existingPlace, fresh);
             await updatePlace(existingPlace.id, merged);
@@ -780,21 +751,9 @@ export async function runScraperJob(
         await detailPage.waitForSelector('h1', { timeout: 12000 }).catch(() => {});
         await new Promise((resolve) => setTimeout(resolve, 700));
 
-        let placeRecord: PlaceRecord;
-        try {
-          placeRecord = await extractPlaceDetails(detailPage, jobId, item.url);
-        } catch (extractionError) {
-          if (!item.previewName.trim()) throw extractionError;
-          // A failed optional panel must not discard a result whose Maps listing
-          // supplied a usable name and canonical place URL.
-          placeRecord = createPartialPlaceRecord(item.previewName, jobId, item.url);
-          await safeAudit({
-            level: 'warn', category: 'scraper', event: 'place.partial_extraction',
-            message: 'Ficha salva parcialmente após falha na extração detalhada; campos ausentes poderão ser reconciliados.',
-            jobId,
-            metadata: { mapsUrl: item.url, previewName: item.previewName, error: extractionError instanceof Error ? extractionError.message : 'Falha de extração' },
-          });
-        }
+        // Do not convert an extraction exception into a synthetic record with blank fields.
+        // Only persist a record when the extractor completed and returned a structured result.
+        const placeRecord: PlaceRecord = await extractPlaceDetails(detailPage, jobId, item.url);
 
         // Reject structurally broken detail pages rather than persisting a blank
         // or unrelated record after a Google Maps UI change.
