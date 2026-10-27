@@ -165,6 +165,9 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     ));
     const statusText = statusCandidates.map((el) => attr(el, 'aria-label') || text(el))
       .find((value) => /aberto|fechado|open|closed|fermé|fermée|ouvert|abierto|cerrado/i.test(value)) || '';
+    const nextOpeningText = statusText.match(/(?:abre|aberto|opens?|opening|reabre|abertura)[^·|]*/i)?.[0]?.trim() || '';
+    const openingDayMatch = nextOpeningText.match(/\b(segunda(?:-feira)?|terça(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sábado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/i);
+    const openingTimeMatch = nextOpeningText.match(/\b(\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?|\d{1,2}h(?:\d{2})?)\b/i);
 
     // Prefer explicit business description/summary fields and avoid generic
     // container text that merely repeats navigation labels.
@@ -455,6 +458,16 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
 
     // Promote verified public service/accessibility details into the searchable
     // services_attributes field, while retaining the structured About payload too.
+    const attributeSections = Array.isArray(additional_attributes.sections) ? additional_attributes.sections : [];
+    const allAttributeItems = attributeSections.flatMap((section: { category?: string; items?: string[] }) =>
+      (Array.isArray(section.items) ? section.items : []).map((item: string) => String(item || '').trim()).filter(Boolean)
+    );
+    const attributes = Array.from(new Set(allAttributeItems.filter((item: string) =>
+      !/wheelchair|cadeira de rodas|acessibilidade|accessible entrance|accessible parking|acessível/i.test(item)
+    )));
+    const accessibility_attributes = Array.from(new Set(allAttributeItems.filter((item: string) =>
+      /wheelchair|cadeira de rodas|acessibilidade|accessible entrance|accessible parking|acessível|accessible restroom|banheiro acessível/i.test(item)
+    )));
     const structuredAttributeLines = (additional_attributes.sections || [])
       .flatMap((section: { category?: string; items?: string[] }) => {
         const category = String(section.category || '').trim();
@@ -521,15 +534,22 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
 
     // Build typed media entries so the UI can render photos as images and video
     // items with a playable preview where the public page exposes a source.
+    const makeThumbnailUrl = (url: string): string => {
+      if (/=w\d+-h\d+[^&]*/i.test(url)) return url.replace(/=w\d+-h\d+[^&]*/i, '=w400-h300-k-no');
+      if (/=s\d+([^&]*)$/i.test(url)) return url.replace(/=s\d+([^&]*)$/i, '=w400-h300-k-no$1');
+      if (/=w\d+([^&]*)$/i.test(url)) return url.replace(/=w\d+([^&]*)$/i, '=w400-h300-k-no$1');
+      return '';
+    };
+    const visiblePhotoCountText = Array.from(document.querySelectorAll('button,[aria-label],span,div'))
+      .map((node) => [text(node), attr(node, 'aria-label')].filter(Boolean).join(' '))
+      .filter((value) => /\b\d{1,4}\s*(?:photos|fotos)\b/i.test(value) && value.length < 160)
+      .map((value) => value.match(/\b(\d{1,4})\s*(?:photos|fotos)\b/i)?.[1] || '')
+      .find(Boolean) || '';
     const media_items = [
       ...photoUrls.map((url) => ({
         type: 'image',
         url,
-        // Google Maps image URLs commonly support size variants. Keep the original
-        // URL intact and request a bounded thumbnail only when its URL is transformable.
-        thumbnail_url: /=[wh]\d+/i.test(url)
-          ? url.replace(/=w\d+-h\d+[^&]*/i, '=w400-h300-k-no')
-          : url,
+        thumbnail_url: makeThumbnailUrl(url),
         title: '',
       })),
     ];
@@ -604,7 +624,9 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       opening_hours, business_status: statusText, description, services_attributes: servicesAndAttributes,
       photos: photoUrls.join(' | '), videos: videoUrls.join(' | '), logo_url, social_links: socialUrls.join(' | '),
       bookingUrl, reviews, review_topics, additional_attributes, media_items, plus_code,
-      popular_times, rating_distribution, review_highlights,
+      popular_times, rating_distribution, review_highlights, attributes, accessibility_attributes,
+      nextOpeningText, nextOpeningDay: openingDayMatch?.[1] || '', nextOpeningTime: openingTimeMatch?.[1] || '',
+      visiblePhotosCount: visiblePhotoCountText,
       currentUrl: window.location.href,
     };
   }, SELECTORS.place);
@@ -621,7 +643,9 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     opening_hours: raw.opening_hours, business_status: raw.business_status, booking_url: raw.bookingUrl,
     photos: raw.photos, videos: raw.videos, logo_url: raw.logo_url, social_links: raw.social_links,
     reviews: raw.reviews, review_topics: raw.review_topics, additional_attributes: raw.additional_attributes,
-    media_items: raw.media_items, plus_code: raw.plus_code, popular_times: raw.popular_times,
+    media_items: raw.media_items, plus_code: raw.plus_code, attributes: raw.attributes, accessibility_attributes: raw.accessibility_attributes,
+    next_opening_text: raw.nextOpeningText, next_open_day: raw.nextOpeningDay, next_open_time: raw.nextOpeningTime,
+    visible_photos_count: raw.visiblePhotosCount, popular_times: raw.popular_times,
     rating_distribution: raw.rating_distribution, review_highlights: raw.review_highlights,
     postal_code: postalMatch?.[1] || '', country, city, state, source_place_id: sourcePlaceId, source_url: sourceUrl,
   };
@@ -657,6 +681,12 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     additional_attributes: JSON.stringify(raw.additional_attributes || {}),
     media_items: JSON.stringify(Array.isArray(raw.media_items) ? raw.media_items : []),
     plus_code: cleanText(raw.plus_code),
+    attributes: JSON.stringify(Array.isArray(raw.attributes) ? raw.attributes : []),
+    accessibility_attributes: JSON.stringify(Array.isArray(raw.accessibility_attributes) ? raw.accessibility_attributes : []),
+    next_opening_text: cleanText(raw.nextOpeningText),
+    next_open_day: cleanText(raw.nextOpeningDay),
+    next_open_time: cleanText(raw.nextOpeningTime),
+    visible_photos_count: cleanText(raw.visiblePhotosCount),
     postal_code: cleanText(addressComponents.postal_code),
     country: cleanText(addressComponents.country),
     city: cleanText(addressComponents.city),
