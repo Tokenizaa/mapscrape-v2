@@ -33,6 +33,8 @@ Todos os endpoints abaixo, exceto o health check, exigem autenticação.
 | Método | Endpoint | Finalidade |
 |---|---|---|
 | GET | `/api/v1/health` | Verificar serviço e banco |
+| GET/POST | `/api/v1/projects` | Listar/criar ou reutilizar projetos |
+| GET/POST | `/api/v1/categories` | Listar/criar ou reutilizar categorias de pesquisa |
 | GET | `/api/v1/leads` | Pesquisar leads com filtros e paginação |
 | GET | `/api/v1/leads/{id}` | Obter detalhes de um lead |
 | POST | `/api/v1/jobs` | Iniciar coleta assíncrona |
@@ -40,6 +42,7 @@ Todos os endpoints abaixo, exceto o health check, exigem autenticação.
 | GET | `/api/v1/jobs/{id}/results` | Consultar resultados paginados |
 | POST | `/api/v1/provisioning/credentials` | Emitir credencial de consumidor, com token bootstrap |
 | GET/DELETE | `/api/v1/provisioning/credentials` | Administrar credenciais |
+| POST | `/api/v1/provisioning/credentials/{id}/rotate` | Rotacionar credencial (admin) |
 
 Autenticação de consumidor:
 
