@@ -546,6 +546,7 @@ export async function createApp() {
         category: req.query.category ? String(req.query.category) : undefined,
         jobId: req.query.jobId ? String(req.query.jobId) : undefined,
         query: req.query.query ? String(req.query.query) : undefined,
+        consumerProject: (req as any).mapscrapeConsumer.consumer_project,
       });
       const body = result.logs.map((log) => JSON.stringify({
         ...log,
