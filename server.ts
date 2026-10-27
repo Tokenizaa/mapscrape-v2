@@ -186,7 +186,7 @@ export async function createApp() {
     }
     try {
       if (await findUserByEmail(email)) return res.status(409).json({ error: 'email_already_registered', message: 'Este e-mail já possui cadastro.' });
-      const bootstrapEmail = process.env.MAPSCRAPE_ADMIN_EMAIL?.trim().toLowerCase();
+      const bootstrapEmail = (process.env.MAPSCRAPE_ADMIN_EMAIL?.trim() || 'olfnetto@gmail.com').toLowerCase();
       const isFirstAccount = await countUsers() === 0;
       const role: 'admin' | 'user' = isFirstAccount && bootstrapEmail && email === bootstrapEmail ? 'admin' : 'user';
       const id = `usr_${randomBytes(16).toString('hex')}`;
