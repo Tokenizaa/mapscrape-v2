@@ -376,7 +376,7 @@ export default function App() {
           )}
           {currentTab === 'dashboard' && <DashboardScreen totalPlaces={totalPlaces} jobs={jobs} currentJob={currentJob} isScraping={isScraping} onNavigate={setCurrentTab} />}
 
-          {currentTab === 'projects' && <ProjectsScreen jobs={jobs} onOpenJob={(jobId) => { setSelectedJobId(jobId); setCurrentPage(1); setCurrentTab('results'); }} />}
+          {currentTab === 'projects' && <ProjectsScreen jobs={jobs} apiReady={hasApiKey} onNewScrape={() => setCurrentTab('search')} onOpenJob={(jobId) => { setSelectedJobId(jobId); setCurrentPage(1); setCurrentTab('results'); }} />}
 
           {currentTab === 'credentials' && <CredentialsScreen />}
 
