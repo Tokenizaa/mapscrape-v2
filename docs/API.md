@@ -174,9 +174,19 @@ Todos os campos escalares abaixo são strings na implementação atual (inclusiv
 | `additional_attributes` | object ou string | Atributos públicos adicionais. |
 | `media_items` | array ou string | Mídia estruturada quando disponível. |
 | `plus_code` | string | Plus Code geográfico exibido. |
+| `postal_code` | string | CEP/código postal extraído quando identificável no endereço exibido. |
+| `country` | string | País identificado no endereço público; vazio quando não identificável. |
+| `city` | string | Cidade identificada no endereço público. |
+| `state` | string | Estado/região identificada no endereço público. |
+| `source_place_id` | string | Identificador da ficha extraído da URL do Maps quando presente. |
+| `source_url` | string | URL original usada para a coleta. |
+| `popular_times` | array ou string | Rótulos/valores de horários de movimento realmente expostos no DOM. |
+| `rating_distribution` | object ou string | Contagens por estrelas 1–5 somente quando explicitamente exibidas. |
+| `review_highlights` | array ou string | Trechos de resumo de avaliações capturados separadamente dos reviews individuais. |
+| `field_status` | object ou string | Estado de captura por campo; `not_observed_in_session` não prova inexistência na fonte. |
 | `collected_at` | string | Timestamp textual da coleta. |
 
-`photos`, `videos` e `social_links` são normalizados para arrays. `reviews`, `review_topics`, `additional_attributes`, `media_items` e `services_attributes` são interpretados como JSON quando possível; conteúdo inválido pode ser preservado como string. A presença de um campo no schema não garante que a página de origem o disponibilizou em toda execução.
+`photos`, `videos` e `social_links` são normalizados para arrays. `reviews`, `review_topics`, `additional_attributes`, `media_items`, `popular_times`, `rating_distribution`, `review_highlights` e `field_status` são persistidos como JSON serializado e podem aparecer como string no contrato legado. `field_status` usa `captured` quando houve valor observado e `not_observed_in_session` quando o extrator não observou valor nesta sessão; esse último estado não diferencia indisponibilidade da fonte de mudança no DOM e não prova que o dado inexiste. Endereço estruturado (cidade/estado/país/CEP) é preenchido apenas quando identificável a partir do endereço exibido. A presença de um campo no schema não garante que a página de origem o disponibilizou em toda execução.
 
 ## 7. Paginação, erros e retentativas
 
