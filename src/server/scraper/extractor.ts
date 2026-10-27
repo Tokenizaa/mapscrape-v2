@@ -251,14 +251,14 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
             node.getAttribute('data-tooltip') || '',
             node.getAttribute('data-item-id') || '',
             node.getAttribute('title') || '',
-          ].join(' ').replace(/\\s+/g, ' ').trim();
+          ].join(' ').replace(/\s+/g, ' ').trim();
           const href = node.getAttribute('href') || node.getAttribute('data-href') || '';
           return { node, label, href };
         })
         .filter(({ label, href }) => {
           if (!href || /^(?:javascript:|#)$/i.test(href)) return false;
-          return /\\b(?:agendar(?:\\s+on[- ]?line)?|marcar\\s+(?:um\\s+)?hor[aá]rio|book\\s+online|online\\s+booking|reserv(?:ar|e|ation)|appointment|agendamento)\\b/i.test(label) ||
-            /\\b(?:avec\\.beauty|booksy\\.com|fresha\\.com|treatwell\\.|square\\.site|mindbodyonline\\.com)\\b/i.test(href);
+          return /\b(?:agendar(?:\s+on[- ]?line)?|marcar\s+(?:um\s+)?hor[aá]rio|book\s+online|online\s+booking|reserv(?:ar|e|ation)|appointment|agendamento)\b/i.test(label) ||
+            /\b(?:avec\.beauty|booksy\.com|fresha\.com|treatwell\.|square\.site|mindbodyonline\.com)\b/i.test(href);
         });
       for (const candidate of candidates) {
         try {
