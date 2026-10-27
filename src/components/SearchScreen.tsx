@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Play,
   Square,
@@ -18,7 +18,8 @@ import { BRAZILIAN_STATES, POPULAR_CATEGORIES } from '../shared/brazilLocations'
 interface SearchScreenProps {
   currentJob: ScrapeJob | null;
   isScraping: boolean;
-  onStartScrape: (projectName: string, segment: string, location: string, limit: number) => Promise<void>;
+  apiReady: boolean;
+  onStartScrape: (projectName: string, categoryName: string, segment: string, location: string, limit: number) => Promise<void>;
   onStopScrape: () => Promise<void>;
   onGoToResults: () => void;
 }
@@ -26,12 +27,17 @@ interface SearchScreenProps {
 export const SearchScreen: React.FC<SearchScreenProps> = ({
   currentJob,
   isScraping,
+  apiReady,
   onStartScrape,
   onStopScrape,
   onGoToResults,
 }) => {
   const [segment, setSegment] = useState('');
   const [projectName, setProjectName] = useState('');
+  const [categoryName, setCategoryName] = useState('');
+  const [projects, setProjects] = useState<Array<{id:string;name:string}>>([]);
+  const [categories, setCategories] = useState<Array<{id:string;name:string}>>([]);
+  const [catalogMessage, setCatalogMessage] = useState('');
   const [locationMode, setLocationMode] = useState<'brazil' | 'custom'>('brazil');
 
   // Brazil selector state
@@ -51,6 +57,63 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
   // Ref for smooth scroll to progress panel
   const progressRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!apiReady) return;
+    let active = true;
+    void Promise.all([
+      fetch('/api/projects', { cache: 'no-store' }).then(async (response) => {
+        if (!response.ok) throw new Error(`Projetos: HTTP ${response.status}`);
+        return response.json();
+      }),
+      fetch('/api/search-categories', { cache: 'no-store' }).then(async (response) => {
+        if (!response.ok) throw new Error(`Categorias: HTTP ${response.status}`);
+        return response.json();
+      }),
+    ]).then(([projectData, categoryData]) => {
+      if (!active) return;
+      setProjects(Array.isArray(projectData.projects) ? projectData.projects : []);
+      setCategories(Array.isArray(categoryData.categories) ? categoryData.categories : []);
+      setCatalogMessage('');
+    }).catch((error) => {
+      if (active) setCatalogMessage(error instanceof Error ? error.message : 'Falha ao carregar projetos e categorias.');
+    });
+    return () => { active = false; };
+  }, [apiReady]);
+
+  const createProject = async () => {
+    const name = projectName.trim();
+    if (!name || !apiReady) return;
+    try {
+      const response = await fetch('/api/projects', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      const project = data.project;
+      setProjects((current) => current.some((item) => item.id === project.id) ? current : [...current, project].sort((a,b) => a.name.localeCompare(b.name, 'pt-BR')));
+      setProjectName(project.name);
+      setCatalogMessage(`Projeto “${project.name}” pronto para uso.`);
+    } catch (error) { setCatalogMessage(error instanceof Error ? error.message : 'Falha ao criar projeto.'); }
+  };
+
+  const createCategory = async () => {
+    const name = categoryName.trim();
+    if (!name || !apiReady) return;
+    try {
+      const response = await fetch('/api/search-categories', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      const category = data.category;
+      setCategories((current) => current.some((item) => item.id === category.id) ? current : [...current, category].sort((a,b) => a.name.localeCompare(b.name, 'pt-BR')));
+      setCategoryName(category.name);
+      if (!segment.trim()) setSegment(category.name);
+      setCatalogMessage(`Categoria “${category.name}” pronta para uso.`);
+    } catch (error) { setCatalogMessage(error instanceof Error ? error.message : 'Falha ao criar categoria.'); }
+  };
+
 
   // Find current state
   const currentState = BRAZILIAN_STATES.find((s) => s.uf === selectedUf) || BRAZILIAN_STATES[0];
@@ -94,7 +157,9 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
       return;
     }
     setValidationError('');
-    await onStartScrape(projectName.trim() || `${segment.trim()} · ${finalLoc}`, segment.trim(), finalLoc, limit);
+    const finalProjectName = projectName.trim() || `${segment.trim()} · ${finalLoc}`;
+    const finalCategoryName = categoryName.trim() || segment.trim();
+    await onStartScrape(finalProjectName, finalCategoryName, segment.trim(), finalLoc, limit);
   };
 
   const limitPresets = [10, 20, 50, 100];
@@ -128,16 +193,31 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
         <form onSubmit={handleStart} className="space-y-8">
           
           <div className="space-y-3">
-            <label htmlFor="project-name" className="block text-base sm:text-lg font-semibold text-zinc-100">Projeto / pasta <span className="text-zinc-500 text-sm font-normal">(opcional)</span></label>
-            <input id="project-name" value={projectName} onChange={(e) => setProjectName(e.target.value)} maxLength={120} placeholder="Ex.: Prospecção de clínicas em São Paulo" className="w-full rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm sm:text-base text-zinc-100 outline-none focus:border-emerald-500" />
-            <p className="text-xs text-zinc-500">A coleta será salva nesta pasta. Se deixar vazio, o sistema cria o nome a partir do segmento e da localização.</p>
+            <label htmlFor="project-name" className="block text-base sm:text-lg font-semibold text-zinc-100">1. Projeto <span className="text-emerald-400">*</span></label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input id="project-name" list="mapscrape-projects" value={projectName} onChange={(e) => setProjectName(e.target.value)} maxLength={120} placeholder="Selecione ou digite um nome de projeto" className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm sm:text-base text-zinc-100 outline-none focus:border-emerald-500" />
+              <datalist id="mapscrape-projects">{projects.map((project) => <option key={project.id} value={project.name} />)}</datalist>
+              <button type="button" onClick={() => void createProject()} disabled={!apiReady || !projectName.trim()} className="rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar projeto</button>
+            </div>
+            <p className="text-xs text-zinc-500">Projetos existentes são reutilizados; um nome novo é cadastrado automaticamente ao criar ou iniciar a coleta.</p>
+          </div>
+
+          <div className="space-y-3">
+            <label htmlFor="category-name" className="block text-base sm:text-lg font-semibold text-zinc-100">2. Categoria da pesquisa <span className="text-emerald-400">*</span></label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input id="category-name" list="mapscrape-categories" value={categoryName} onChange={(e) => { setCategoryName(e.target.value); if (!segment.trim()) setSegment(e.target.value); }} maxLength={120} placeholder="Selecione ou digite uma categoria" className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm sm:text-base text-zinc-100 outline-none focus:border-emerald-500" />
+              <datalist id="mapscrape-categories">{categories.map((category) => <option key={category.id} value={category.name} />)}</datalist>
+              <button type="button" onClick={() => void createCategory()} disabled={!apiReady || !categoryName.trim()} className="rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar categoria</button>
+            </div>
+            <p className="text-xs text-zinc-500">A categoria é salva separadamente da categoria extraída de cada ficha do Google Maps.</p>
+            {catalogMessage && <p role="status" className="text-xs text-zinc-400">{catalogMessage}</p>}
           </div>
 
           {/* Seção 1: Segmento do Estabelecimento */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <label htmlFor="segment" className="block text-base sm:text-lg font-semibold text-zinc-100">
-                1. Tipo de Estabelecimento ou Nicho <span className="text-emerald-400">*</span>
+                3. Termo / segmento a pesquisar <span className="text-emerald-400">*</span>
               </label>
               <button
                 type="button"
@@ -196,7 +276,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                     <button
                       key={item}
                       type="button"
-                      onClick={() => setSegment(item)}
+                      onClick={() => { setCategoryName(item); setSegment(item); }}
                       disabled={isScraping}
                       className={`px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg border transition-all cursor-pointer ${
                         segment === item
