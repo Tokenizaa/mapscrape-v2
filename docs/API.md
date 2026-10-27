@@ -174,6 +174,12 @@ Todos os campos escalares abaixo são strings na implementação atual (inclusiv
 | `additional_attributes` | object ou string | Atributos públicos adicionais. |
 | `media_items` | array ou string | Mídia estruturada quando disponível. |
 | `plus_code` | string | Plus Code geográfico exibido. |
+| `attributes` | array ou string | Atributos públicos normalizados. |
+| `accessibility_attributes` | array ou string | Atributos públicos de acessibilidade. |
+| `next_opening_text` | string | Texto de próxima abertura exibido. |
+| `next_open_day` | string | Dia explicitamente identificado no texto de status. |
+| `next_open_time` | string | Horário explicitamente identificado no texto de status. |
+| `visible_photos_count` | string | Contagem explícita exibida na ficha; não é o número de URLs capturadas. |
 | `postal_code` | string | CEP/código postal extraído quando identificável no endereço exibido. |
 | `country` | string | País identificado no endereço público; vazio quando não identificável. |
 | `city` | string | Cidade identificada no endereço público. |
