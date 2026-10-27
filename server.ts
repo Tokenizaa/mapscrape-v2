@@ -11,6 +11,10 @@ import {
   getPlacesByIds,
   getAllPlaces,
   createApiCredential,
+  findUserByEmail,
+  findUserById,
+  createUser,
+  updateUserLogin,
   findActiveApiCredential,
   revokeApiCredential,
   listApiCredentials,
@@ -27,7 +31,8 @@ import { initAuditLog, listAuditLogs, writeAuditLog } from './src/server/audit-l
 import { readRunReport, readRunReportPdf } from './src/server/run-report';
 
 import pino from 'pino';
-import { timingSafeEqual, createHash, randomBytes } from 'node:crypto';
+import { timingSafeEqual, createHash, randomBytes, scryptSync } from 'node:crypto';
+import jwt from 'jsonwebtoken';
 import { waitUntil } from '@vercel/functions';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -44,10 +49,48 @@ function hasStaticApiKey(value: string): boolean {
   return configured.some((candidate) => safeEqual(candidate, value));
 }
 
-async function authenticatedConsumer(req: Request): Promise<{ id: string; consumer_project: string } | null> {
-  const match = /^Bearer\s+(.+)$/i.exec(req.header('authorization') || '');
+type AuthenticatedConsumer = { id: string; consumer_project: string; role?: 'admin' | 'user'; email?: string; accountId?: string };
+
+function sessionSecret(): string { return process.env.MAPSCRAPE_SESSION_SECRET?.trim() || ''; }
+
+function passwordHash(password: string, salt = randomBytes(16).toString('hex')): string {
+  return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`;
+}
+
+function passwordMatches(password: string, stored: string): boolean {
+  const [salt, expected] = stored.split(':');
+  if (!salt || !expected) return false;
+  const actual = scryptSync(password, salt, 64);
+  const expectedBuffer = Buffer.from(expected, 'hex');
+  return actual.length === expectedBuffer.length && timingSafeEqual(actual, expectedBuffer);
+}
+
+function createSessionToken(user: { id: string; email: string; role: 'admin' | 'user' }): string {
+  const secret = sessionSecret();
+  if (!secret) throw new Error('MAPSCRAPE_SESSION_SECRET ausente');
+  return jwt.sign({ email: user.email, role: user.role }, secret, { subject: user.id, expiresIn: '12h', issuer: 'mapscrape' });
+}
+
+function verifiedSession(token: string): { sub: string; email: string; role: 'admin' | 'user' } | null {
+  const secret = sessionSecret();
+  if (!secret) return null;
+  try {
+    const payload = jwt.verify(token, secret, { issuer: 'mapscrape' }) as jwt.JwtPayload;
+    if (typeof payload.sub !== 'string' || typeof payload.email !== 'string' || (payload.role !== 'admin' && payload.role !== 'user')) return null;
+    return { sub: payload.sub, email: payload.email, role: payload.role };
+  } catch { return null; }
+}
+
+async function authenticatedConsumer(req: Request): Promise<AuthenticatedConsumer | null> {
+  const match = /^Bearer\\s+(.+)$/i.exec(req.header('authorization') || '');
   if (!match) return null;
   const supplied = match[1];
+  const session = verifiedSession(supplied);
+  if (session) {
+    const user = await findUserById(session.sub);
+    if (!user || user.email !== session.email || user.role !== session.role) return null;
+    return { id: user.id, consumer_project: `account:${user.id}`, role: user.role, email: user.email, accountId: user.id };
+  }
   if (hasStaticApiKey(supplied)) return { id: 'static-key', consumer_project: 'operator-static-key' };
   const keyHash = createHash('sha256').update(supplied).digest('hex');
   return findActiveApiCredential(keyHash);
@@ -75,6 +118,9 @@ async function requireAuthenticatedConsumer(req: Request, res: Response, next: e
 }
 
 function hasProvisioningAccess(req: Request): boolean {
+  const match = /^Bearer\\s+(.+)$/i.exec(req.header('authorization') || '');
+  const session = match ? verifiedSession(match[1]) : null;
+  if (session?.role === 'admin') return true;
   const expected = process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
   const provided = req.header('x-mapscrape-provisioning-token') || '';
   return Boolean(expected && provided && safeEqual(expected, provided));
@@ -104,6 +150,18 @@ async function safeWriteAuditLog(input: Parameters<typeof writeAuditLog>[0]): Pr
 
 export async function createApp() {
   await initDb();
+  const bootstrapEmail = process.env.MAPSCRAPE_ADMIN_EMAIL?.trim().toLowerCase();
+  const bootstrapPassword = process.env.MAPSCRAPE_ADMIN_PASSWORD;
+  if (bootstrapEmail && bootstrapPassword && sessionSecret() && !(await findUserByEmail(bootstrapEmail))) {
+    await createUser({
+      id: `usr_${randomBytes(16).toString('hex')}`,
+      email: bootstrapEmail,
+      displayName: 'Administrador',
+      passwordHash: passwordHash(bootstrapPassword),
+      role: 'admin',
+      createdAt: new Date().toISOString(),
+    });
+  }
   await initAuditLog();
   await safeWriteAuditLog({ category: 'server', event: 'server.start', message: 'Servidor iniciado e banco inicializado.' });
   console.log('SQLite database initialized.');
@@ -113,6 +171,52 @@ export async function createApp() {
   const isDev = process.env.NODE_ENV !== 'production';
 
   app.use(express.json());
+
+  app.post('/api/auth/register', async (req: Request, res: Response) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const displayName = typeof req.body?.name === 'string' ? req.body.name.trim().replace(/\\s+/g, ' ') : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!sessionSecret()) return res.status(503).json({ error: 'auth_not_configured', message: 'A autenticação ainda não foi configurada pelo administrador.' });
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254 || displayName.length < 2 || displayName.length > 100 || password.length < 12 || password.length > 200) {
+      return res.status(422).json({ error: 'invalid_registration', message: 'Informe nome, e-mail válido e senha com pelo menos 12 caracteres.' });
+    }
+    try {
+      if (await findUserByEmail(email)) return res.status(409).json({ error: 'email_already_registered', message: 'Este e-mail já possui cadastro.' });
+      const id = `usr_${randomBytes(16).toString('hex')}`;
+      await createUser({ id, email, displayName, passwordHash: passwordHash(password), role: 'user', createdAt: new Date().toISOString() });
+      const token = createSessionToken({ id, email, role: 'user' });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(201).json({ token, user: { id, email, name: displayName, role: 'user' } });
+    } catch (error) {
+      return res.status(500).json({ error: 'registration_failed', message: error instanceof Error ? error.message : 'Não foi possível criar a conta.' });
+    }
+  });
+
+  app.post('/api/auth/login', async (req: Request, res: Response) => {
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!sessionSecret()) return res.status(503).json({ error: 'auth_not_configured', message: 'A autenticação ainda não foi configurada pelo administrador.' });
+    try {
+      const user = await findUserByEmail(email);
+      if (!user || !passwordMatches(password, user.password_hash)) return res.status(401).json({ error: 'invalid_credentials', message: 'E-mail ou senha incorretos.' });
+      await updateUserLogin(user.id, new Date().toISOString());
+      const token = createSessionToken({ id: user.id, email: user.email, role: user.role });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.json({ token, user: { id: user.id, email: user.email, name: user.display_name, role: user.role } });
+    } catch (error) {
+      return res.status(500).json({ error: 'login_failed', message: error instanceof Error ? error.message : 'Não foi possível entrar.' });
+    }
+  });
+
+  app.get('/api/auth/me', async (req: Request, res: Response) => {
+    const match = /^Bearer\\s+(.+)$/i.exec(req.header('authorization') || '');
+    const session = match ? verifiedSession(match[1]) : null;
+    if (!session) return res.status(401).json({ error: 'unauthorized' });
+    const user = await findUserById(session.sub);
+    if (!user || user.email !== session.email || user.role !== session.role) return res.status(401).json({ error: 'session_expired' });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.json({ user: { id: user.id, email: user.email, name: user.display_name, role: user.role } });
+  });
 
   // Lightweight production health check: createApp() has already initialized the database.
   app.get('/api/health', async (_req: Request, res: Response) => {
