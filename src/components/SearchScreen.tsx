@@ -83,7 +83,14 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
   const createProject = async () => {
     const name = projectName.trim();
-    if (!name || !apiReady) return;
+    if (!name) {
+      setCatalogMessage('Digite o nome do projeto antes de clicar em Criar projeto.');
+      return;
+    }
+    if (!apiReady) {
+      setCatalogMessage('Para salvar o projeto, conecte primeiro uma chave em “Conectar à API do MapScrape”, no início da página.');
+      return;
+    }
     try {
       const response = await fetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
@@ -99,7 +106,14 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
   const createCategory = async () => {
     const name = categoryName.trim();
-    if (!name || !apiReady) return;
+    if (!name) {
+      setCatalogMessage('Digite o nome da categoria antes de clicar em Criar categoria.');
+      return;
+    }
+    if (!apiReady) {
+      setCatalogMessage('Para salvar a categoria, conecte primeiro uma chave em “Conectar à API do MapScrape”, no início da página.');
+      return;
+    }
     try {
       const response = await fetch('/api/search-categories', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
@@ -197,7 +211,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             <div className="flex flex-col gap-2 sm:flex-row">
               <input id="project-name" list="mapscrape-projects" value={projectName} onChange={(e) => setProjectName(e.target.value)} maxLength={120} placeholder="Selecione ou digite um nome de projeto" className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm sm:text-base text-zinc-100 outline-none focus:border-emerald-500" />
               <datalist id="mapscrape-projects">{projects.map((project) => <option key={project.id} value={project.name} />)}</datalist>
-              <button type="button" onClick={() => void createProject()} disabled={!apiReady || !projectName.trim()} className="rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar projeto</button>
+              <button type="button" onClick={() => void createProject()} disabled={!projectName.trim()} className="rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar projeto</button>
             </div>
             <p className="text-xs text-zinc-500">Projetos existentes são reutilizados; um nome novo é cadastrado automaticamente ao criar ou iniciar a coleta.</p>
           </div>
@@ -207,10 +221,10 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             <div className="flex flex-col gap-2 sm:flex-row">
               <input id="category-name" list="mapscrape-categories" value={categoryName} onChange={(e) => { setCategoryName(e.target.value); if (!segment.trim()) setSegment(e.target.value); }} maxLength={120} placeholder="Selecione ou digite uma categoria" className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm sm:text-base text-zinc-100 outline-none focus:border-emerald-500" />
               <datalist id="mapscrape-categories">{categories.map((category) => <option key={category.id} value={category.name} />)}</datalist>
-              <button type="button" onClick={() => void createCategory()} disabled={!apiReady || !categoryName.trim()} className="rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar categoria</button>
+              <button type="button" onClick={() => void createCategory()} disabled={!categoryName.trim()} className="rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar categoria</button>
             </div>
             <p className="text-xs text-zinc-500">A categoria é salva separadamente da categoria extraída de cada ficha do Google Maps.</p>
-            {catalogMessage && <p role="status" className="text-xs text-zinc-400">{catalogMessage}</p>}
+            {catalogMessage && <p role="status" aria-live="polite" className="text-sm text-amber-300">{catalogMessage}</p>}
           </div>
 
           {/* Seção 1: Segmento do Estabelecimento */}
