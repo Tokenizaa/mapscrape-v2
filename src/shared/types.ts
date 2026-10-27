@@ -42,6 +42,8 @@ export interface ScrapeJob {
   user_id: string;
   segment: string;
   project_name?: string;
+  project_id?: string;
+  category_id?: string;
   location: string;
   limit_requested: number;
   status: JobStatus;
