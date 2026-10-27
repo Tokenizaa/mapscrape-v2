@@ -12,6 +12,15 @@
     },
     "api/scrape/start.ts": {
       "maxDuration": 300
+    },
+    "api/auth/login.ts": {
+      "maxDuration": 60
+    },
+    "api/auth/register.ts": {
+      "maxDuration": 60
+    },
+    "api/auth/me.ts": {
+      "maxDuration": 30
     }
   },
   "ignoreCommand": "node scripts/vercel-ignore-build.mjs"
