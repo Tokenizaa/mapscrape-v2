@@ -130,10 +130,10 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
     },
   };
 
-  await fs.mkdir(reportDirectory, { recursive: true });
   const filePath = path.join(reportDirectory, jobId + '.json');
   const pdfPath = path.join(reportDirectory, jobId + '.pdf');
   if (options.generatePdf !== false && !process.env.VERCEL) {
+    await fs.mkdir(reportDirectory, { recursive: true });
     let browser: Awaited<ReturnType<typeof puppeteer.launch>> | null = null;
     try {
       report.artifacts.pdf_generated = true;
