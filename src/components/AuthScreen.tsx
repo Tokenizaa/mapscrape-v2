@@ -9,7 +9,6 @@ export const AuthScreen: React.FC<Props> = ({ onAuthenticated }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [setupToken, setSetupToken] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +21,7 @@ export const AuthScreen: React.FC<Props> = ({ onAuthenticated }) => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ name, email, password, ...(mode === 'register' && setupToken ? { setupToken } : {}) }),
+        body: JSON.stringify({ name, email, password }),
       });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(data.message || data.error || `Não foi possível ${mode === 'login' ? 'entrar' : 'criar a conta'} (HTTP ${response.status}).`);
@@ -47,7 +46,6 @@ export const AuthScreen: React.FC<Props> = ({ onAuthenticated }) => {
           {mode === 'register' && <label className="block text-sm font-medium text-zinc-300">Nome completo<input required minLength={2} maxLength={100} autoComplete="name" value={name} onChange={e => setName(e.target.value)} className="mt-1.5 block w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-zinc-100 outline-none focus:border-emerald-500" placeholder="Seu nome" /></label>}
           <label className="block text-sm font-medium text-zinc-300">E-mail<input required type="email" autoComplete="email" maxLength={254} value={email} onChange={e => setEmail(e.target.value)} className="mt-1.5 block w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-zinc-100 outline-none focus:border-emerald-500" placeholder="voce@empresa.com" /></label>
           <label className="block text-sm font-medium text-zinc-300">Senha<input required type="password" minLength={mode === 'register' ? 12 : 1} maxLength={200} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={password} onChange={e => setPassword(e.target.value)} className="mt-1.5 block w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-zinc-100 outline-none focus:border-emerald-500" placeholder={mode === 'register' ? 'Mínimo de 12 caracteres' : 'Sua senha'} /></label>
-          {mode === 'register' && <label className="block text-sm font-medium text-zinc-300">Token de configuração inicial (somente primeiro administrador)<input type="password" autoComplete="off" value={setupToken} onChange={e => setSetupToken(e.target.value)} className="mt-1.5 block w-full rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-zinc-100 outline-none focus:border-emerald-500" placeholder="Token definido como segredo no servidor" /></label>}
           {error && <p role="alert" className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">{error}</p>}
           <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}{busy ? 'Aguarde…' : mode === 'login' ? 'Entrar na plataforma' : 'Criar conta'}</button>
         </form>
