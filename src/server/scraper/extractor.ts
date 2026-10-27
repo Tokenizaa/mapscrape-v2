@@ -613,9 +613,9 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
   const coords = extractCoordinates(finalUrl);
   const address = normalizeAddress(raw.address);
   const addressParts = address.split(',').map((part: string) => part.trim()).filter(Boolean);
-  const postalMatch = address.match(/\\b([A-Z]?\\d{5}(?:-\\d{3})?|\\d{5}(?:-\\d{3})?|\\d{4,6})\\b/i);
-  const stateMatch = address.match(/,\\s*([A-Z]{2})\\s*(?:,|$)/);
-  const countryMatch = address.match(/,\\s*(Brazil|Brasil|United States|United Kingdom|Canada|Australia|Portugal|España|Spain|France|Deutschland|Germany|Italy|México|Mexico)\\s*$/i);
+  const postalMatch = address.match(/\b([A-Z]?\d{5}(?:-\d{3})?|\d{5}(?:-\d{3})?|\d{4,6})\b/i);
+  const stateMatch = address.match(/,\s*([A-Z]{2})\s*(?:,|$)/);
+  const countryMatch = address.match(/,\s*(Brazil|Brasil|United States|United Kingdom|Canada|Australia|Portugal|España|Spain|France|Deutschland|Germany|Italy|México|Mexico)\s*$/i);
   const state = stateMatch?.[1] || '';
   const country = countryMatch?.[1] || '';
   let city = '';
