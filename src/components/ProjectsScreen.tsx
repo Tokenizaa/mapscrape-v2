@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Folder, FolderOpen, MapPin, Search, ArrowRight, Layers3 } from 'lucide-react';
+import { Folder, FolderOpen, MapPin, Search, ArrowRight, Layers3, Tags } from 'lucide-react';
 import { ScrapeJob } from '../shared/types';
 
 // Requisições internas usam a sessão da conta; API keys ficam reservadas a integrações externas.
@@ -11,6 +11,7 @@ async function accountFetch(input: RequestInfo | URL, init: RequestInit = {}): P
 }
 
 type PersistedProject = { id: string; name: string; created_at: string; updated_at?: string };
+type PersistedCategory = { id: string; name: string; created_at?: string };
 interface Props {
   jobs: ScrapeJob[];
   apiReady: boolean;
@@ -21,20 +22,28 @@ interface Props {
 export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onNewScrape }) => {
   const [query, setQuery] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
+  const [newCategoryName, setNewCategoryName] = useState('');
   const [catalog, setCatalog] = useState<PersistedProject[]>([]);
+  const [categories, setCategories] = useState<PersistedCategory[]>([]);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (!apiReady) return;
     let active = true;
-    accountFetch('/api/projects', { cache: 'no-store' })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    Promise.all([
+      accountFetch('/api/projects', { cache: 'no-store' }).then(async (response) => {
+        if (!response.ok) throw new Error(`Projetos: HTTP ${response.status}`);
         return response.json();
-      })
-      .then((data) => {
+      }),
+      accountFetch('/api/search-categories', { cache: 'no-store' }).then(async (response) => {
+        if (!response.ok) throw new Error(`Categorias: HTTP ${response.status}`);
+        return response.json();
+      }),
+    ]).then(([projectData, categoryData]) => {
         if (active) {
-          setCatalog(Array.isArray(data.projects) ? data.projects : []);
+          setCatalog(Array.isArray(projectData.projects) ? projectData.projects : []);
+          setCategories(Array.isArray(categoryData.categories) ? categoryData.categories : []);
           setMessage('');
         }
       })
@@ -63,6 +72,31 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
       setMessage(`Projeto “${data.project.name}” salvo.`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Falha ao criar projeto.');
+    }
+  };
+
+  const createCategory = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const name = newCategoryName.trim();
+    if (!name || !apiReady || isSavingCategory) return;
+    setIsSavingCategory(true);
+    try {
+      const response = await accountFetch('/api/search-categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.category?.id) throw new Error(data.error || `Não foi possível salvar a categoria (HTTP ${response.status}).`);
+      setCategories((current) => current.some((item) => item.id === data.category.id)
+        ? current
+        : [...current, data.category].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR')));
+      setNewCategoryName('');
+      setMessage(`Categoria de pesquisa “${data.category.name}” salva e disponível para novas coletas.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'Falha ao criar categoria.');
+    } finally {
+      setIsSavingCategory(false);
     }
   };
 
@@ -95,13 +129,24 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
 
   return <div className="mx-auto max-w-7xl space-y-6 py-2 sm:py-6">
     <header className="flex flex-col gap-4 border-b border-zinc-800 pb-5 sm:flex-row sm:items-end sm:justify-between">
-      <div><p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Organização</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">Projetos</h1><p className="mt-3 max-w-2xl text-zinc-400">Crie projetos persistidos e reúna neles suas coletas e resultados.</p></div>
+      <div><p className="text-xs font-semibold uppercase tracking-wider text-emerald-400">Organização</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-zinc-100 sm:text-4xl">Projetos</h1><p className="mt-3 max-w-2xl text-zinc-400">Crie projetos para organizar coletas e categorias reutilizáveis para padronizar as pesquisas.</p></div>
       <button type="button" onClick={onNewScrape} className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white">Nova coleta</button>
     </header>
-    <form onSubmit={(event) => void createProject(event)} className="flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:flex-row">
-      <input value={newProjectName} onChange={(event) => setNewProjectName(event.target.value)} maxLength={120} placeholder="Nome do novo projeto" aria-label="Nome do novo projeto" className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100" />
-      <button disabled={!apiReady || !newProjectName.trim()} className="rounded-lg border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar projeto</button>
-    </form>
+    <div className="grid gap-4 lg:grid-cols-2">
+      <form onSubmit={(event) => void createProject(event)} className="flex flex-col gap-2 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 sm:flex-row">
+        <input value={newProjectName} onChange={(event) => setNewProjectName(event.target.value)} maxLength={120} placeholder="Nome do novo projeto" aria-label="Nome do novo projeto" className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100" />
+        <button disabled={!apiReady || !newProjectName.trim()} className="rounded-lg border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar projeto</button>
+      </form>
+      <section className="space-y-3 rounded-xl border border-zinc-800 bg-zinc-900/50 p-4">
+        <div className="flex items-center gap-2"><Tags className="h-4 w-4 text-emerald-400"/><h2 className="text-sm font-semibold text-zinc-100">Categorias de pesquisa</h2><span className="ml-auto text-xs text-zinc-500">{categories.length} cadastradas</span></div>
+        <form onSubmit={(event) => void createCategory(event)} className="flex flex-col gap-2 sm:flex-row">
+          <input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} maxLength={120} placeholder="Ex.: Clínicas odontológicas" aria-label="Nome da nova categoria de pesquisa" className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100"/>
+          <button disabled={!apiReady || !newCategoryName.trim() || isSavingCategory} className="rounded-lg border border-emerald-500/40 px-4 py-2.5 text-sm font-semibold text-emerald-300 disabled:opacity-40">{isSavingCategory ? 'Salvando…' : 'Criar categoria'}</button>
+        </form>
+        {categories.length ? <ul className="flex flex-wrap gap-2">{categories.map((category) => <li key={category.id} className="rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-200">{category.name}</li>)}</ul> : <p className="text-sm text-zinc-500">Nenhuma categoria cadastrada.</p>}
+        <p className="text-xs text-zinc-500">Categoria de pesquisa é diferente da categoria extraída da ficha do Google Maps.</p>
+      </section>
+    </div>
     {message && <p role="status" className="text-sm text-zinc-400">{message}</p>}
     <div className="relative max-w-xl"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500"/><input aria-label="Buscar projeto" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar projeto, segmento ou localização" className="w-full rounded-xl border border-zinc-800 bg-zinc-950 py-3 pl-10 pr-4 text-sm text-zinc-100 outline-none focus:border-emerald-500"/></div>
     {projects.length === 0
