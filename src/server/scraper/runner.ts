@@ -65,7 +65,7 @@ function missingFields(place: PlaceRecord): string[] {
 
 
 const ENRICHMENT_FIELDS: (keyof PlaceRecord)[] = [
-  'review_count', 'opening_hours', 'reviews', 'review_topics', 'additional_attributes', 'media_items',
+  'review_count', 'opening_hours', 'booking_url', 'reviews', 'review_topics', 'additional_attributes', 'media_items',
 ];
 
 function needsEnrichment(place: PlaceRecord): boolean {
