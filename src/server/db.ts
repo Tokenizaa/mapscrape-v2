@@ -2,6 +2,7 @@ import { createClient, Client } from '@libsql/client';
 import path from 'path';
 import fs from 'fs';
 import { gzipSync, gunzipSync } from 'node:zlib';
+import { randomUUID } from 'node:crypto';
 import { PlaceRecord, ScrapeJob } from '../shared/types';
 
 let dbClient: Client | null = null;
@@ -552,7 +553,7 @@ export async function resolveProject(consumerProject: string, name: string): Pro
   if (existing.rows.length) return existing.rows[0] as unknown as ProjectRecord;
   const now = new Date().toISOString();
   const record: ProjectRecord = {
-    id: `prj_${crypto.randomUUID().replace(/-/g, '')}`,
+    id: `prj_${randomUUID().replace(/-/g, '')}`,
     consumer_project: consumerProject,
     name: name.trim().replace(/\\s+/g, ' ').slice(0, 120),
     normalized_name: normalized,
@@ -560,10 +561,14 @@ export async function resolveProject(consumerProject: string, name: string): Pro
     updated_at: now,
   };
   await db.execute({
-    sql: `INSERT INTO projects (id, consumer_project, name, normalized_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO projects (id, consumer_project, name, normalized_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (consumer_project, normalized_name) DO NOTHING`,
     args: [record.id, record.consumer_project, record.name, record.normalized_name, record.created_at, record.updated_at],
   });
-  return record;
+  const resolved = await db.execute({
+    sql: `SELECT * FROM projects WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
+    args: [consumerProject, normalized],
+  });
+  return resolved.rows[0] as unknown as ProjectRecord;
 }
 
 export async function listSearchCategories(consumerProject: string): Promise<SearchCategoryRecord[]> {
@@ -591,8 +596,12 @@ export async function resolveSearchCategory(consumerProject: string, name: strin
     created_at: new Date().toISOString(),
   };
   await db.execute({
-    sql: `INSERT INTO search_categories (id, consumer_project, name, normalized_name, created_at) VALUES (?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO search_categories (id, consumer_project, name, normalized_name, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (consumer_project, normalized_name) DO NOTHING`,
     args: [record.id, record.consumer_project, record.name, record.normalized_name, record.created_at],
   });
-  return record;
+  const resolved = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
+    args: [consumerProject, normalized],
+  });
+  return resolved.rows[0] as unknown as SearchCategoryRecord;
 }
