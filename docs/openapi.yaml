@@ -295,6 +295,7 @@ components:
           type: array
           items: { type: string }
         logo_url: { type: string }
+        booking_url: { type: string }
         social_links:
           type: array
           items: { type: string }

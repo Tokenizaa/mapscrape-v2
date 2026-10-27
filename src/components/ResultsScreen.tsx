@@ -50,6 +50,7 @@ interface ResultsScreenProps {
 }
 
 const detailFields: { key: keyof PlaceRecord; label: string }[] = [
+  { key: 'booking_url', label: 'URL de Agendamento' },
   { key: 'category', label: 'Categoria' },
   { key: 'address', label: 'Endereço completo' },
   { key: 'phone', label: 'Telefone comercial' },

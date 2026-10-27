@@ -81,6 +81,7 @@ Resposta:
       "photos": [],
       "videos": [],
       "logo_url": "",
+      "booking_url": "",
       "social_links": [],
       "reviews": [],
       "review_topics": [],
