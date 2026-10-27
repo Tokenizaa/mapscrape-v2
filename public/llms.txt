@@ -10,8 +10,11 @@ MapScrape is a central collection service. Consumer apps integrate over HTTPS; d
 - Agent skill: https://mapscrape-v2.vercel.app/skill.md
 - Public health: https://mapscrape-v2.vercel.app/api/v1/health
 
+## Native platform versus external integrations
+The first-party MapScrape web UI is used directly to create projects, select categories, run collections and view results; it must not require the operator to issue or paste a consumer API key. Consumer keys are for external client applications only. To onboard an external client, open MapScrape > Integrações > Credenciais de API, enter the client name and project name, generate the key, and copy it once into the client's server-side secret manager.
+
 ## Environment and authentication
-Set MAPSCRAPE_API_BASE_URL and MAPSCRAPE_API_KEY only as server-side secrets. Consumer endpoints require Authorization: Bearer <MAPSCRAPE_API_KEY>, except GET /api/v1/health. Do not expose keys in VITE_*/NEXT_PUBLIC_ bundles, URLs, logs, prompts, or version control. MAPSCRAPE_PROVISIONING_TOKEN is administrative and must never be given to consumer agents.
+Set MAPSCRAPE_API_BASE_URL and MAPSCRAPE_API_KEY only as server-side secrets. Consumer endpoints require Authorization: Bearer <MAPSCRAPE_API_KEY>, except GET /api/v1/health. Do not expose keys in VITE_*/NEXT_PUBLIC_ bundles, URLs, logs, prompts, or version control. MAPSCRAPE_PROVISIONING_TOKEN is administrative and must never be given to consumer agents or exposed to the browser. The credential UI must be protected by a real administrator session; never replace the token field with a public server-side proxy that lets unauthenticated visitors issue/revoke credentials.
 
 ## Consumer endpoints
 - GET /api/v1/health
