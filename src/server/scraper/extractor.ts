@@ -239,6 +239,23 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       } catch {}
     });
 
+    // Capture "Agendar on-line" / "Book online" link — if present, save the actual href
+    const bookingUrl = (() => {
+      const candidates = Array.from(document.querySelectorAll('a[href]'))
+        .filter((a) => {
+          const text = (a as HTMLElement).innerText || '';
+          const aria = a.getAttribute('aria-label') || '';
+          return /^agendar on-line|book online|reserve$/i.test(text + ' ' + aria);
+        });
+      if (candidates.length > 0) {
+        const href = candidates[0].getAttribute('href');
+        if (href) {
+          try { return new URL(href, window.location.href).href; } catch { return ''; }
+        }
+      }
+      return '';
+    })();
+
     const videoUrls: string[] = [];
     const seenVideos = new Set<string>();
     for (const selector of selectors.videos) {
@@ -510,7 +527,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       name, category, rating, review_count, price_range, address, website, phone,
       opening_hours, business_status: statusText, description, services_attributes: servicesAndAttributes,
       photos: photoUrls.join(' | '), videos: videoUrls.join(' | '), logo_url, social_links: socialUrls.join(' | '),
-      reviews, review_topics, additional_attributes, media_items, plus_code,
+      bookingUrl, reviews, review_topics, additional_attributes, media_items, plus_code,
       currentUrl: window.location.href,
     };
   }, SELECTORS.place);
@@ -545,5 +562,6 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     media_items: JSON.stringify(Array.isArray(raw.media_items) ? raw.media_items : []),
     plus_code: cleanText(raw.plus_code),
     collected_at: new Date().toISOString(),
+    booking_url: cleanText(raw.bookingUrl),
   };
 }

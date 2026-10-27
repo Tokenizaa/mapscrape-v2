@@ -85,6 +85,7 @@ export async function initDb(): Promise<void> {
       photos TEXT DEFAULT '',
       videos TEXT DEFAULT '',
       logo_url TEXT DEFAULT '',
+      booking_url TEXT DEFAULT '',
       social_links TEXT DEFAULT '',
       reviews TEXT DEFAULT '[]',
       review_topics TEXT DEFAULT '[]',
@@ -259,8 +260,8 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
       id, job_id, name, category, address, phone, website,
       rating, review_count, price_range, opening_hours, business_status,
       latitude, longitude, maps_url, description, services_attributes,
-      photos, videos, logo_url, social_links, reviews, review_topics, additional_attributes, media_items, plus_code, collected_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      photos, videos, logo_url, booking_url, social_links, reviews, review_topics, additional_attributes, media_items, plus_code, collected_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       place.id,
       place.job_id,
@@ -282,6 +283,7 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
       place.photos || '',
       place.videos || '',
       place.logo_url || '',
+      place.booking_url || '',
       place.social_links || '',
       place.reviews || '[]',
       place.review_topics || '[]',

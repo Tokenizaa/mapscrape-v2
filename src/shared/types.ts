@@ -19,6 +19,7 @@ export interface PlaceRecord {
   photos?: string;
   videos?: string;
   logo_url?: string;
+  booking_url?: string;
   /** Social profile URLs explicitly present in the Google Maps place sheet, separated by |. */
   social_links?: string;
   /** JSON array of publicly visible reviews captured from the place's Reviews panel. */
