@@ -17,6 +17,14 @@ import { AuthScreen } from './components/AuthScreen';
 import { PlaceRecord, ScrapeJob } from './shared/types';
 import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-react';
 
+// Todas as chamadas internas usam a sessão da conta. Chaves de API são apenas para consumidores externos.
+async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const token = window.sessionStorage.getItem('mapscrape_session_token');
+  const headers = new Headers(init.headers || {});
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(input, { ...init, headers, cache: init.cache || 'no-store' });
+}
+
 export default function App() {
   const [currentTab, setCurrentTab] = useState<ScreenTab>('dashboard');
   const [apiKeyInput, setApiKeyInput] = useState('');
@@ -30,7 +38,7 @@ export default function App() {
     const token = window.sessionStorage.getItem('mapscrape_session_token');
     if (!token) return;
     let active = true;
-    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+    apiFetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
       .then(async response => {
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.error || 'session_expired');
@@ -58,7 +66,7 @@ export default function App() {
     setApiKeyError('');
     window.sessionStorage.setItem('mapscrape_api_key', key);
     try {
-      const response = await fetch('/api/history', { cache: 'no-store' });
+      const response = await apiFetch('/api/history', { cache: 'no-store' });
       if (!response.ok) throw new Error(response.status === 401 ? 'Chave de API inválida ou revogada.' : `Falha de autenticação (HTTP ${response.status}).`);
       setHasApiKey(true);
       setApiKeyInput('');
@@ -121,7 +129,7 @@ export default function App() {
   // Load past searches history
   const loadHistory = useCallback(async () => {
     try {
-      const res = await fetch('/api/history');
+      const res = await apiFetch('/api/history');
       if (res.ok) {
         const data = await res.json();
         setJobs(data);
@@ -147,7 +155,7 @@ export default function App() {
       if (searchQuery.trim()) params.append('query', searchQuery.trim());
       if (categoryFilter) params.append('category', categoryFilter);
 
-      const res = await fetch(`/api/places?${params.toString()}`);
+      const res = await apiFetch(`/api/places?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         setPlaces(data.places || []);
@@ -174,7 +182,7 @@ export default function App() {
     let consecutiveErrors = 0;
     const pollStatus = async () => {
       try {
-        const res = await fetch(`/api/scrape/status/${encodeURIComponent(jobId)}`, {
+        const res = await apiFetch(`/api/scrape/status/${encodeURIComponent(jobId)}`, {
           headers: { Accept: 'application/json' },
           cache: 'no-store',
         });
@@ -220,7 +228,7 @@ export default function App() {
   // Handlers
   const handleStartScrape = async (projectName: string, categoryName: string, segment: string, location: string, limit: number) => {
     try {
-      const res = await fetch('/api/scrape/start', {
+      const res = await apiFetch('/api/scrape/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectName, categoryName, segment, location, limit }),
@@ -264,7 +272,7 @@ export default function App() {
   const handleStopScrape = async () => {
     if (!currentJob) return;
     try {
-      await fetch(`/api/scrape/stop/${currentJob.id}`, { method: 'POST' });
+      await apiFetch(`/api/scrape/stop/${currentJob.id}`, { method: 'POST' });
     } catch (err: any) {
       console.error('Stop error:', err);
     }
@@ -272,7 +280,7 @@ export default function App() {
 
   const handleDeleteJob = async (jobId: string) => {
     try {
-      const res = await fetch(`/api/history/${jobId}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/history/${jobId}`, { method: 'DELETE' });
       if (res.ok) {
         if (selectedJobId === jobId) {
           setSelectedJobId(undefined);
