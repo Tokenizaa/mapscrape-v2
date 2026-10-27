@@ -31,6 +31,7 @@ export default function App() {
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(undefined);
   const [selectedPlaceIds, setSelectedPlaceIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<string>('collected_at');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -66,6 +67,7 @@ export default function App() {
 
       if (selectedJobId) params.append('jobId', selectedJobId);
       if (searchQuery.trim()) params.append('query', searchQuery.trim());
+      if (categoryFilter) params.append('category', categoryFilter);
 
       const res = await fetch(`/api/places?${params.toString()}`);
       if (res.ok) {
@@ -78,7 +80,7 @@ export default function App() {
     } finally {
       setIsLoadingPlaces(false);
     }
-  }, [currentPage, pageSize, sortBy, sortOrder, selectedJobId, searchQuery]);
+  }, [currentPage, pageSize, sortBy, sortOrder, selectedJobId, searchQuery, categoryFilter]);
 
   // Initial load
   useEffect(() => {
@@ -341,6 +343,8 @@ export default function App() {
               onGoToExport={() => setCurrentTab('export')}
               searchQuery={searchQuery}
               onSearchQueryChange={setSearchQuery}
+              selectedCategory={categoryFilter}
+              onCategoryChange={(value) => { setCategoryFilter(value); setCurrentPage(1); }}
               sortBy={sortBy}
               sortOrder={sortOrder}
               onSortChange={handleSortChange}
