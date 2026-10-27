@@ -41,6 +41,18 @@ export interface PlaceRecord {
   source_place_id?: string;
   /** Original URL used to identify the source listing. */
   source_url?: string;
+  /** JSON array of normalized public business attributes. */
+  attributes?: string;
+  /** JSON array of public accessibility attributes. */
+  accessibility_attributes?: string;
+  /** Visible next-opening phrase, e.g. "Abre às 10h na terça". */
+  next_opening_text?: string;
+  /** Normalized next opening weekday when explicitly shown. */
+  next_open_day?: string;
+  /** Normalized next opening time when explicitly shown. */
+  next_open_time?: string;
+  /** Explicit total photo count displayed by Maps, not the number captured by the scraper. */
+  visible_photos_count?: string;
   /** JSON object of popular-times data actually exposed in the rendered page. */
   popular_times?: string;
   /** JSON object mapping star levels (1-5) to counts when displayed. */
@@ -119,6 +131,12 @@ export const EXPORTABLE_FIELDS: { key: keyof PlaceRecord; label: string; descrip
   { key: 'state', label: 'Estado / região', description: 'Componente do endereço quando identificável' },
   { key: 'source_place_id', label: 'ID da ficha na fonte', description: 'Identificador extraído da URL do Google Maps' },
   { key: 'source_url', label: 'URL original da fonte', description: 'URL da ficha usada na coleta' },
+  { key: 'attributes', label: 'Atributos do estabelecimento', description: 'Atributos públicos normalizados' },
+  { key: 'accessibility_attributes', label: 'Acessibilidade', description: 'Atributos públicos de acessibilidade' },
+  { key: 'next_opening_text', label: 'Próxima abertura (texto)', description: 'Texto de próxima abertura exibido pelo Maps' },
+  { key: 'next_open_day', label: 'Próximo dia de abertura', description: 'Dia explicitamente identificável no status' },
+  { key: 'next_open_time', label: 'Próximo horário de abertura', description: 'Horário explicitamente identificável no status' },
+  { key: 'visible_photos_count', label: 'Total de fotos informado', description: 'Contagem textual explícita do Maps, não contagem inferida' },
   { key: 'popular_times', label: 'Horários de movimento', description: 'JSON de dados exibidos publicamente, quando disponíveis' },
   { key: 'rating_distribution', label: 'Distribuição de avaliações', description: 'Contagens por estrelas quando exibidas' },
   { key: 'review_highlights', label: 'Destaques de avaliações', description: 'Trechos de resumo exibidos pelo Maps' },
