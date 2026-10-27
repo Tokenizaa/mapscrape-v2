@@ -239,19 +239,32 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       } catch {}
     });
 
-    // Capture "Agendar on-line" / "Book online" link — if present, save the actual href
+    // Capture the actual booking destination exposed by the Maps place sheet.
+    // Google varies the visible label ("Agendar", "Agendar on-line", "Book online",
+    // "Reservar") and may put it on a nested span or an accessible button label.
     const bookingUrl = (() => {
-      const candidates = Array.from(document.querySelectorAll('a[href]'))
-        .filter((a) => {
-          const text = (a as HTMLElement).innerText || '';
-          const aria = a.getAttribute('aria-label') || '';
-          return /^agendar on-line|book online|reserve$/i.test(text + ' ' + aria);
+      const candidates = Array.from(document.querySelectorAll('a[href], button, [role="button"]'))
+        .map((node) => {
+          const label = [
+            (node as HTMLElement).innerText || '',
+            node.getAttribute('aria-label') || '',
+            node.getAttribute('data-tooltip') || '',
+            node.getAttribute('data-item-id') || '',
+            node.getAttribute('title') || '',
+          ].join(' ').replace(/\\s+/g, ' ').trim();
+          const href = node.getAttribute('href') || node.getAttribute('data-href') || '';
+          return { node, label, href };
+        })
+        .filter(({ label, href }) => {
+          if (!href || /^(?:javascript:|#)$/i.test(href)) return false;
+          return /\\b(?:agendar(?:\\s+on[- ]?line)?|marcar\\s+(?:um\\s+)?hor[aá]rio|book\\s+online|online\\s+booking|reserv(?:ar|e|ation)|appointment|agendamento)\\b/i.test(label) ||
+            /\\b(?:avec\\.beauty|booksy\\.com|fresha\\.com|treatwell\\.|square\\.site|mindbodyonline\\.com)\\b/i.test(href);
         });
-      if (candidates.length > 0) {
-        const href = candidates[0].getAttribute('href');
-        if (href) {
-          try { return new URL(href, window.location.href).href; } catch { return ''; }
-        }
+      for (const candidate of candidates) {
+        try {
+          const url = new URL(candidate.href, window.location.href);
+          if (url.protocol === 'https:' || url.protocol === 'http:') return url.href;
+        } catch {}
       }
       return '';
     })();
