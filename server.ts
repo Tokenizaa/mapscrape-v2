@@ -82,7 +82,7 @@ function verifiedSession(token: string): { sub: string; email: string; role: 'ad
 }
 
 async function authenticatedConsumer(req: Request): Promise<AuthenticatedConsumer | null> {
-  const match = /^Bearer\\s+(.+)$/i.exec(req.header('authorization') || '');
+  const match = /^Bearer\s+(.+)$/i.exec(req.header('authorization') || '');
   if (!match) return null;
   const supplied = match[1];
   const session = verifiedSession(supplied);
@@ -118,7 +118,7 @@ async function requireAuthenticatedConsumer(req: Request, res: Response, next: e
 }
 
 function hasProvisioningAccess(req: Request): boolean {
-  const match = /^Bearer\\s+(.+)$/i.exec(req.header('authorization') || '');
+  const match = /^Bearer\s+(.+)$/i.exec(req.header('authorization') || '');
   const session = match ? verifiedSession(match[1]) : null;
   if (session?.role === 'admin') return true;
   const expected = process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
@@ -174,10 +174,10 @@ export async function createApp() {
 
   app.post('/api/auth/register', async (req: Request, res: Response) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    const displayName = typeof req.body?.name === 'string' ? req.body.name.trim().replace(/\\s+/g, ' ') : '';
+    const displayName = typeof req.body?.name === 'string' ? req.body.name.trim().replace(/\s+/g, ' ') : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
     if (!sessionSecret()) return res.status(503).json({ error: 'auth_not_configured', message: 'A autenticação ainda não foi configurada pelo administrador.' });
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email) || email.length > 254 || displayName.length < 2 || displayName.length > 100 || password.length < 12 || password.length > 200) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || displayName.length < 2 || displayName.length > 100 || password.length < 12 || password.length > 200) {
       return res.status(422).json({ error: 'invalid_registration', message: 'Informe nome, e-mail válido e senha com pelo menos 12 caracteres.' });
     }
     try {
@@ -209,7 +209,7 @@ export async function createApp() {
   });
 
   app.get('/api/auth/me', async (req: Request, res: Response) => {
-    const match = /^Bearer\\s+(.+)$/i.exec(req.header('authorization') || '');
+    const match = /^Bearer\s+(.+)$/i.exec(req.header('authorization') || '');
     const session = match ? verifiedSession(match[1]) : null;
     if (!session) return res.status(401).json({ error: 'unauthorized' });
     const user = await findUserById(session.sub);
