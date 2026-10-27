@@ -551,7 +551,7 @@ export async function getPlacesByIds(ids: string[], consumerProject?: string): P
 export async function getAllPlaces(jobId?: string, consumerProject?: string): Promise<PlaceRecord[]> {
   const db = getDb();
   const where: string[] = [];
-  const args: unknown[] = [];
+  const args: any[] = [];
   if (jobId) { where.push('p.job_id = ?'); args.push(jobId); }
   if (consumerProject) { where.push('s.user_id = ?'); args.push(consumerProject); }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
