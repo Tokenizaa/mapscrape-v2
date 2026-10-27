@@ -96,6 +96,16 @@ export async function initDb(): Promise<void> {
       additional_attributes TEXT DEFAULT '{}',
       media_items TEXT DEFAULT '[]',
       plus_code TEXT DEFAULT '',
+      postal_code TEXT DEFAULT '',
+      country TEXT DEFAULT '',
+      city TEXT DEFAULT '',
+      state TEXT DEFAULT '',
+      source_place_id TEXT DEFAULT '',
+      source_url TEXT DEFAULT '',
+      popular_times TEXT DEFAULT '{}',
+      rating_distribution TEXT DEFAULT '{}',
+      review_highlights TEXT DEFAULT '[]',
+      field_status TEXT DEFAULT '{}',
       collected_at TEXT NOT NULL,
       FOREIGN KEY (job_id) REFERENCES searches (id) ON DELETE CASCADE
     );
@@ -126,6 +136,16 @@ export async function initDb(): Promise<void> {
     ['additional_attributes', `TEXT DEFAULT '{}'`],
     ['media_items', `TEXT DEFAULT '[]'`],
     ['plus_code', `TEXT DEFAULT ''`],
+    ['postal_code', `TEXT DEFAULT ''`],
+    ['country', `TEXT DEFAULT ''`],
+    ['city', `TEXT DEFAULT ''`],
+    ['state', `TEXT DEFAULT ''`],
+    ['source_place_id', `TEXT DEFAULT ''`],
+    ['source_url', `TEXT DEFAULT ''`],
+    ['popular_times', `TEXT DEFAULT '{}'`],
+    ['rating_distribution', `TEXT DEFAULT '{}'`],
+    ['review_highlights', `TEXT DEFAULT '[]'`],
+    ['field_status', `TEXT DEFAULT '{}'`],
   ] as const) {
     try { await db.execute(`ALTER TABLE places ADD COLUMN ${column} ${definition};`); } catch {}
   }
@@ -370,8 +390,9 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
       id, job_id, name, category, address, phone, website,
       rating, review_count, price_range, opening_hours, business_status,
       latitude, longitude, maps_url, description, services_attributes,
-      photos, videos, logo_url, booking_url, social_links, reviews, review_topics, additional_attributes, media_items, plus_code, collected_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      photos, videos, logo_url, booking_url, social_links, reviews, review_topics, additional_attributes, media_items, plus_code,
+      postal_code, country, city, state, source_place_id, source_url, popular_times, rating_distribution, review_highlights, field_status, collected_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       place.id,
       place.job_id,
@@ -400,6 +421,9 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
       place.additional_attributes || '{}',
       place.media_items || '[]',
       place.plus_code || '',
+      place.postal_code || '', place.country || '', place.city || '', place.state || '',
+      place.source_place_id || '', place.source_url || place.maps_url || '',
+      place.popular_times || '{}', place.rating_distribution || '{}', place.review_highlights || '[]', place.field_status || '{}',
       place.collected_at,
     ],
   });
@@ -413,14 +437,20 @@ export async function updatePlace(id: string, place: PlaceRecord): Promise<void>
       name = ?, category = ?, address = ?, phone = ?, website = ?, rating = ?, review_count = ?,
       price_range = ?, opening_hours = ?, business_status = ?, latitude = ?, longitude = ?, maps_url = ?,
       description = ?, services_attributes = ?, photos = ?, videos = ?, logo_url = ?, booking_url = ?, social_links = ?,
-      reviews = ?, review_topics = ?, additional_attributes = ?, media_items = ?, plus_code = ?, collected_at = ?
+      reviews = ?, review_topics = ?, additional_attributes = ?, media_items = ?, plus_code = ?,
+      postal_code = ?, country = ?, city = ?, state = ?, source_place_id = ?, source_url = ?, popular_times = ?,
+      rating_distribution = ?, review_highlights = ?, field_status = ?, collected_at = ?
       WHERE id = ?`,
     args: [
       place.name, place.category, place.address, place.phone, place.website, place.rating, place.review_count,
       place.price_range, place.opening_hours, place.business_status, place.latitude, place.longitude, place.maps_url,
       place.description, place.services_attributes, place.photos || '', place.videos || '', place.logo_url || '',
       place.booking_url || '', place.social_links || '', place.reviews || '[]', place.review_topics || '[]', place.additional_attributes || '{}',
-      place.media_items || '[]', place.plus_code || '', place.collected_at, id,
+      place.media_items || '[]', place.plus_code || '',
+      place.postal_code || '', place.country || '', place.city || '', place.state || '',
+      place.source_place_id || '', place.source_url || place.maps_url || '',
+      place.popular_times || '{}', place.rating_distribution || '{}', place.review_highlights || '[]', place.field_status || '{}',
+      place.collected_at, id,
     ],
   });
 }
