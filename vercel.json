@@ -7,6 +7,9 @@
     "api/[...path].ts": {
       "maxDuration": 300
     },
+    "api/v1/[...path].ts": {
+      "maxDuration": 300
+    },
     "api/scrape/start.ts": {
       "maxDuration": 300
     }
