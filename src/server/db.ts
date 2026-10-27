@@ -32,6 +32,7 @@ export async function initDb(): Promise<void> {
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
       segment TEXT NOT NULL,
+      project_name TEXT NOT NULL DEFAULT '',
       location TEXT NOT NULL,
       limit_requested INTEGER NOT NULL,
       status TEXT NOT NULL,
@@ -45,6 +46,8 @@ export async function initDb(): Promise<void> {
       completed_at TEXT
     );
   `);
+
+  try { await db.execute(`ALTER TABLE searches ADD COLUMN project_name TEXT NOT NULL DEFAULT '';`); } catch {}
 
   // Migrate databases created before per-user ownership was added to searches.
   // Existing searches are kept but are unowned until explicitly reassigned.
@@ -181,14 +184,15 @@ export async function createJob(job: ScrapeJob & { user_id: string }): Promise<v
   const db = getDb();
   await db.execute({
     sql: `INSERT INTO searches (
-      id, user_id, segment, location, limit_requested, status, status_message,
+      id, user_id, segment, project_name, location, limit_requested, status, status_message,
       total_found, total_collected, total_duplicates, total_errors,
       current_step, created_at, completed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       job.id,
       job.user_id,
       job.segment,
+      job.project_name || `${job.segment} · ${job.location}`,
       job.location,
       job.limit_requested,
       job.status,
