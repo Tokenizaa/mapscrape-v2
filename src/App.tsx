@@ -10,11 +10,12 @@ import { ResultsScreen } from './components/ResultsScreen';
 import { ExportScreen } from './components/ExportScreen';
 import { HistoryScreen } from './components/HistoryScreen';
 import { LogsScreen } from './components/LogsScreen';
+import { DashboardScreen } from './components/DashboardScreen';
 import { PlaceRecord, ScrapeJob } from './shared/types';
 import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-react';
 
 export default function App() {
-  const [currentTab, setCurrentTab] = useState<ScreenTab>('search');
+  const [currentTab, setCurrentTab] = useState<ScreenTab>('dashboard');
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   // Active or most recent job
@@ -234,6 +235,8 @@ export default function App() {
   };
 
   const tabLabels: Record<ScreenTab, string> = {
+    dashboard: 'Visão geral',
+    credentials: 'Credenciais de API',
     search: 'Pesquisar',
     results: 'Resultados',
     export: 'Exportar CSV',
@@ -313,6 +316,8 @@ export default function App() {
 
         {/* Screen Content Viewport */}
         <main className="flex-1 p-4 sm:p-6 lg:p-10">
+          {currentTab === 'dashboard' && <DashboardScreen totalPlaces={totalPlaces} jobs={jobs} currentJob={currentJob} isScraping={isScraping} onNavigate={setCurrentTab} />}
+
           {currentTab === 'search' && (
             <SearchScreen
               currentJob={currentJob}
