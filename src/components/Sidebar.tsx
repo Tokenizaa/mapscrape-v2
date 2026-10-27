@@ -29,7 +29,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navItems = [
     { id: 'dashboard' as ScreenTab, label: 'Visão geral', icon: LayoutDashboard },
-    { id: 'credentials' as ScreenTab, label: 'Credenciais de API', icon: LayoutDashboard },
     {
       id: 'search' as ScreenTab,
       label: 'Pesquisar',
