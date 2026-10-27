@@ -2,6 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Folder, FolderOpen, MapPin, Search, ArrowRight, Layers3 } from 'lucide-react';
 import { ScrapeJob } from '../shared/types';
 
+// Requisições internas usam a sessão da conta; API keys ficam reservadas a integrações externas.
+async function accountFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const token = window.sessionStorage.getItem('mapscrape_session_token');
+  const headers = new Headers(init.headers || {});
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(input, { ...init, headers, cache: init.cache || 'no-store' });
+}
+
 type PersistedProject = { id: string; name: string; created_at: string; updated_at?: string };
 interface Props {
   jobs: ScrapeJob[];
@@ -19,7 +27,7 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
   useEffect(() => {
     if (!apiReady) return;
     let active = true;
-    fetch('/api/projects', { cache: 'no-store' })
+    accountFetch('/api/projects', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
@@ -41,7 +49,7 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
     const name = newProjectName.trim();
     if (!name || !apiReady) return;
     try {
-      const response = await fetch('/api/projects', {
+      const response = await accountFetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
