@@ -211,15 +211,17 @@ export async function createJob(job: ScrapeJob & { user_id: string }): Promise<v
   const db = getDb();
   await db.execute({
     sql: `INSERT INTO searches (
-      id, user_id, segment, project_name, location, limit_requested, status, status_message,
+      id, user_id, segment, project_name, project_id, category_id, location, limit_requested, status, status_message,
       total_found, total_collected, total_duplicates, total_errors,
       current_step, created_at, completed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       job.id,
       job.user_id,
       job.segment,
       job.project_name || `${job.segment} · ${job.location}`,
+      job.project_id || null,
+      job.category_id || null,
       job.location,
       job.limit_requested,
       job.status,
