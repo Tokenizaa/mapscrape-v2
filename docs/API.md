@@ -4,6 +4,19 @@ Este documento descreve o contrato implementado em `server.ts` para consumidores
 
 ## 1. Arquitetura e limites
 
+### Cadastro e autenticação da plataforma
+
+A interface web usa uma conta individual, separada das credenciais de integrações externas. O usuário cadastra nome, e-mail e senha (mínimo de 12 caracteres), entra pelo formulário de login e recebe uma sessão JWT de 12 horas. O token é mantido somente na sessão do navegador; não deve ser incorporado ao bundle nem compartilhado.
+
+| Método | Endpoint | Uso |
+|---|---|---|
+| POST | `/api/auth/register` | Criar conta de usuário |
+| POST | `/api/auth/login` | Iniciar sessão |
+| GET | `/api/auth/me` | Validar sessão e recuperar perfil |
+
+As contas públicas sempre recebem o papel `user`. A conta administradora inicial é criada apenas por bootstrap server-side com `MAPSCRAPE_ADMIN_EMAIL`, `MAPSCRAPE_ADMIN_PASSWORD` e `MAPSCRAPE_SESSION_SECRET` definidos nos secrets da Vercel. A sessão de administrador autoriza o gerenciamento de chaves externas sem solicitar o token bootstrap na interface. O token bootstrap continua aceito somente para operações operacionais server-to-server; nunca o exponha no frontend.
+
+
 ### Uso da plataforma versus integração externa
 
 O uso normal do aplicativo MapScrape — criar projetos, cadastrar categorias, iniciar pesquisas e consultar resultados — não deve exigir que o operador emita ou cole uma chave de consumidor. A chave de consumidor é destinada a um sistema externo independente que chama a REST API.
