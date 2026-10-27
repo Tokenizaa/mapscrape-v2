@@ -32,6 +32,23 @@ export interface PlaceRecord {
   media_items?: string;
   /** Plus code shown on the public place sheet, when present. */
   plus_code?: string;
+  /** Structured address components; empty when not explicitly parseable from the displayed address. */
+  postal_code?: string;
+  country?: string;
+  city?: string;
+  state?: string;
+  /** Stable Maps source identifier extracted from the Maps URL when present. */
+  source_place_id?: string;
+  /** Original URL used to identify the source listing. */
+  source_url?: string;
+  /** JSON object of popular-times data actually exposed in the rendered page. */
+  popular_times?: string;
+  /** JSON object mapping star levels (1-5) to counts when displayed. */
+  rating_distribution?: string;
+  /** JSON array of review summary/highlight snippets shown by Maps. */
+  review_highlights?: string;
+  /** JSON object recording per-field capture state; empty does not mean source absence. */
+  field_status?: string;
   collected_at: string;
 }
 
@@ -96,5 +113,15 @@ export const EXPORTABLE_FIELDS: { key: keyof PlaceRecord; label: string; descrip
   { key: 'media_items', label: 'Mídia estruturada', description: 'Itens de mídia com tipo, URL, texto alternativo e miniatura' },
   { key: 'booking_url', label: 'URL de Agendamento', description: 'Link "Agendar on-line" ou "Book online" da ficha' },
   { key: 'plus_code', label: 'Plus Code', description: 'Código geográfico apresentado na ficha' },
+  { key: 'postal_code', label: 'CEP / código postal', description: 'Quando explícito no endereço público' },
+  { key: 'country', label: 'País', description: 'Componente do endereço quando identificável' },
+  { key: 'city', label: 'Cidade', description: 'Componente do endereço quando identificável' },
+  { key: 'state', label: 'Estado / região', description: 'Componente do endereço quando identificável' },
+  { key: 'source_place_id', label: 'ID da ficha na fonte', description: 'Identificador extraído da URL do Google Maps' },
+  { key: 'source_url', label: 'URL original da fonte', description: 'URL da ficha usada na coleta' },
+  { key: 'popular_times', label: 'Horários de movimento', description: 'JSON de dados exibidos publicamente, quando disponíveis' },
+  { key: 'rating_distribution', label: 'Distribuição de avaliações', description: 'Contagens por estrelas quando exibidas' },
+  { key: 'review_highlights', label: 'Destaques de avaliações', description: 'Trechos de resumo exibidos pelo Maps' },
+  { key: 'field_status', label: 'Estado de captura dos campos', description: 'JSON com status de observação por campo' },
   { key: 'collected_at', label: 'Data e hora da coleta', description: 'Registrada pelo aplicativo' },
 ];
