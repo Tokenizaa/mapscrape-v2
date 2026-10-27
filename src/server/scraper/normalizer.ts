@@ -96,6 +96,43 @@ export function normalizeBusinessStatus(raw: string | null | undefined): string 
   return cleaned;
 }
 
+export interface AddressComponents {
+  postal_code: string;
+  country: string;
+  city: string;
+  state: string;
+}
+
+/** Parse only address components supported by explicit patterns in the displayed address. */
+export function parseAddressComponents(raw: string | null | undefined): AddressComponents {
+  const address = normalizeAddress(raw);
+  const postal_code =
+    address.match(/\b\d{5}-\d{3}\b/)?.[0] ||
+    address.match(/\b\d{5}\b/)?.[0] ||
+    address.match(/\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b/i)?.[0] ||
+    '';
+  const stateMatch = address.match(/(?:-|,)\s*([A-Z]{2})\s*(?:,|$)/);
+  const state = stateMatch?.[1] || '';
+  const countryMatch = address.match(/,\s*(Brazil|Brasil|United States|United Kingdom|Canada|Australia|Portugal|España|Spain|France|Deutschland|Germany|Italy|México|Mexico)\s*$/i);
+  const country = countryMatch?.[1] || '';
+  let city = '';
+  if (stateMatch && typeof stateMatch.index === 'number') {
+    const beforeState = address.slice(0, stateMatch.index).split(',').map((part) => part.trim()).filter(Boolean);
+    city = (beforeState[beforeState.length - 1] || '').split(/\s+-\s+/).pop()?.trim() || '';
+  } else if (country && address.split(',').length >= 2) {
+    const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+    city = parts[parts.length - 2] || '';
+  }
+  return { postal_code, country, city, state };
+}
+
+/** Extract Google's stable place identifier when the URL actually contains one. */
+export function extractSourcePlaceId(url: string | null | undefined): string {
+  const value = String(url || '');
+  return value.match(/(0x[0-9a-f]+:0x[0-9a-f]+)/i)?.[1] ||
+    value.match(/!1s([^!/?]+)/)?.[1] || '';
+}
+
 export function extractCoordinates(url: string | null | undefined): { latitude: string; longitude: string } {
   if (!url) return { latitude: '', longitude: '' };
   
