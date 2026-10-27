@@ -13,6 +13,7 @@ import {
   getAllPlaces,
   createApiCredential,
   findUserByEmail,
+  countUsers,
   findUserById,
   createUser,
   updateUserLogin,
@@ -185,11 +186,14 @@ export async function createApp() {
     }
     try {
       if (await findUserByEmail(email)) return res.status(409).json({ error: 'email_already_registered', message: 'Este e-mail já possui cadastro.' });
+      const bootstrapEmail = process.env.MAPSCRAPE_ADMIN_EMAIL?.trim().toLowerCase();
+      const isFirstAccount = await countUsers() === 0;
+      const role: 'admin' | 'user' = isFirstAccount && bootstrapEmail && email === bootstrapEmail ? 'admin' : 'user';
       const id = `usr_${randomBytes(16).toString('hex')}`;
-      await createUser({ id, email, displayName, passwordHash: passwordHash(password), role: 'user', createdAt: new Date().toISOString() });
-      const token = createSessionToken({ id, email, role: 'user' });
+      await createUser({ id, email, displayName, passwordHash: passwordHash(password), role, createdAt: new Date().toISOString() });
+      const token = createSessionToken({ id, email, role });
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(201).json({ token, user: { id, email, name: displayName, role: 'user' } });
+      return res.status(201).json({ token, user: { id, email, name: displayName, role } });
     } catch (error) {
       return res.status(500).json({ error: 'registration_failed', message: error instanceof Error ? error.message : 'Não foi possível criar a conta.' });
     }
