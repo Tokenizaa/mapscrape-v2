@@ -3,7 +3,7 @@ import { PlaceRecord } from '../../shared/types';
 import {
   cleanText, normalizeAddress, normalizePhone, normalizeWebsite, normalizeCategory,
   normalizeRating, normalizeReviewCount, normalizePriceRange, normalizeBusinessStatus,
-  extractCoordinates,
+  extractCoordinates, parseAddressComponents, extractSourcePlaceId,
 } from './normalizer';
 import { SELECTORS } from './selectors';
 
@@ -612,21 +612,8 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
   const finalUrl = raw.currentUrl || targetUrl;
   const coords = extractCoordinates(finalUrl);
   const address = normalizeAddress(raw.address);
-  const addressParts = address.split(',').map((part: string) => part.trim()).filter(Boolean);
-  const postalMatch = address.match(/\b([A-Z]?\d{5}(?:-\d{3})?|\d{5}(?:-\d{3})?|\d{4,6})\b/i);
-  const stateMatch = address.match(/(?:-|,)\s*([A-Z]{2})\s*(?:,|$)/);
-  const countryMatch = address.match(/,\s*(Brazil|Brasil|United States|United Kingdom|Canada|Australia|Portugal|España|Spain|France|Deutschland|Germany|Italy|México|Mexico)\s*$/i);
-  const state = stateMatch?.[1] || '';
-  const country = countryMatch?.[1] || '';
-  let city = '';
-  if (state) {
-    const beforeState = address.slice(0, stateMatch!.index).split(',').map((part: string) => part.trim()).filter(Boolean);
-    city = (beforeState[beforeState.length - 1] || '').split(/\s+-\s+/).pop()?.trim() || '';
-  } else if (country && addressParts.length >= 2) {
-    city = addressParts[addressParts.length - 2] || '';
-  }
-  const sourceIdMatch = finalUrl.match(/(0x[0-9a-f]+:0x[0-9a-f]+)/i) || finalUrl.match(/!1s([^!/?]+)/);
-  const sourcePlaceId = sourceIdMatch?.[1] || '';
+  const addressComponents = parseAddressComponents(address);
+  const sourcePlaceId = extractSourcePlaceId(finalUrl);
   const sourceUrl = targetUrl || finalUrl;
   const fieldValues: Record<string, unknown> = {
     name: raw.name, category: raw.category, address, phone: raw.phone, website: raw.website,
@@ -670,10 +657,10 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     additional_attributes: JSON.stringify(raw.additional_attributes || {}),
     media_items: JSON.stringify(Array.isArray(raw.media_items) ? raw.media_items : []),
     plus_code: cleanText(raw.plus_code),
-    postal_code: cleanText(postalMatch?.[1] || ''),
-    country: cleanText(country),
-    city: cleanText(city),
-    state: cleanText(state),
+    postal_code: cleanText(addressComponents.postal_code),
+    country: cleanText(addressComponents.country),
+    city: cleanText(addressComponents.city),
+    state: cleanText(addressComponents.state),
     source_place_id: cleanText(sourcePlaceId),
     source_url: cleanText(sourceUrl),
     popular_times: JSON.stringify(Array.isArray(raw.popular_times) ? raw.popular_times : []),
