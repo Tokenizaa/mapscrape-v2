@@ -14,6 +14,7 @@ import {
   findActiveApiCredential,
   revokeApiCredential,
   listApiCredentials,
+  listPlaceCategories,
 } from './src/server/db';
 import { runScraperJob, stopScrapeJob, isJobRunning } from './src/server/scraper/runner';
 import { generateCsv } from './src/server/scraper/csv';
@@ -286,6 +287,12 @@ export async function createApp() {
     } catch (err: any) {
       return res.status(500).json({ error: err.message || 'Erro ao consultar locais.' });
     }
+  });
+
+  // Distinct categories from persisted place records for the directory filter.
+  app.get('/api/categories', async (_req: Request, res: Response) => {
+    try { return res.json({ categories: await listPlaceCategories() }); }
+    catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao consultar categorias.' }); }
   });
 
   // 6. Get all places for a job (or overall)
