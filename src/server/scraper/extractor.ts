@@ -201,8 +201,14 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     const addPhoto = (candidate: string): void => {
       const src = (candidate || '').trim().split(/\s+/)[0];
       if (!src.startsWith('http') || /cleardot\.gif|gstatic\.com\/images\/branding/i.test(src)) return;
-      // Ignore tiny UI icons and avatars; retain Google-hosted business/gallery media.
-      if (/=s(?:16|24|32|40|48|64)(?:-c)?(?:-[a-z]+)?$/i.test(src)) return;
+      // Reject tiny UI icons/avatars regardless of Google's URL parameter format.
+      const dimensions = src.match(/(?:=|[-_])(?:w|s)(\d{1,4})(?:-h(\d{1,4}))?/i);
+      const queryWidth = src.match(/[?&](?:width|w)=(\d{1,4})/i);
+      const queryHeight = src.match(/[?&](?:height|h)=(\d{1,4})/i);
+      const width = Number(dimensions?.[1] || queryWidth?.[1] || 0);
+      const height = Number(dimensions?.[2] || queryHeight?.[1] || 0);
+      if ((width > 0 && width <= 64) || (height > 0 && height <= 64) ||
+          /=s(?:16|24|32|40|48|64)(?:-c)?(?:-[a-z]+)?$/i.test(src)) return;
       if (!seenPhotos.has(src)) { seenPhotos.add(src); photoUrls.push(src); }
     };
     for (const selector of selectors.photos) {
@@ -372,19 +378,20 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     // Expand the list of review topic/category chips before capturing labels/counts.
     clickByText(/^(?:View \d+ more Topics|Ver \d+ tópicos? a mais|Ver mais tópicos|Mais tópicos|Ver mais temas)$/i);
     await new Promise((resolve) => setTimeout(resolve, 100));
-    // Capture the topic chips and their review counts independently of review text.
+    // Only accept explicit review topics or labeled chips with a numeric review count.
+    // Generic Maps controls (tabs, map layers, markers) are not review categories.
     const review_topics = Array.from(document.querySelectorAll(
-      '[role="radio"],[role="checkbox"],button[aria-pressed],button[aria-selected],[data-review-topic]'
+      '[data-review-topic], [role="radio"], [role="checkbox"], button[aria-pressed="true"], button[aria-selected="true"]'
     ))
-      .filter((node) => !node.closest('.jftiEf'))
+      .filter((node) => !node.closest('.jftiEf') && node.getAttribute('role') !== 'tab')
       .map((node) => {
         const label = ((node as HTMLElement).innerText || node.getAttribute('aria-label') || '').replace(/\s+/g, ' ').trim();
-        const count = (label.match(/(\d+)\s*$/) || [])[1] || '';
-        return { label, count, role: node.getAttribute('role') || '', selected: node.getAttribute('aria-pressed') || node.getAttribute('aria-selected') || '' };
+        const count = (label.match(/(?:\(|\s)(\d{1,6})\s*\)?$/) || [])[1] || '';
+        return { label, count, node };
       })
       .filter((item) => item.label && item.label.length < 100)
-      .filter((item) => !/^(all reviews|todas as avaliações|all|todas|most relevant|mais relevantes|newest|mais recentes|sort by|ordenar por|more reviews|mais avaliações|translate|traduzir|like|gostei|reply|responder)$/i.test(item.label))
-      .filter((item) => !!item.role || !!item.selected || !!item.count)
+      .filter((item) => !/^(all reviews|todas as avaliações|avaliações|reviews|all|todas|overview|visão geral|about|sobre|standard|padrão|satellite|satélite|globe view|visualização do globo|markers|marcadores|map layers|camadas do mapa|most relevant|mais relevantes|newest|mais recentes|sort by|ordenar por|more reviews|mais avaliações|translate|traduzir|like|gostei|reply|responder)$/i.test(item.label))
+      .filter((item) => !!item.count || !!item.node.hasAttribute('data-review-topic'))
       .map(({label,count}) => ({label,count}));
 
     // The About tab contains additional attributes not present in the overview.
@@ -412,8 +419,23 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
         }))
         .filter((item) => item.label || item.value)
         .filter((item) => item.value.length < 500)
+        .filter((item) => !/^(overview|visão geral|about|sobre|see more|ver mais|standard|padrão|satellite|satélite|globe view|visualização do globo|markers|marcadores)$/i.test(item.value))
         .slice(0, 200) : [],
     };
+
+    // Promote verified public service/accessibility details into the searchable
+    // services_attributes field, while retaining the structured About payload too.
+    const structuredAttributeLines = (additional_attributes.sections || [])
+      .flatMap((section: { category?: string; items?: string[] }) => {
+        const category = String(section.category || '').trim();
+        const items = Array.isArray(section.items) ? section.items.map((item) => String(item || '').trim()).filter(Boolean) : [];
+        const usefulItems = items.filter((item) => !/^(?:||ver mais|show more|saiba mais|learn more)$/i.test(item));
+        return category && usefulItems.length ? [category + ': ' + usefulItems.join(', ')] : [];
+      });
+    const servicesAndAttributes = Array.from(new Set([
+      services_attributes,
+      ...structuredAttributeLines,
+    ].map((value) => value.trim()).filter(Boolean))).join(' · ');
 
     // Close any review dialog and inspect the public gallery. Collect thumbnails
     // as actual image data; keep video cards typed even when Maps hides the
@@ -480,17 +502,13 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       } catch {}
     }
 
-    // Google Maps frequently exposes the business cover/gallery but no separately
-    // labelled logo. Preserve a real business-owned image as the profile-image
-    // fallback; never substitute a reviewer avatar.
-    if (!logo_url) {
-      logo_url = photoUrls.find((url) => /googleusercontent\.com/i.test(url)) || '';
-    }
+    // Do not infer a logo/profile image from an arbitrary gallery photo.
+    // Leave logo_url empty unless Maps explicitly labels a business profile image.
 
     videoUrls.forEach((url) => media_items.push({ type: 'video', url, thumbnail_url: '', title: '' }));
     return {
       name, category, rating, review_count, price_range, address, website, phone,
-      opening_hours, business_status: statusText, description, services_attributes,
+      opening_hours, business_status: statusText, description, services_attributes: servicesAndAttributes,
       photos: photoUrls.join(' | '), videos: videoUrls.join(' | '), logo_url, social_links: socialUrls.join(' | '),
       reviews, review_topics, additional_attributes, media_items, plus_code,
       currentUrl: window.location.href,
