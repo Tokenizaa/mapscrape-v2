@@ -536,7 +536,7 @@ export interface SearchCategoryRecord {
 }
 
 function normalizeCatalogName(value: string): string {
-  return value.normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('pt-BR');
+  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 }
 
 export async function listProjects(consumerProject: string): Promise<ProjectRecord[]> {
@@ -560,7 +560,7 @@ export async function resolveProject(consumerProject: string, name: string): Pro
   const record: ProjectRecord = {
     id: `prj_${randomUUID().replace(/-/g, '')}`,
     consumer_project: consumerProject,
-    name: name.trim().replace(/\\s+/g, ' ').slice(0, 120),
+    name: name.trim().replace(/\s+/g, ' ').slice(0, 120),
     normalized_name: normalized,
     created_at: now,
     updated_at: now,
@@ -596,7 +596,7 @@ export async function resolveSearchCategory(consumerProject: string, name: strin
   const record: SearchCategoryRecord = {
     id: `cat_${randomUUID().replace(/-/g, '')}`,
     consumer_project: consumerProject,
-    name: name.trim().replace(/\\s+/g, ' ').slice(0, 120),
+    name: name.trim().replace(/\s+/g, ' ').slice(0, 120),
     normalized_name: normalized,
     created_at: new Date().toISOString(),
   };
