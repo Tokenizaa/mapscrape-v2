@@ -1,5 +1,18 @@
 # MapScrape v2
 
+## Cadastro e acesso à plataforma
+
+A interface nativa usa contas individuais com cadastro e login por e-mail e senha. Cada conta recebe um espaço de trabalho isolado e não precisa de chave de consumidor. As credenciais de API continuam exclusivas para sistemas externos.
+
+Configure no ambiente **Production** da Vercel:
+- `MAPSCRAPE_SESSION_SECRET`: segredo aleatório forte, exclusivo para assinar sessões.
+- `MAPSCRAPE_ADMIN_EMAIL`: e-mail da conta administradora inicial.
+- `MAPSCRAPE_ADMIN_PASSWORD`: senha inicial da conta administradora (mínimo recomendado: 12 caracteres).
+
+No primeiro início com essas três variáveis, o serviço cria a conta administradora se ela ainda não existir. As novas contas cadastradas publicamente recebem papel de usuário, nunca de administrador. Não envie esses segredos ao navegador nem os registre em logs. Depois de configurar variáveis de ambiente, faça um novo deployment para que entrem em vigor.
+
+Endpoints de conta: `POST /api/auth/register`, `POST /api/auth/login` e `GET /api/auth/me`. Sessões expiram em 12 horas. Login e cadastro têm limite de tentativas.
+
 ## Uso normal versus integração externa
 
 A interface nativa deve permitir criar projetos, definir categorias, executar pesquisas e consultar resultados sem pedir uma chave de consumidor. A chave individual é para um sistema externo que integra com a REST API. Para emiti-la, abra **Integrações → Credenciais de API**, informe **Nome do cliente** e **Nome do projeto**, clique em **Gerar chave** e copie o segredo uma única vez para o secret manager do cliente. A emissão e revogação devem permanecer protegidas por autenticação administrativa real; não exponha `MAPSCRAPE_PROVISIONING_TOKEN` nem crie um proxy público sem autenticação.
