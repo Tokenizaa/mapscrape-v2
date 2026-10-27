@@ -178,6 +178,7 @@ export async function runScraperJob(
   let totalDuplicates = 0;
   let totalErrors = 0;
   let baselineCount = 0;
+  let consumerProject: string | undefined;
 
   const emitProgress = async (step: string, updates: Partial<ScrapeJob> = {}) => {
     const jobUpdates: Partial<ScrapeJob> = {
@@ -211,6 +212,9 @@ export async function runScraperJob(
   };
 
   try {
+    const owningJob = await getJob(jobId);
+    if (!owningJob) throw new Error('Coleta não encontrada no banco antes da execução.');
+    consumerProject = owningJob.user_id;
     baselineCount = await countPlaces();
     await safeAudit({ category: 'scraper', event: 'job.browser_start', message: 'Inicializando Chromium.', jobId, metadata: { segment, location, limitRequested, databaseCountBefore: baselineCount } });
     await emitProgress('Iniciando navegador Chromium...', { status: 'running' });
@@ -299,7 +303,7 @@ export async function runScraperJob(
       if (!placeRecord.maps_url.includes('/maps/place/')) {
         placeRecord.maps_url = currentUrl;
       }
-      const existingDirectPlace = await findPlaceByUrl(currentUrl);
+      const existingDirectPlace = await findPlaceByUrl(currentUrl, consumerProject);
       if (existingDirectPlace) {
         if (needsEnrichment(existingDirectPlace)) {
           const merged = mergePlaceRecords(existingDirectPlace, placeRecord);
@@ -376,7 +380,7 @@ export async function runScraperJob(
     // Resume at the most recently saved URL for this exact segment/location pair.
     // Maps does not expose page offsets, so the feed must scroll until the checkpoint
     // reappears; older results are ignored without per-place database lookups/log spam.
-    const resumeRecord = await getLastCollectedPlaceForSearch(segment, location);
+    const resumeRecord = await getLastCollectedPlaceForSearch(segment, location, consumerProject);
     const resumeUrl = resumeRecord?.maps_url
       ? resumeRecord.maps_url.split('?')[0].replace(/\/$/, '')
       : '';
@@ -459,7 +463,7 @@ export async function runScraperJob(
         eligibleUrlsInRun.add(canonicalUrl);
 
         // Existing records consume one of the requested result slots and are counted as duplicates.
-        const existingPlace = await findPlaceByUrl(canonicalUrl);
+        const existingPlace = await findPlaceByUrl(canonicalUrl, consumerProject);
         if (existingPlace) {
           if (needsEnrichment(existingPlace)) {
             // Include incomplete legacy records in the detail-processing queue
@@ -700,7 +704,7 @@ export async function runScraperJob(
 
         // Keep every per-place operation inside the isolation boundary: a
         // database lookup or progress update can fail just like extraction.
-        const existingPlace = await findPlaceByUrl(item.url);
+        const existingPlace = await findPlaceByUrl(item.url, consumerProject);
         if (existingPlace) {
           if (needsEnrichment(existingPlace)) {
             await emitProgress(`[${placeNum}/${itemsToProcess.length}] Atualizando ficha existente: ${existingPlace.name}...`);
