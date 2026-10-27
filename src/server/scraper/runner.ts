@@ -429,9 +429,9 @@ export async function runScraperJob(
     while (eligibleUrlsInRun.size < limitRequested && scrollAttempts < maxScrollAttempts && stagnantRounds < 8 && !handle.cancelled) {
       scrollAttempts++;
 
-      // Search ordering can change. Give deep histories time to reach the checkpoint;
-      // if it is still absent, restart candidate evaluation on the current feed and
-      // rely on global URL deduplication instead of silently returning zero results.
+      // If Maps reordered or truncated the feed and the checkpoint is absent,
+      // fall back to global database deduplication. Existing records do not count
+      // toward limitRequested, so scrolling can pass them and reach new businesses.
       if (!resumeReached && scrollAttempts >= Math.min(maxScrollAttempts, 40)) {
         resumeReached = true;
         resumeFallbackUsed = true;
@@ -439,7 +439,7 @@ export async function runScraperJob(
         stagnantRounds = 0;
         await safeAudit({
           level: 'warn', category: 'scraper', event: 'results.resume_checkpoint_missing',
-          message: 'O último resultado salvo não reapareceu após 40 rolagens; retomada por checkpoint desativada e deduplicação global aplicada.',
+          message: 'O checkpoint salvo não reapareceu após 40 rolagens; continuando com deduplicação no banco sem consumir limite com fichas já existentes.',
           jobId, metadata: { checkpointUrl: resumeUrl, scrollAttempts },
         });
       }
@@ -494,12 +494,14 @@ export async function runScraperJob(
         }
 
         if (eligibleUrlsInRun.size >= limitRequested) continue;
-        eligibleUrlsInRun.add(canonicalUrl);
 
-        // Existing records consume one of the requested result slots and are counted as duplicates.
+        // Existing complete records must not consume the requested quota.
+        // Otherwise every resumed run can fill its limit with old records and
+        // never reach new results further down the virtualized Maps feed.
         const existingPlace = await findPlaceByUrl(canonicalUrl, consumerProject);
         if (existingPlace) {
           if (needsEnrichment(existingPlace)) {
+            eligibleUrlsInRun.add(canonicalUrl);
             // Include incomplete legacy records in the detail-processing queue
             // so the UI can refresh them rather than silently skipping them.
             discoveredUrls.push({ ...item, url: canonicalUrl, previewName: existingPlace.name || item.previewName });
@@ -525,6 +527,7 @@ export async function runScraperJob(
           continue;
         }
 
+        eligibleUrlsInRun.add(canonicalUrl);
         discoveredUrls.push({ ...item, url: canonicalUrl });
         newFoundInBatch++;
       }
