@@ -127,6 +127,17 @@ export async function initDb(): Promise<void> {
 
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);`);
   await db.execute(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
+      created_at TEXT NOT NULL,
+      last_login_at TEXT
+    );
+  `);
+  await db.execute(`
     CREATE TABLE IF NOT EXISTS api_credentials (
       id TEXT PRIMARY KEY,
       consumer_name TEXT NOT NULL,
@@ -190,6 +201,42 @@ export async function initDb(): Promise<void> {
     }
   }
 
+}
+
+export interface UserAccount {
+  id: string;
+  email: string;
+  display_name: string;
+  password_hash: string;
+  role: 'admin' | 'user';
+  created_at: string;
+  last_login_at: string | null;
+}
+
+export async function findUserByEmail(email: string): Promise<UserAccount | null> {
+  const result = await getDb().execute({ sql: 'SELECT * FROM users WHERE email = ? LIMIT 1', args: [email.toLowerCase()] });
+  return result.rows.length ? result.rows[0] as unknown as UserAccount : null;
+}
+
+export async function findUserById(id: string): Promise<Omit<UserAccount, 'password_hash'> | null> {
+  const result = await getDb().execute({ sql: 'SELECT id, email, display_name, role, created_at, last_login_at FROM users WHERE id = ? LIMIT 1', args: [id] });
+  return result.rows.length ? result.rows[0] as unknown as Omit<UserAccount, 'password_hash'> : null;
+}
+
+export async function countUsers(): Promise<number> {
+  const result = await getDb().execute('SELECT COUNT(*) AS count FROM users');
+  return Number(result.rows[0]?.count || 0);
+}
+
+export async function createUser(input: { id: string; email: string; displayName: string; passwordHash: string; role: 'admin' | 'user'; createdAt: string }): Promise<void> {
+  await getDb().execute({
+    sql: 'INSERT INTO users (id, email, display_name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)',
+    args: [input.id, input.email.toLowerCase(), input.displayName, input.passwordHash, input.role, input.createdAt],
+  });
+}
+
+export async function updateUserLogin(id: string, timestamp: string): Promise<void> {
+  await getDb().execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [timestamp, id] });
 }
 
 export async function createApiCredential(input: {
