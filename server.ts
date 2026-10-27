@@ -454,7 +454,7 @@ export async function createApp() {
   });
 
   // Distinct categories from persisted place records for the directory filter.
-  app.get('/api/categories', requireAuthenticatedConsumer, async (_req: Request, res: Response) => {
+  app.get('/api/categories', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try { return res.json({ categories: await listPlaceCategories((req as any).mapscrapeConsumer.consumer_project) }); }
     catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao consultar categorias.' }); }
   });
@@ -507,7 +507,7 @@ export async function createApp() {
   });
 
   // 7. List past searches history
-  app.get('/api/history', requireAuthenticatedConsumer, async (_req: Request, res: Response) => {
+  app.get('/api/history', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const history = await listJobs((req as any).mapscrapeConsumer.consumer_project);
       return res.json(history);
