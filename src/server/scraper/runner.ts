@@ -39,6 +39,12 @@ function isTransientBrowserError(error: unknown): boolean {
   return /connection closed|target closed|detached frame|session closed|websocket is not open|protocol error|browser has disconnected|cannot find context/i.test(message);
 }
 
+function isBrowserConnected(browser: Browser): boolean {
+  const compatible = browser as Browser & { connected?: boolean; isConnected?: () => boolean };
+  if (typeof compatible.isConnected === 'function') return compatible.isConnected();
+  return compatible.connected !== false;
+}
+
 function missingFields(place: PlaceRecord): string[] {
   const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes', 'media_items', 'plus_code', 'collected_at'];
   return fields.filter((field) => {
@@ -177,6 +183,14 @@ export async function runScraperJob(
   activeJobs.set(jobId, handle);
 
   let browser: Browser | null = null;
+  const connectAndTrackBrowser = async (): Promise<Browser> => {
+    const connectedBrowser = await connectScraperBrowser();
+    browser = connectedBrowser;
+    connectedBrowser.on('disconnected', () => {
+      if (browser === connectedBrowser) browser = null;
+    });
+    return connectedBrowser;
+  };
   let totalFound = 0;
   let totalCollected = 0;
   let totalDuplicates = 0;
@@ -219,7 +233,7 @@ export async function runScraperJob(
     await safeAudit({ category: 'scraper', event: 'job.browser_start', message: 'Inicializando Chromium.', jobId, metadata: { segment, location, limitRequested, databaseCountBefore: baselineCount } });
     await emitProgress('Iniciando navegador Chromium...', { status: 'running' });
 
-    browser = await connectScraperBrowser();
+    await connectAndTrackBrowser();
 
     handle.cancel = () => {
       handle.cancelled = true;
@@ -700,7 +714,7 @@ export async function runScraperJob(
 
       try {
         // Recover a lost remote session before opening the next detail tab.
-        if (!browser || !browser.isConnected()) browser = await connectScraperBrowser();
+        if (!browser || !isBrowserConnected(browser)) await connectAndTrackBrowser();
 
         // Keep every per-place operation inside the isolation boundary: a
         // database lookup or progress update can fail just like extraction.
@@ -808,7 +822,7 @@ export async function runScraperJob(
           retriedItems.add(i);
           await safeAudit({ level: 'warn', category: 'scraper', event: 'browser.transient_failure_retry', message: 'Falha transitória do Chromium; reconectando e repetindo esta ficha uma única vez.', jobId, metadata: { mapsUrl: item.url, attempt: 2, error: placeErr?.message || String(placeErr) } });
           try {
-            browser = await connectScraperBrowser();
+            await connectAndTrackBrowser();
             i--;
             continue;
           } catch (reconnectError) {
