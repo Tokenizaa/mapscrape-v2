@@ -320,6 +320,7 @@ export async function createApp() {
         jobId: jobId ? String(jobId) : undefined,
         query: query ? String(query) : undefined,
         category: category ? String(category) : undefined,
+        consumerProject: consumer.consumer_project,
         sortBy: sortBy ? String(sortBy) : undefined,
         sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
         offset: offset ? Number(offset) : 0,
@@ -334,7 +335,7 @@ export async function createApp() {
 
   // Distinct categories from persisted place records for the directory filter.
   app.get('/api/categories', requireAuthenticatedConsumer, async (_req: Request, res: Response) => {
-    try { return res.json({ categories: await listPlaceCategories() }); }
+    try { return res.json({ categories: await listPlaceCategories((req as any).mapscrapeConsumer.consumer_project) }); }
     catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao consultar categorias.' }); }
   });
 
