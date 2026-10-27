@@ -334,6 +334,7 @@ export async function placeExistsByUrl(url: string, _jobId?: string): Promise<bo
 export async function getPlaces(options: {
   jobId?: string;
   query?: string;
+  category?: string;
   sortBy?: string;
   sortOrder?: 'asc' | 'desc';
   offset?: number;
@@ -353,6 +354,11 @@ export async function getPlaces(options: {
     const q = `%${options.query.trim()}%`;
     whereClauses.push(`(name LIKE ? OR category LIKE ? OR address LIKE ? OR phone LIKE ? OR website LIKE ?)`);
     args.push(q, q, q, q, q);
+  }
+
+  if (options.category && options.category.trim()) {
+    whereClauses.push(`lower(trim(category)) = lower(trim(?))`);
+    args.push(options.category.trim());
   }
 
   if (options.consumerProject) {
