@@ -18,6 +18,43 @@ import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<ScreenTab>('dashboard');
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [hasApiKey, setHasApiKey] = useState(() => Boolean(window.sessionStorage.getItem('mapscrape_api_key')));
+  const [apiKeyError, setApiKeyError] = useState('');
+  const [isConnectingApi, setIsConnectingApi] = useState(false);
+
+  const handleConnectApiKey = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const key = apiKeyInput.trim();
+    if (!key) return;
+    setIsConnectingApi(true);
+    setApiKeyError('');
+    window.sessionStorage.setItem('mapscrape_api_key', key);
+    try {
+      const response = await fetch('/api/history', { cache: 'no-store' });
+      if (!response.ok) throw new Error(response.status === 401 ? 'Chave de API inválida ou revogada.' : `Falha de autenticação (HTTP ${response.status}).`);
+      setHasApiKey(true);
+      setApiKeyInput('');
+      await loadHistory();
+      await loadPlaces();
+    } catch (error) {
+      window.sessionStorage.removeItem('mapscrape_api_key');
+      setHasApiKey(false);
+      setApiKeyError(error instanceof Error ? error.message : 'Não foi possível validar a chave.');
+    } finally {
+      setIsConnectingApi(false);
+    }
+  };
+
+  const handleDisconnectApiKey = () => {
+    window.sessionStorage.removeItem('mapscrape_api_key');
+    setHasApiKey(false);
+    setJobs([]);
+    setPlaces([]);
+    setTotalPlaces(0);
+    setApiKeyInput('');
+  };
+
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
   // Active or most recent job
@@ -321,6 +358,22 @@ export default function App() {
 
         {/* Screen Content Viewport */}
         <main className="flex-1 p-4 sm:p-6 lg:p-10">
+          {!hasApiKey ? (
+            <section className="mx-auto mb-8 max-w-3xl rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
+              <h2 className="text-lg font-semibold text-zinc-100">Conectar à API do MapScrape</h2>
+              <p className="mt-1 text-sm text-zinc-400">Insira uma chave de consumidor emitida em Credenciais de API. A chave fica apenas nesta aba e não é incorporada ao código.</p>
+              <form onSubmit={handleConnectApiKey} className="mt-4 flex flex-col gap-3 sm:flex-row">
+                <input aria-label="Chave de API" type="password" autoComplete="off" value={apiKeyInput} onChange={(event) => setApiKeyInput(event.target.value)} placeholder="Chave de API (Bearer)" className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100" />
+                <button disabled={!apiKeyInput.trim() || isConnectingApi} className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{isConnectingApi ? 'Validando…' : 'Conectar'}</button>
+              </form>
+              {apiKeyError && <p role="alert" className="mt-3 text-sm text-rose-300">{apiKeyError}</p>}
+              <button type="button" onClick={() => setCurrentTab('credentials')} className="mt-3 text-sm font-medium text-emerald-400 hover:text-emerald-300">Abrir Credenciais de API</button>
+            </section>
+          ) : (
+            <div className="mb-4 flex justify-end">
+              <button type="button" onClick={handleDisconnectApiKey} className="text-xs text-zinc-500 hover:text-zinc-200">Desconectar chave desta aba</button>
+            </div>
+          )}
           {currentTab === 'dashboard' && <DashboardScreen totalPlaces={totalPlaces} jobs={jobs} currentJob={currentJob} isScraping={isScraping} onNavigate={setCurrentTab} />}
 
           {currentTab === 'projects' && <ProjectsScreen jobs={jobs} onOpenJob={(jobId) => { setSelectedJobId(jobId); setCurrentPage(1); setCurrentTab('results'); }} />}
