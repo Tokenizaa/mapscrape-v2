@@ -178,12 +178,12 @@ export default function App() {
   }, []);
 
   // Handlers
-  const handleStartScrape = async (projectName: string, segment: string, location: string, limit: number) => {
+  const handleStartScrape = async (projectName: string, categoryName: string, segment: string, location: string, limit: number) => {
     try {
       const res = await fetch('/api/scrape/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectName, segment, location, limit }),
+        body: JSON.stringify({ projectName, categoryName, segment, location, limit }),
       });
 
       const contentType = res.headers.get('content-type') || '';
@@ -384,6 +384,7 @@ export default function App() {
             <SearchScreen
               currentJob={currentJob}
               isScraping={isScraping}
+              apiReady={hasApiKey}
               onStartScrape={handleStartScrape}
               onStopScrape={handleStopScrape}
               onGoToResults={() => setCurrentTab('results')}
