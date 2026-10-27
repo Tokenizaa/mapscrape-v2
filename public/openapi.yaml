@@ -18,6 +18,7 @@ servers:
 security:
   - bearerAuth: []
 tags:
+  - name: Account
   - name: Health
   - name: Projects
   - name: Categories
@@ -25,6 +26,63 @@ tags:
   - name: Leads
   - name: Provisioning
 paths:
+  /api/auth/register:
+    post:
+      tags: [Account]
+      security: []
+      summary: Criar conta na plataforma
+      description: Cria uma conta de usuário; contas públicas nunca recebem papel administrativo. Senha mínima de 12 caracteres.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string, minLength: 2, maxLength: 100 }
+                email: { type: string, format: email, maxLength: 254 }
+                password: { type: string, minLength: 12, maxLength: 200 }
+      responses:
+        '201':
+          description: Conta criada e sessão iniciada
+        '409':
+          description: E-mail já cadastrado
+        '422':
+          description: Dados inválidos
+        '503':
+          description: Autenticação não configurada
+  /api/auth/login:
+    post:
+      tags: [Account]
+      security: []
+      summary: Entrar na plataforma
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Sessão JWT de 12 horas e perfil
+        '401':
+          description: Credenciais inválidas
+        '503':
+          description: Autenticação não configurada
+  /api/auth/me:
+    get:
+      tags: [Account]
+      summary: Validar sessão e consultar perfil
+      responses:
+        '200':
+          description: Perfil da conta autenticada
+        '401':
+          description: Sessão inválida ou expirada
   /api/v1/health:
     get:
       tags: [Health]
