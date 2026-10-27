@@ -648,6 +648,44 @@ export async function createApp() {
     }
   });
 
+  app.get('/api/v1/projects', async (req: Request, res: Response) => {
+    try {
+      return res.json({ data: await listProjects((req as any).mapscrapeConsumer.consumer_project) });
+    } catch (error) {
+      return res.status(500).json({ error: 'project_list_failed', message: error instanceof Error ? error.message : 'Falha ao listar projetos.' });
+    }
+  });
+
+  app.post('/api/v1/projects', async (req: Request, res: Response) => {
+    try {
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      if (!name) return res.status(422).json({ error: 'project_name_required' });
+      const project = await resolveProject((req as any).mapscrapeConsumer.consumer_project, name);
+      return res.status(201).json({ data: project });
+    } catch (error) {
+      return res.status(500).json({ error: 'project_create_failed', message: error instanceof Error ? error.message : 'Falha ao criar projeto.' });
+    }
+  });
+
+  app.get('/api/v1/categories', async (req: Request, res: Response) => {
+    try {
+      return res.json({ data: await listSearchCategories((req as any).mapscrapeConsumer.consumer_project) });
+    } catch (error) {
+      return res.status(500).json({ error: 'category_list_failed', message: error instanceof Error ? error.message : 'Falha ao listar categorias.' });
+    }
+  });
+
+  app.post('/api/v1/categories', async (req: Request, res: Response) => {
+    try {
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      if (!name) return res.status(422).json({ error: 'category_name_required' });
+      const category = await resolveSearchCategory((req as any).mapscrapeConsumer.consumer_project, name);
+      return res.status(201).json({ data: category });
+    } catch (error) {
+      return res.status(500).json({ error: 'category_create_failed', message: error instanceof Error ? error.message : 'Falha ao criar categoria.' });
+    }
+  });
+
   app.get('/api/v1/leads', async (req: Request, res: Response) => {
     try {
       const limit = Number(req.query.limit ?? 50);
@@ -686,9 +724,14 @@ export async function createApp() {
       if (!segment || !location) return res.status(422).json({ error: 'invalid_request', message: 'segment e location são obrigatórios.' });
       const limit = Number(req.body?.limit ?? 20);
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) return res.status(422).json({ error: 'invalid_limit', message: 'limit deve ser inteiro entre 1 e 100.' });
+      const scope = (req as any).mapscrapeConsumer.consumer_project as string;
+      const projectName = typeof req.body?.projectName === 'string' && req.body.projectName.trim() ? req.body.projectName.trim() : `${segment} · ${location}`;
+      const categoryName = typeof req.body?.categoryName === 'string' && req.body.categoryName.trim() ? req.body.categoryName.trim() : segment;
+      const project = await resolveProject(scope, projectName);
+      const category = await resolveSearchCategory(scope, categoryName);
       const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       const job: ScrapeJob = {
-        id: jobId, user_id: (req as any).mapscrapeConsumer.consumer_project, segment, location, limit_requested: limit,
+        id: jobId, user_id: scope, segment, project_name: project.name, project_id: project.id, category_id: category.id, location, limit_requested: limit,
         status: 'running', status_message: 'Coleta solicitada via API v1.', total_found: 0,
         total_collected: 0, total_duplicates: 0, total_errors: 0,
         current_step: 'Preparando coleta', created_at: new Date().toISOString(),
