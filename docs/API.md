@@ -14,7 +14,7 @@ A interface web usa uma conta individual, separada das credenciais de integraç�
 | POST | `/api/auth/login` | Iniciar sessão |
 | GET | `/api/auth/me` | Validar sessão e recuperar perfil |
 
-As contas públicas sempre recebem o papel `user`. A conta administradora inicial é criada apenas por bootstrap server-side com `MAPSCRAPE_ADMIN_EMAIL`, `MAPSCRAPE_ADMIN_PASSWORD` e `MAPSCRAPE_SESSION_SECRET` definidos nos secrets da Vercel. A sessão de administrador autoriza o gerenciamento de chaves externas sem solicitar o token bootstrap na interface. O token bootstrap continua aceito somente para operações operacionais server-to-server; nunca o exponha no frontend.
+A primeira conta só pode ser criada com o e-mail administrador configurado (`MAPSCRAPE_ADMIN_EMAIL`, padrão `olfnetto@gmail.com`) e o segredo `MAPSCRAPE_ADMIN_SETUP_TOKEN` definido no ambiente de produção; o token é enviado no campo de configuração inicial do formulário e validado exclusivamente no servidor. Enquanto não houver contas, cadastros sem a autorização correta são recusados. Depois da primeira conta, os novos cadastros recebem papel `user`. Como alternativa operacional, `MAPSCRAPE_ADMIN_EMAIL`, `MAPSCRAPE_ADMIN_PASSWORD` e `MAPSCRAPE_SESSION_SECRET` permitem bootstrap server-side sem enviar a senha pelo navegador. Nunca exponha segredos no bundle público, URLs ou logs.
 
 
 ### Uso da plataforma versus integração externa
