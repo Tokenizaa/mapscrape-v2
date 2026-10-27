@@ -456,9 +456,14 @@ export async function getAllPlaces(jobId?: string, consumerProject?: string): Pr
   return res.rows as unknown as PlaceRecord[];
 }
 
-export async function listPlaceCategories(): Promise<string[]> {
+export async function listPlaceCategories(consumerProject?: string): Promise<string[]> {
   const db = getDb();
-  const result = await db.execute("SELECT DISTINCT trim(category) AS category FROM places WHERE trim(category) <> '' ORDER BY lower(trim(category)) ASC");
+  const result = await db.execute({
+    sql: consumerProject
+      ? "SELECT DISTINCT trim(p.category) AS category FROM places p INNER JOIN searches s ON s.id = p.job_id WHERE trim(p.category) <> '' AND s.user_id = ? ORDER BY lower(trim(p.category)) ASC"
+      : "SELECT DISTINCT trim(category) AS category FROM places WHERE trim(category) <> '' ORDER BY lower(trim(category)) ASC",
+    args: consumerProject ? [consumerProject] : [],
+  });
   return result.rows.map((row) => String(row.category || '')).filter(Boolean);
 }
 
