@@ -188,7 +188,18 @@ export async function createApp() {
       if (await findUserByEmail(email)) return res.status(409).json({ error: 'email_already_registered', message: 'Este e-mail já possui cadastro.' });
       const bootstrapEmail = (process.env.MAPSCRAPE_ADMIN_EMAIL?.trim() || 'olfnetto@gmail.com').toLowerCase();
       const isFirstAccount = await countUsers() === 0;
-      const role: 'admin' | 'user' = isFirstAccount && bootstrapEmail && email === bootstrapEmail ? 'admin' : 'user';
+      let role: 'admin' | 'user' = 'user';
+      if (isFirstAccount) {
+        const expectedSetupToken = process.env.MAPSCRAPE_ADMIN_SETUP_TOKEN?.trim() || '';
+        const suppliedSetupToken = typeof req.body?.setupToken === 'string' ? req.body.setupToken : '';
+        if (email !== bootstrapEmail || !expectedSetupToken || !suppliedSetupToken || !safeEqual(expectedSetupToken, suppliedSetupToken)) {
+          return res.status(403).json({
+            error: 'initial_admin_setup_required',
+            message: 'O primeiro cadastro exige o e-mail administrador e o token de configuração inicial definido no ambiente do servidor.',
+          });
+        }
+        role = 'admin';
+      }
       const id = `usr_${randomBytes(16).toString('hex')}`;
       await createUser({ id, email, displayName, passwordHash: passwordHash(password), role, createdAt: new Date().toISOString() });
       const token = createSessionToken({ id, email, role });
