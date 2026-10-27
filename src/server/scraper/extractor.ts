@@ -501,7 +501,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
         addPhoto(image.currentSrc || image.src || attr(node, 'src'));
         addPhoto(attr(node, 'data-src'));
         const srcset = attr(node, 'srcset');
-        if (srcset) srcset.split(',').forEach((part) => addPhoto(part.trim().split(/\\s+/)[0]));
+        if (srcset) srcset.split(',').forEach((part) => addPhoto(part.trim().split(/\s+/)[0]));
       });
       document.querySelectorAll('[role="dialog"] video, [role="dialog"] [data-video-url], [role="dialog"] button[aria-label*="video"], [role="dialog"] button[aria-label*="vídeo"]').forEach((node) => {
         const media = node as HTMLVideoElement;
