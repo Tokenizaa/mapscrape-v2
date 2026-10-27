@@ -3,10 +3,12 @@ info:
   title: MapScrape REST API
   version: 1.0.0
   description: >-
-    API central de coleta e consulta de leads. Consumidores usam HTTP/HTTPS;
-    não devem clonar o scraper nem acessar o banco diretamente. Campos e respostas
-    descrevem o contrato implementado atualmente, não garantem que a fonte exponha
-    todos os dados em cada coleta.
+    API central de coleta e consulta de leads. Consumidores externos usam HTTP/HTTPS;
+    não devem clonar o scraper nem acessar o banco diretamente. A interface nativa do
+    MapScrape deve ser usada sem emitir ou colar uma chave de consumidor; essas chaves
+    são exclusivas para aplicações externas. A emissão administrativa exige autorização
+    administrativa real. Campos e respostas descrevem o contrato implementado atualmente,
+    não garantem que a fonte exponha todos os dados em cada coleta.
   contact:
     name: MapScrape API documentation
     url: https://mapscrape-v2.vercel.app/docs/
@@ -356,7 +358,7 @@ paths:
       security:
         - provisioningToken: []
       summary: Emitir credencial individual de consumidor
-      description: Somente infraestrutura autorizada. apiKey é retornada uma única vez; não exponha a resposta em logs.
+      description: Somente infraestrutura autorizada. A interface administrativa deve autenticar o operador antes de chamar este endpoint; não basta ocultar o token no cliente nem criar um proxy público que injete o segredo. apiKey é retornada uma única vez; não exponha a resposta em logs.
       requestBody:
         required: true
         content:
