@@ -15,6 +15,10 @@ import {
   revokeApiCredential,
   listApiCredentials,
   listPlaceCategories,
+  listProjects,
+  resolveProject,
+  listSearchCategories,
+  resolveSearchCategory,
 } from './src/server/db';
 import { runScraperJob, stopScrapeJob, isJobRunning } from './src/server/scraper/runner';
 import { generateCsv } from './src/server/scraper/csv';
@@ -185,7 +189,9 @@ export async function createApp() {
   // 1. Start scraping job
   app.post('/api/scrape/start', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
-      const { segment, projectName, location, limit } = req.body;
+      const { segment, projectName, categoryName, location, limit } = req.body;
+      const consumer = (req as any).mapscrapeConsumer as { id: string; consumer_project: string } | undefined;
+      if (!consumer) return res.status(401).json({ error: 'unauthorized' });
 
       if (!segment || typeof segment !== 'string' || !segment.trim()) {
         return res.status(400).json({ error: 'O campo segmento é obrigatório.' });
@@ -195,13 +201,23 @@ export async function createApp() {
       }
 
       const limitNum = Math.max(1, Math.min(100, Number(limit) || 20));
+      const finalProjectName = typeof projectName === 'string' && projectName.trim()
+        ? projectName.trim().slice(0, 120)
+        : `${segment.trim()} · ${location.trim()}`;
+      const finalCategoryName = typeof categoryName === 'string' && categoryName.trim()
+        ? categoryName.trim().slice(0, 120)
+        : segment.trim();
+      const project = await resolveProject(consumer.consumer_project, finalProjectName);
+      const category = await resolveSearchCategory(consumer.consumer_project, finalCategoryName);
       const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
       const newJob: ScrapeJob & { user_id: string } = {
         id: jobId,
-        user_id: (req as any).user?.id || (req as any).mapscrapeConsumer?.id || 'operator-static-key',
+        user_id: consumer.consumer_project,
         segment: segment.trim(),
-        project_name: typeof projectName === 'string' && projectName.trim() ? projectName.trim().slice(0, 120) : `${segment.trim()} · ${location.trim()}`,
+        project_name: project.name,
+        project_id: project.id,
+        category_id: category.id,
         location: location.trim(),
         limit_requested: limitNum,
         status: 'running',
@@ -316,6 +332,41 @@ export async function createApp() {
   app.get('/api/categories', requireAuthenticatedConsumer, async (_req: Request, res: Response) => {
     try { return res.json({ categories: await listPlaceCategories() }); }
     catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao consultar categorias.' }); }
+  });
+
+  // Persisted project/category catalogs for the scrape workflow and API clients.
+  app.get('/api/projects', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
+    try {
+      const consumer = (req as any).mapscrapeConsumer;
+      return res.json({ projects: await listProjects(consumer.consumer_project) });
+    } catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao consultar projetos.' }); }
+  });
+
+  app.post('/api/projects', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
+    try {
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      if (!name) return res.status(422).json({ error: 'project_name_required' });
+      const consumer = (req as any).mapscrapeConsumer;
+      const project = await resolveProject(consumer.consumer_project, name);
+      return res.status(201).json({ project });
+    } catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao criar projeto.' }); }
+  });
+
+  app.get('/api/search-categories', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
+    try {
+      const consumer = (req as any).mapscrapeConsumer;
+      return res.json({ categories: await listSearchCategories(consumer.consumer_project) });
+    } catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao consultar categorias de pesquisa.' }); }
+  });
+
+  app.post('/api/search-categories', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
+    try {
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      if (!name) return res.status(422).json({ error: 'category_name_required' });
+      const consumer = (req as any).mapscrapeConsumer;
+      const category = await resolveSearchCategory(consumer.consumer_project, name);
+      return res.status(201).json({ category });
+    } catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao criar categoria.' }); }
   });
 
   // 6. Get all places for a job (or overall)
