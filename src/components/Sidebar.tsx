@@ -1,8 +1,8 @@
 import React from 'react';
-import { Search, Table2, FileDown, History, ClipboardList, MapPin, StopCircle, Database, CheckCircle2, AlertCircle, BookOpen, ExternalLink } from 'lucide-react';
+import { Search, Table2, FileDown, History, ClipboardList, MapPin, LayoutDashboard } from 'lucide-react';
 import { ScrapeJob } from '../shared/types';
 
-export type ScreenTab = 'search' | 'results' | 'export' | 'history' | 'logs';
+export type ScreenTab = 'dashboard' | 'credentials' | 'search' | 'results' | 'export' | 'history' | 'logs';
 
 interface SidebarProps {
   currentTab: ScreenTab;
@@ -28,6 +28,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const navItems = [
+    { id: 'dashboard' as ScreenTab, label: 'Visão geral', icon: LayoutDashboard },
+    { id: 'credentials' as ScreenTab, label: 'Credenciais de API', icon: LayoutDashboard },
     {
       id: 'search' as ScreenTab,
       label: 'Pesquisar',
