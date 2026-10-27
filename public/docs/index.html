@@ -60,10 +60,10 @@ a{color:#5bd58d}
 <main class="content">
 <div class="eyebrow">Documentação oficial · REST API v1</div>
 <h1>Integre a coleta de dados. Sem instalar o scraper.</h1>
-<p class="lead">O MapScrape executa as coletas e disponibiliza os resultados por API. Conecte seu produto, painel ou agente com HTTPS, uma URL-base e uma credencial individual.</p>
+<p class="lead">Use o MapScrape normalmente para criar projetos e executar pesquisas. Chaves de API são necessárias apenas quando um sistema externo precisa consumir os dados do MapScrape.</p>
 <div class="hero-actions"><a class="btn primary" href="#quickstart">Começar integração <span>→</span></a><a class="btn" href="#agent-prompt">Copiar prompt para agente</a><a class="btn" href="/openapi.yaml">Baixar OpenAPI</a></div>
 <div class="pills"><span class="pill">HTTPS + JSON</span><span class="pill">Credencial por consumidor</span><span class="pill">Jobs assíncronos</span><span class="pill">Paginação</span></div>
-<div class="callout"><strong>Uma API central para todos os projetos</strong><p>O consumidor não clona este repositório, não instala Puppeteer, não roda outro scraper e não acessa diretamente o banco. Toda coleta e persistência pertencem ao serviço MapScrape.</p></div>
+<div class="callout"><strong>Dois fluxos diferentes</strong><p>Uso normal: abra o MapScrape, crie projetos e execute pesquisas sem emitir uma chave de consumidor. Integração externa: cadastre o cliente e o projeto em Integrações → Credenciais de API, gere a chave e entregue-a ao sistema consumidor por um canal seguro. O consumidor não clona este repositório nem acessa o banco diretamente.</p></div>
 
 <section class="section" id="overview"><h2>Visão geral</h2><p>O MapScrape é um serviço central. Seus consumidores integram-se por chamadas HTTP ao host implantado. A credencial identifica o consumidor e limita a leitura aos leads e jobs associados a esse projeto.</p>
 <div class="codebox"><div class="codehead"><span>ARQUITETURA</span><button class="copy" data-copy="Google Maps → serviço MapScrape → REST API v1 → sua aplicação">Copiar fluxo</button></div><pre><code>Google Maps
@@ -73,7 +73,7 @@ Serviço MapScrape (raspagem + persistência)
 Seu backend → sua interface / agente</code></pre></div>
 <p>URL de produção atualmente configurada para o serviço: <code>https://mapscrape-v2.vercel.app</code>. Confirme o ambiente antes de usar; a página de documentação não substitui a validação de saúde e funcionamento da coleta.</p></section>
 
-<section class="section" id="quickstart"><h2>Início rápido</h2><p>Para consumir os dados já persistidos, são necessárias duas variáveis de ambiente server-side. A chave deve ser provisionada para cada projeto consumidor, nunca compartilhada entre clientes independentes.</p>
+<section class="section" id="quickstart"><h2>Início rápido para integrações externas</h2><p>Esta seção é para outro sistema que vai consumir o MapScrape, não para usar a interface nativa da plataforma. O operador informa nome do cliente e nome do projeto em Integrações → Credenciais de API, clica em Gerar chave e copia o segredo exibido uma única vez para o secret manager do sistema consumidor. A chave deve ser individual por integração.</p>
 <div class="field"><label for="base-url">URL-base da API</label><input id="base-url" value="https://mapscrape-v2.vercel.app" autocomplete="url"></div>
 <div class="field"><label for="api-key">Chave individual (opcional para gerar exemplo)</label><input id="api-key" placeholder="Sua MAPSCRAPE_API_KEY — não cole em páginas públicas" type="password" autocomplete="off"></div>
 <div class="codebox"><div class="codehead"><span>EXEMPLO · cURL</span><button class="copy" id="copy-curl">Copiar exemplo</button></div><pre><code id="curl-code">curl -fsS "https://mapscrape-v2.vercel.app/api/v1/leads?limit=20&offset=0" \
@@ -96,8 +96,8 @@ Fazer este projeto consumir o serviço MapScrape exclusivamente por HTTP/HTTPS. 
 REGRAS OBRIGATÓRIAS
 1. Inspecione a arquitetura, runtime, autenticação, convenções, UI e testes existentes antes de editar.
 2. NÃO clone este repositório MapScrape, não copie seu código, não instale Puppeteer para esta integração, não crie scraper paralelo e não conecte o consumidor diretamente ao banco central.
-3. Use somente a URL-base confirmada e uma chave individual de consumidor. Configure MAPSCRAPE_API_BASE_URL e MAPSCRAPE_API_KEY como secrets server-side.
-4. Nunca peça que o usuário cole a chave da API ou o token administrativo no chat, em arquivo versionado, no frontend ou em logs. Se a chave individual não estiver provisionada, identifique o bloqueio e peça ao operador autorizado que grave a chave diretamente no secret manager do ambiente. Não tente clonar MapScrape para emitir credenciais.
+3. Use a URL-base confirmada e uma chave individual emitida para este projeto consumidor. Configure MAPSCRAPE_API_BASE_URL e MAPSCRAPE_API_KEY somente como secrets server-side. A interface nativa do MapScrape não deve exigir que seu operador emita ou cole uma chave de consumidor.
+4. Nunca peça que o usuário cole a chave da API ou o token administrativo no chat, em arquivo versionado, no frontend ou em logs. Se esta integração externa ainda não tiver uma chave, instrua o operador a abrir MapScrape → Integrações → Credenciais de API, preencher Nome do cliente e Nome do projeto, gerar a chave e copiá-la uma única vez para o secret manager. Nunca peça o token de provisionamento ao usuário ou ao agente.
 5. Leia a documentação e OpenAPI atuais. Não invente endpoints, schemas, campos, URLs ou dados.
 6. Implemente um cliente HTTP reutilizável e tipado, com timeout, tratamento de erros e retentativas limitadas para leituras transitórias. Não repita POST de criação de job cegamente.
 7. Implemente busca/paginação com limit, offset e pagination.hasMore. Para detalhes, use GET /api/v1/leads/{id}.
@@ -121,7 +121,7 @@ ENTREGA
 Conclua a integração no próprio projeto consumidor, documente as variáveis de ambiente, execute as validações disponíveis e informe os arquivos alterados, comandos executados, resultados reais e bloqueios. Não pare apenas em um plano ou auditoria.</code></pre></div>
 <p class="muted">O prompt é público e não contém chaves. A credencial real deve ser fornecida ao ambiente seguro do projeto pelo operador autorizado.</p></section>
 
-<section class="section" id="auth"><h2>Autenticação</h2><p>As rotas de consumidor (projetos, categorias, leads e jobs) exigem <code>Authorization: Bearer &lt;MAPSCRAPE_API_KEY&gt;</code>. A rota <code>GET /api/v1/health</code> é pública. As rotas administrativas <code>/api/v1/provisioning/credentials</code> usam o cabeçalho separado <code>X-MapScrape-Provisioning-Token</code> e são exclusivas de infraestrutura autorizada; nunca use esse token no browser ou em agentes consumidores.</p>
+<section class="section" id="auth"><h2>Autenticação</h2><p>As rotas REST para integrações externas (projetos, categorias, leads e jobs) exigem <code>Authorization: Bearer &lt;MAPSCRAPE_API_KEY&gt;</code>. A rota <code>GET /api/v1/health</code> é pública. Esse requisito não deve ser apresentado como etapa para usar a interface nativa do MapScrape. As rotas administrativas <code>/api/v1/provisioning/credentials</code> usam <code>X-MapScrape-Provisioning-Token</code>; esse token nunca deve ser exposto no browser. A tela de credenciais precisa de uma sessão administrativa real antes de substituir o campo de token por uma chamada server-side.</p>
 <div class="codebox"><div class="codehead"><span>HEADERS</span><button class="copy" data-copy="Authorization: Bearer $MAPSCRAPE_API_KEY&#10;Accept: application/json">Copiar headers</button></div><pre><code>Authorization: Bearer $MAPSCRAPE_API_KEY
 Accept: application/json</code></pre></div>
 <p>Credenciais individuais são revogáveis e associadas a um <code>consumerProject</code>. Chaves estáticas de compatibilidade compartilham a identidade operacional e não devem ser usadas para isolar consumidores independentes. O token de provisionamento é administrativo e nunca deve ser entregue ao cliente.</p></section>
