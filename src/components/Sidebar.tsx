@@ -12,6 +12,7 @@ interface SidebarProps {
   isScrapingActive: boolean;
   currentJob: ScrapeJob | null;
   onStopScrape?: () => void;
+  isAdmin?: boolean;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
 }
@@ -24,6 +25,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isScrapingActive,
   currentJob,
   onStopScrape,
+  isAdmin = false,
   isOpenMobile,
   onCloseMobile,
 }) => {
@@ -116,7 +118,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             Fluxo de Coleta
           </div>
 
-          {navItems.map((item) => {
+          {navItems.filter((item) => item.id !== 'credentials' || isAdmin).map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
             return (
