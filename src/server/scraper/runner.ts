@@ -370,7 +370,7 @@ export async function runScraperJob(
     // Collect place items from feed with scrolling
     await emitProgress('Carregando resultados da lista...');
 
-    // Keep scrolling until we have the requested number of NEW records, not merely links.
+    // Stop after evaluating at most the requested number of unique result URLs.
     const discoveredUrls: { url: string; previewName: string }[] = [];
     const seenUrlsInRun = new Set<string>();
     const eligibleUrlsInRun = new Set<string>();
@@ -462,8 +462,7 @@ export async function runScraperJob(
         if (eligibleUrlsInRun.size >= limitRequested) continue;
         eligibleUrlsInRun.add(canonicalUrl);
 
-        // Count and log existing records during discovery, then continue scrolling
-        // until the requested number of genuinely new candidates has been found.
+        // Existing records consume one of the requested result slots and are counted as duplicates.
         const existingPlace = await findPlaceByUrl(canonicalUrl);
         if (existingPlace) {
           if (needsEnrichment(existingPlace)) {
@@ -838,7 +837,7 @@ export async function runScraperJob(
       await new Promise((r) => setTimeout(r, 600));
     }
 
-    const hadPartialFailures = totalErrors > 0 || (discoveredUrls.length < limitRequested && !reachedEndOfList) || (totalCollected === 0 && totalDuplicates > 0);
+    const hadPartialFailures = totalErrors > 0 || (eligibleUrlsInRun.size < limitRequested && !reachedEndOfList) || (totalCollected === 0 && totalDuplicates > 0);
     const finalStatus = handle.cancelled ? 'stopped' : hadPartialFailures ? 'partial' : 'completed';
     const statusMsg = handle.cancelled
       ? `Coleta interrompida. ${totalCollected} registros salvos; ${totalErrors} falhas.`
