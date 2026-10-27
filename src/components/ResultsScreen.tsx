@@ -39,6 +39,8 @@ interface ResultsScreenProps {
   onGoToExport: () => void;
   searchQuery: string;
   onSearchQueryChange: (q: string) => void;
+  selectedCategory: string;
+  onCategoryChange: (category: string) => void;
   sortBy: string;
   sortOrder: 'asc' | 'desc';
   onSortChange: (field: string) => void;
@@ -88,6 +90,8 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   onGoToExport,
   searchQuery,
   onSearchQueryChange,
+  selectedCategory,
+  onCategoryChange,
   sortBy,
   sortOrder,
   onSortChange,
@@ -110,6 +114,16 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
   } | null>(null);
   const [coverageError, setCoverageError] = useState('');
   const [showCoverageSection, setShowCoverageSection] = useState(false);
+  const [categories, setCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/categories', { cache: 'no-store' })
+      .then((response) => { if (!response.ok) throw new Error('Falha ao carregar categorias'); return response.json(); })
+      .then((data) => { if (!cancelled) setCategories(Array.isArray(data.categories) ? data.categories : []); })
+      .catch(() => { if (!cancelled) setCategories([]); });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -282,7 +296,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       </div>
 
       {/* Filter and Control Bar */}
-      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-4 sm:p-5 shadow-xl shadow-black/20 md:grid-cols-[1fr_auto_auto]">
+      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/90 p-4 sm:p-5 shadow-xl shadow-black/20 lg:grid-cols-[minmax(0,1fr)_auto_auto_auto]">
         {/* Search Input */}
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-zinc-500" />
@@ -314,6 +328,20 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
                 {job.segment} · {job.location} ({job.total_collected})
               </option>
             ))}
+          </select>
+        </div>
+
+        {/* Persisted category filter */}
+        <div className="flex items-center gap-2">
+          <Building2 className="h-4 w-4 shrink-0 text-zinc-400" />
+          <select
+            aria-label="Filtrar por categoria"
+            value={selectedCategory}
+            onChange={(e) => onCategoryChange(e.target.value)}
+            className="w-full rounded-xl border border-zinc-750 bg-zinc-950 px-3.5 py-3 text-sm font-medium text-zinc-200 outline-none focus:border-emerald-500"
+          >
+            <option value="">Todas as categorias ({categories.length})</option>
+            {categories.map((category) => <option key={category} value={category}>{category}</option>)}
           </select>
         </div>
 
