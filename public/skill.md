@@ -11,10 +11,13 @@ description: Integrate a software project with the central MapScrape REST API us
 - Full contract: https://github.com/Tokenizaa/mapscrape-v2/blob/main/docs/API.md
 - Project/category details: https://github.com/Tokenizaa/mapscrape-v2/blob/main/docs/PROJECTS-CATEGORIES-API.md
 
+## Two distinct usage modes
+The MapScrape web application is the product used by its operator to create projects, choose categories, run searches and view results. That normal first-party workflow must not ask the operator to create or paste a consumer API key. Consumer API keys are only for separate third-party systems integrating with MapScrape.
+
 ## Architecture and secrets
 MapScrape is the central scraper and persistence service. Integrate exclusively over HTTP/HTTPS. Never clone it into the consumer project, copy scraper code, install Puppeteer for this integration, create a parallel scraper, or access the central database directly.
 
-Configure MAPSCRAPE_API_BASE_URL and individual MAPSCRAPE_API_KEY as server-side secrets. Never expose them in browser bundles, URLs, logs, prompts or version control. MAPSCRAPE_PROVISIONING_TOKEN is an administrative bootstrap secret; never supply it to a consumer agent or call provisioning routes from a browser. If no consumer key exists, stop remote integration and request an authorized operator to provision/store it directly in the secret manager. Never ask the user to paste secrets in chat.
+Configure MAPSCRAPE_API_BASE_URL and individual MAPSCRAPE_API_KEY as server-side secrets. Never expose them in browser bundles, URLs, logs, prompts or version control. MAPSCRAPE_PROVISIONING_TOKEN is an administrative bootstrap secret; never supply it to a consumer agent or call provisioning routes from a browser. If no consumer key exists for the external integration, the operator creates one in MapScrape > Integrações > Credenciais de API by entering the client name and consuming project name, then copies the generated key once into the consumer system's server-side secret manager. Do not ask for the provisioning token or ask the user to paste secrets in chat. The first-party MapScrape UI must never require this consumer key to run its own native workflows.
 
 ## Actual consumer API
 - GET /api/v1/health (public; checks service/database only)
