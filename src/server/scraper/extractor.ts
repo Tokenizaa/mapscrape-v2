@@ -537,6 +537,41 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       .find((node) => /plus code/i.test(node.getAttribute('aria-label') || ''));
     const plus_code = plusCodeNode?.getAttribute('aria-label')?.replace(/^plus code:\s*/i, '') || '';
 
+    // Extract only visible popular-times labels/bars; do not infer data from graph shape.
+    const popularTimesNodes = Array.from(document.querySelectorAll(
+      '[aria-label*="Popular times"],[aria-label*="Horários de pico"],[aria-label*="Horários populares"],[data-day-of-week],[class*="popular-times"],[class*="PopularTimes"]'
+    ));
+    const popular_times = popularTimesNodes.map((node) => ({
+      label: attr(node, 'aria-label'),
+      text: text(node).replace(/\s+/g, ' ').trim(),
+      day: attr(node, 'data-day-of-week'),
+      value: attr(node, 'aria-valuenow') || attr(node, 'data-value') || '',
+    })).filter((item) => item.label || item.text || item.day || item.value)
+      .filter((item) => (item.label + ' ' + item.text).length < 600)
+      .slice(0, 300);
+
+    // Rating histogram counts are accepted only when the accessible label explicitly names stars and reviews.
+    const rating_distribution: Record<string, number> = {};
+    document.querySelectorAll('[aria-label]').forEach((node) => {
+      const label = attr(node, 'aria-label').replace(/\s+/g, ' ').trim();
+      const match = label.match(/([1-5])\s*(?:star|stars|estrela|estrelas)\D{0,24}(\d[\d.,\s]*)/i) ||
+        label.match(/(\d[\d.,\s]*)\s*(?:reviews?|avaliações?)\D{0,24}([1-5])\s*(?:star|stars|estrela|estrelas)/i);
+      if (!match) return;
+      const starsFirst = /star|estrela/i.test(label.slice(0, label.indexOf(match[0]) + match[0].length).split(match[2] || match[1])[0]);
+      const stars = starsFirst ? match[1] : match[2];
+      const countText = starsFirst ? match[2] : match[1];
+      const count = Number(countText.replace(/[.,\s]/g, ''));
+      if (stars && Number.isFinite(count)) rating_distribution[String(stars)] = count;
+    });
+
+    // Review highlights are distinct from individual review cards.
+    const review_highlights = Array.from(document.querySelectorAll(
+      '[data-review-summary], [class*="reviewSummary"], [class*="ReviewSummary"], [aria-label*="Review summary"], [aria-label*="Resumo das avaliações"]'
+    )).map((node) => (text(node) || attr(node, 'aria-label')).replace(/\s+/g, ' ').trim())
+      .filter((value) => value.length > 12 && value.length < 500)
+      .filter((value, index, all) => all.indexOf(value) === index)
+      .slice(0, 30);
+
     // Use the explicitly labelled business profile image as the logo/cover image
     // when Maps exposes it; never substitute a reviewer avatar.
     let logo_url = '';
@@ -569,18 +604,51 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       opening_hours, business_status: statusText, description, services_attributes: servicesAndAttributes,
       photos: photoUrls.join(' | '), videos: videoUrls.join(' | '), logo_url, social_links: socialUrls.join(' | '),
       bookingUrl, reviews, review_topics, additional_attributes, media_items, plus_code,
+      popular_times, rating_distribution, review_highlights,
       currentUrl: window.location.href,
     };
   }, SELECTORS.place);
 
   const finalUrl = raw.currentUrl || targetUrl;
   const coords = extractCoordinates(finalUrl);
+  const address = normalizeAddress(raw.address);
+  const addressParts = address.split(',').map((part: string) => part.trim()).filter(Boolean);
+  const postalMatch = address.match(/\\b([A-Z]?\\d{5}(?:-\\d{3})?|\\d{5}(?:-\\d{3})?|\\d{4,6})\\b/i);
+  const stateMatch = address.match(/,\\s*([A-Z]{2})\\s*(?:,|$)/);
+  const countryMatch = address.match(/,\\s*(Brazil|Brasil|United States|United Kingdom|Canada|Australia|Portugal|España|Spain|France|Deutschland|Germany|Italy|México|Mexico)\\s*$/i);
+  const state = stateMatch?.[1] || '';
+  const country = countryMatch?.[1] || '';
+  let city = '';
+  if (state) {
+    const beforeState = address.slice(0, stateMatch!.index).split(',').map((part: string) => part.trim()).filter(Boolean);
+    city = beforeState[beforeState.length - 1] || '';
+  } else if (country && addressParts.length >= 2) {
+    city = addressParts[addressParts.length - 2] || '';
+  }
+  const sourceIdMatch = finalUrl.match(/(0x[0-9a-f]+:0x[0-9a-f]+)/i) || finalUrl.match(/!1s([^!/?]+)/);
+  const sourcePlaceId = sourceIdMatch?.[1] || '';
+  const sourceUrl = targetUrl || finalUrl;
+  const fieldValues: Record<string, unknown> = {
+    name: raw.name, category: raw.category, address, phone: raw.phone, website: raw.website,
+    rating: raw.rating, review_count: raw.review_count, price_range: raw.price_range,
+    opening_hours: raw.opening_hours, business_status: raw.business_status, booking_url: raw.bookingUrl,
+    photos: raw.photos, videos: raw.videos, logo_url: raw.logo_url, social_links: raw.social_links,
+    reviews: raw.reviews, review_topics: raw.review_topics, additional_attributes: raw.additional_attributes,
+    media_items: raw.media_items, plus_code: raw.plus_code, popular_times: raw.popular_times,
+    rating_distribution: raw.rating_distribution, review_highlights: raw.review_highlights,
+    postal_code: postalMatch?.[1] || '', country, city, state, source_place_id: sourcePlaceId, source_url: sourceUrl,
+  };
+  const fieldStatus = Object.fromEntries(Object.entries(fieldValues).map(([field, value]) => {
+    const present = Array.isArray(value) ? value.length > 0 : value && typeof value === 'object'
+      ? Object.keys(value as object).length > 0 : String(value ?? '').trim().length > 0;
+    return [field, { status: present ? 'captured' : 'not_observed_in_session', observed_at: new Date().toISOString() }];
+  }));
   return {
     id: `place_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     job_id: jobId,
     name: cleanText(raw.name),
     category: normalizeCategory(raw.category),
-    address: normalizeAddress(raw.address),
+    address,
     phone: normalizePhone(raw.phone),
     website: normalizeWebsite(raw.website),
     rating: normalizeRating(raw.rating),
@@ -602,6 +670,16 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     additional_attributes: JSON.stringify(raw.additional_attributes || {}),
     media_items: JSON.stringify(Array.isArray(raw.media_items) ? raw.media_items : []),
     plus_code: cleanText(raw.plus_code),
+    postal_code: cleanText(postalMatch?.[1] || ''),
+    country: cleanText(country),
+    city: cleanText(city),
+    state: cleanText(state),
+    source_place_id: cleanText(sourcePlaceId),
+    source_url: cleanText(sourceUrl),
+    popular_times: JSON.stringify(Array.isArray(raw.popular_times) ? raw.popular_times : []),
+    rating_distribution: JSON.stringify(raw.rating_distribution || {}),
+    review_highlights: JSON.stringify(Array.isArray(raw.review_highlights) ? raw.review_highlights : []),
+    field_status: JSON.stringify(fieldStatus),
     collected_at: new Date().toISOString(),
     booking_url: cleanText(raw.bookingUrl),
   };
