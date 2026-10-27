@@ -440,7 +440,10 @@ export async function createApp() {
   // Download the JSON evidence report generated for a collection run.
   app.get('/api/reports/:jobId', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
-      const report = await readRunReport(String(req.params.jobId || ''));
+      const jobId = String(req.params.jobId || '');
+      const ownedJob = await getJob(jobId, (req as any).mapscrapeConsumer.consumer_project);
+      if (!ownedJob) return res.status(404).json({ error: 'Pesquisa não encontrada.' });
+      const report = await readRunReport(jobId);
       if (!report) return res.status(404).json({ error: 'Relatório ainda não existe para esta pesquisa.' });
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Content-Disposition', `attachment; filename="mapscrape-report-${String(req.params.jobId).replace(/[^a-zA-Z0-9_-]/g, '_')}.json"`);
@@ -453,6 +456,8 @@ export async function createApp() {
   app.get('/api/reports/:jobId/pdf', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const jobId = String(req.params.jobId || '');
+      const ownedJob = await getJob(jobId, (req as any).mapscrapeConsumer.consumer_project);
+      if (!ownedJob) return res.status(404).json({ error: 'Pesquisa não encontrada.' });
       const pdf = await readRunReportPdf(jobId);
       if (!pdf) return res.status(404).json({ error: 'PDF ainda não existe para esta pesquisa. Confira se a execução já terminou e se a geração do PDF foi bem-sucedida.' });
       res.setHeader('Content-Type', 'application/pdf');
@@ -522,6 +527,7 @@ export async function createApp() {
         category: req.query.category ? String(req.query.category) : undefined,
         jobId: req.query.jobId ? String(req.query.jobId) : undefined,
         query: req.query.query ? String(req.query.query) : undefined,
+        consumerProject: (req as any).mapscrapeConsumer.consumer_project,
       });
       return res.json(result);
     } catch (err: any) {
