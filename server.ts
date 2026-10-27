@@ -255,8 +255,11 @@ export async function createApp() {
   });
 
   // 2. Stop scraping job
-  app.post('/api/scrape/stop/:id', async (req: Request, res: Response) => {
+  app.post('/api/scrape/stop/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     const { id } = req.params;
+    const consumer = (req as any).mapscrapeConsumer;
+    const ownedJob = await getJob(id, consumer.consumer_project);
+    if (!ownedJob) return res.status(404).json({ error: 'Pesquisa não encontrada.' });
     const stopped = stopScrapeJob(id);
     await safeWriteAuditLog({ level: stopped ? 'warn' : 'info', category: 'scraper', event: stopped ? 'job.stop_requested' : 'job.stop_not_active', message: stopped ? 'Interrupção solicitada pelo usuário.' : 'Solicitação de interrupção para tarefa não ativa.', jobId: id });
     return res.json({
@@ -267,9 +270,10 @@ export async function createApp() {
   });
 
   // 3. Get job status
-  app.get('/api/scrape/status/:id', async (req: Request, res: Response) => {
+  app.get('/api/scrape/status/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     const { id } = req.params;
-    const job = await getJob(id);
+    const consumer = (req as any).mapscrapeConsumer;
+    const job = await getJob(id, consumer.consumer_project);
     if (!job) {
       return res.status(404).json({ error: 'Pesquisa não encontrada.' });
     }
@@ -280,18 +284,18 @@ export async function createApp() {
   });
 
   // 4. SSE Stream for real-time progress
-  app.get('/api/scrape/stream/:id', async (req: Request, res: Response) => {
+  app.get('/api/scrape/stream/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     const { id } = req.params;
+    const consumer = (req as any).mapscrapeConsumer;
+    const job = await getJob(id, consumer.consumer_project);
+    if (!job) return res.status(404).json({ error: 'Pesquisa não encontrada.' });
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
-    const job = await getJob(id);
-    if (job) {
-      res.write(`data: ${JSON.stringify(job)}\n\n`);
-    }
+    res.write(`data: ${JSON.stringify(job)}\n\n`);
 
     if (!sseClients.has(id)) {
       sseClients.set(id, []);
@@ -374,7 +378,7 @@ export async function createApp() {
     try {
       const { jobId } = req.query;
       const consumer = (req as any).mapscrapeConsumer;
-      const records = await getAllPlaces(jobId ? String(jobId) : undefined);
+      const records = await getAllPlaces(jobId ? String(jobId) : undefined, (req as any).mapscrapeConsumer.consumer_project);
       return res.json(records);
     } catch (err: any) {
       return res.status(500).json({ error: err.message || 'Erro ao consultar todos os locais.' });
@@ -384,7 +388,7 @@ export async function createApp() {
   // 7. List past searches history
   app.get('/api/history', requireAuthenticatedConsumer, async (_req: Request, res: Response) => {
     try {
-      const history = await listJobs();
+      const history = await listJobs((req as any).mapscrapeConsumer.consumer_project);
       return res.json(history);
     } catch (err: any) {
       return res.status(500).json({ error: err.message || 'Erro ao consultar histórico.' });
@@ -395,7 +399,8 @@ export async function createApp() {
   app.delete('/api/history/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
-      await deleteJob(id);
+      const deleted = await deleteJob(id, (req as any).mapscrapeConsumer.consumer_project);
+      if (!deleted) return res.status(404).json({ error: 'Pesquisa não encontrada.' });
       return res.json({ success: true, message: 'Pesquisa removida com sucesso.' });
     } catch (err: any) {
       return res.status(500).json({ error: err.message || 'Erro ao remover histórico.' });
@@ -409,11 +414,11 @@ export async function createApp() {
 
       let records: PlaceRecord[] = [];
       if (placeIds && Array.isArray(placeIds) && placeIds.length > 0) {
-        records = await getPlacesByIds(placeIds);
+        records = await getPlacesByIds(placeIds, (req as any).mapscrapeConsumer.consumer_project);
       } else if (jobId) {
-        records = await getAllPlaces(jobId);
+        records = await getAllPlaces(jobId, (req as any).mapscrapeConsumer.consumer_project);
       } else {
-        records = await getAllPlaces();
+        records = await getAllPlaces(undefined, (req as any).mapscrapeConsumer.consumer_project);
       }
 
       const csvContent = generateCsv(records, fields);
@@ -462,7 +467,7 @@ export async function createApp() {
     try {
       const jobId = req.query.jobId ? String(req.query.jobId) : undefined;
       const consumer = (req as any).mapscrapeConsumer;
-      const records = await getAllPlaces(jobId);
+      const records = await getAllPlaces(jobId, (req as any).mapscrapeConsumer.consumer_project);
       const fields: { key: keyof PlaceRecord; label: string }[] = [
         { key: 'name', label: 'Nome' },
         { key: 'category', label: 'Categoria' },
