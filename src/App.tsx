@@ -139,12 +139,12 @@ export default function App() {
   }, []);
 
   // Handlers
-  const handleStartScrape = async (segment: string, location: string, limit: number) => {
+  const handleStartScrape = async (projectName: string, segment: string, location: string, limit: number) => {
     try {
       const res = await fetch('/api/scrape/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ segment, location, limit }),
+        body: JSON.stringify({ projectName, segment, location, limit }),
       });
 
       const contentType = res.headers.get('content-type') || '';
