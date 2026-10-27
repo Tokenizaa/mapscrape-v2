@@ -165,7 +165,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     ));
     const statusText = statusCandidates.map((el) => attr(el, 'aria-label') || text(el))
       .find((value) => /aberto|fechado|open|closed|fermé|fermée|ouvert|abierto|cerrado/i.test(value)) || '';
-    const nextOpeningText = statusText.match(/(?:abre|aberto|opens?|opening|reabre|abertura)[^·|]*/i)?.[0]?.trim() || '';
+    const nextOpeningText = statusText.match(/(?:abre|opens|reopens|abertura)[^·|]*/i)?.[0]?.trim() || '';
     const openingDayMatch = nextOpeningText.match(/\b(segunda(?:-feira)?|terça(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sábado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/i);
     const openingTimeMatch = nextOpeningText.match(/\b(\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?|\d{1,2}h(?:\d{2})?)\b/i);
 
