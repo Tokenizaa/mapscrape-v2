@@ -46,7 +46,7 @@ function isBrowserConnected(browser: Browser): boolean {
 }
 
 function missingFields(place: PlaceRecord): string[] {
-  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'booking_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes', 'media_items', 'plus_code', 'collected_at'];
+  const fields: (keyof PlaceRecord)[] = ['name', 'category', 'address', 'phone', 'website', 'rating', 'review_count', 'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude', 'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url', 'booking_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes', 'media_items', 'plus_code', 'postal_code', 'country', 'city', 'state', 'source_place_id', 'source_url', 'popular_times', 'rating_distribution', 'review_highlights', 'field_status', 'collected_at'];
   return fields.filter((field) => {
     const value = String(place[field] ?? '').trim();
     if (!value) return true;
@@ -66,6 +66,7 @@ function missingFields(place: PlaceRecord): string[] {
 
 const ENRICHMENT_FIELDS: (keyof PlaceRecord)[] = [
   'review_count', 'opening_hours', 'booking_url', 'reviews', 'review_topics', 'additional_attributes', 'media_items',
+  'popular_times', 'rating_distribution', 'review_highlights', 'postal_code', 'country', 'city', 'state', 'source_place_id',
 ];
 
 function needsEnrichment(place: PlaceRecord): boolean {
@@ -97,6 +98,14 @@ function mergePlaceRecords(existing: PlaceRecord, fresh: PlaceRecord): PlaceReco
   const freshAttributes = parseJsonObject(fresh.additional_attributes);
   const oldAttributes = parseJsonObject(existing.additional_attributes);
   const hasFreshAttributes = Boolean(freshAttributes.about_text?.trim() || freshAttributes.sections?.length || freshAttributes.labeled_attributes?.length);
+  const freshPopularTimes = parseJsonArray(fresh.popular_times);
+  const oldPopularTimes = parseJsonArray(existing.popular_times);
+  const freshRatingDistribution = parseJsonObject(fresh.rating_distribution);
+  const oldRatingDistribution = parseJsonObject(existing.rating_distribution);
+  const freshHighlights = parseJsonArray(fresh.review_highlights);
+  const oldHighlights = parseJsonArray(existing.review_highlights);
+  const freshFieldStatus = parseJsonObject(fresh.field_status);
+  const oldFieldStatus = parseJsonObject(existing.field_status);
 
   return {
     ...existing,
@@ -131,6 +140,16 @@ function mergePlaceRecords(existing: PlaceRecord, fresh: PlaceRecord): PlaceReco
         .map((item) => [String(item.type || '') + ':' + String(item.url || item.title || ''), item])).values()
     )),
     plus_code: fresh.plus_code || existing.plus_code,
+    postal_code: fresh.postal_code || existing.postal_code || '',
+    country: fresh.country || existing.country || '',
+    city: fresh.city || existing.city || '',
+    state: fresh.state || existing.state || '',
+    source_place_id: fresh.source_place_id || existing.source_place_id || '',
+    source_url: fresh.source_url || existing.source_url || fresh.maps_url || existing.maps_url,
+    popular_times: JSON.stringify(freshPopularTimes.length ? freshPopularTimes : oldPopularTimes),
+    rating_distribution: JSON.stringify(Object.keys(freshRatingDistribution).length ? freshRatingDistribution : oldRatingDistribution),
+    review_highlights: JSON.stringify(freshHighlights.length ? freshHighlights : oldHighlights),
+    field_status: JSON.stringify({ ...oldFieldStatus, ...freshFieldStatus }),
     collected_at: fresh.collected_at || existing.collected_at || new Date().toISOString(),
   };
 }
