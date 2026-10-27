@@ -1,197 +1,195 @@
-# MapScrape REST API v1
+# MapScrape REST API v1 — contrato de integração
 
-## Objetivo e uso sem clonagem
+Este documento descreve o contrato implementado em `server.ts` para consumidores humanos, agentes de programação e integrações server-to-server. A documentação pública é https://mapscrape-v2.vercel.app/docs/ e o OpenAPI é https://mapscrape-v2.vercel.app/openapi.yaml.
 
-O MapScrape é o serviço central de coleta. Projetos consumidores integram-se por HTTP/HTTPS usando a URL-base implantada e uma chave própria; não precisam clonar este repositório, instalar Puppeteer nem executar outro scraper. A coleta e a persistência são executadas pelo MapScrape. Configure apenas `MAPSCRAPE_API_BASE_URL` e `MAPSCRAPE_API_KEY` no backend de cada consumidor, depois de provisionar a credencial.
+## 1. Arquitetura e limites
 
-Credenciais individuais isolam os trabalhos e leads pelo identificador `consumerProject`: um consumidor só pode consultar os trabalhos e leads criados pela própria credencial/projeto. Chaves estáticas configuradas em `MAPSCRAPE_API_KEYS` continuam disponíveis para compatibilidade, mas compartilham a identidade `operator-static-key`; não as use para separar consumidores independentes em produção.
+MapScrape é um serviço central de coleta. O projeto consumidor faz chamadas HTTPS para a API; não clona este repositório, não instala Puppeteer, não cria um scraper paralelo e não acessa o banco central diretamente. Fluxo de coleta: criar/selecionar projeto e categoria → iniciar job → guardar `jobId` → consultar status → buscar resultados paginados.
 
-## Base URL
+Configure no **backend** do consumidor:
+- `MAPSCRAPE_API_BASE_URL`: origem HTTPS do serviço implantado, sem sufixo de endpoint. Produção atual: `https://mapscrape-v2.vercel.app`.
+- `MAPSCRAPE_API_KEY`: chave individual emitida para esse consumidor.
 
-Use a URL de produção configurada para o serviço. Em desenvolvimento, use a origem do servidor local. Não codifique uma URL de produção presumida: defina `MAPSCRAPE_API_BASE_URL` no projeto consumidor.
+Não use prefixo `VITE_`, `NEXT_PUBLIC_` ou outra variável pública para a chave. Não coloque segredos em URLs, prompts, HTML, repositório ou logs. Não use a chave bootstrap de provisionamento nas chamadas normais.
 
-Todas as rotas v1, exceto `GET /api/v1/health`, exigem:
+## 2. Autenticação
+
+Para toda rota v1 exceto `GET /api/v1/health`:
 
 ```http
 Authorization: Bearer <MAPSCRAPE_API_KEY>
 Accept: application/json
+Content-Type: application/json
 ```
 
-A API aceita chaves legadas em `MAPSCRAPE_API_KEYS` e credenciais individuais emitidas pelo provisionador. Credenciais individuais são armazenadas no banco somente como hash SHA-256 e podem ser revogadas; a chave completa é exibida uma única vez na resposta de emissão.
+- Credenciais individuais identificam um `consumer_project`; jobs, projetos, categorias e leads ficam limitados a esse escopo.
+- Credenciais são armazenadas no serviço como hash e a chave completa é mostrada somente ao emitir/rotacionar.
+- Chaves estáticas legadas configuradas em `MAPSCRAPE_API_KEYS` compartilham o escopo operacional `operator-static-key`; não as compartilhe entre consumidores independentes.
+- Falta/chave inválida: `401 unauthorized`; falha ao consultar credenciais: `503 authentication_unavailable`.
+- O header de resposta `X-MapScrape-Consumer` identifica o escopo autenticado; `Cache-Control: no-store` é aplicado nas rotas autenticadas.
 
-Nunca coloque chaves em código frontend, query string, logs ou repositório.
+## 3. Provisionamento administrativo (infraestrutura autorizada apenas)
 
-## Provisionamento automatizado de consumidores
+Estas rotas usam `X-MapScrape-Provisioning-Token: <MAPSCRAPE_PROVISIONING_TOKEN>`, não Bearer de consumidor. Nunca as chame no navegador nem entregue o token a agentes consumidores.
 
-O endpoint de provisionamento usa uma credencial bootstrap separada: `MAPSCRAPE_PROVISIONING_TOKEN`. Ela deve existir apenas em secrets de infraestrutura/CI autorizados, nunca no navegador nem no repositório. Essa autorização inicial é configurada uma vez por organização/ambiente confiável; depois, cada projeto recebe sua própria `MAPSCRAPE_API_KEY`.
-
-- `POST /api/v1/provisioning/credentials` — emite uma credencial individual. Cabeçalho `X-MapScrape-Provisioning-Token`; JSON `{ "consumerName": "Nome do produto", "consumerProject": "org/repo-ou-id-estavel" }`. Retorna `201` com `credentialId` e `apiKey` uma única vez. Repetir para um projeto com credencial ativa retorna `409`.
-- `GET /api/v1/provisioning/credentials` — lista metadados sem revelar chaves.
-- `DELETE /api/v1/provisioning/credentials/{credentialId}` — revoga a credencial imediatamente.
-- `POST /api/v1/provisioning/credentials/{credentialId}/rotate` — revoga a chave ativa anterior e emite uma substituta; retorna a nova `apiKey` uma única vez. A chave anterior deixa de autenticar imediatamente. Se a emissão da substituta falhar, a anterior permanece revogada e uma nova emissão deve ser feita.
-- `scripts/provision-consumer.mjs` — emite a chave, grava-a diretamente em Vercel Production ou Cloudflare Worker Secret e valida uma chamada de leitura. Não imprime nem salva a chave em arquivo.
-
-## Provisionando o consumidor Beleza Digital
-
-Para provisionar a credencial do consumidor "Beleza Digital", a infraestrutura autorizada deve executar:
-
-```bash
-curl -s -X POST "https://MAPSCRAPE_API_BASE_URL/api/v1/provisioning/credentials" \
-  -H "Content-Type: application/json" \
-  -H "X-MapScrape-Provisioning-Token: MAPSCRAPE_PROVISIONING_TOKEN" \
-  -d '{"consumerName": "Beleza Digital", "consumerProject": "beleza-digital"}'
+### POST /api/v1/provisioning/credentials
+Request JSON:
+```json
+{"consumerName":"Beleza Digital","consumerProject":"beleza-digital"}
 ```
+`consumerName`: string não vazia, máximo 120 caracteres. `consumerProject`: string não vazia, máximo 200. Retorna `201` com `data.credentialId`, `data.apiKey`, `data.consumerName`, `data.consumerProject` e `data.revealOnce: true`. A chave completa aparece uma única vez; guarde-a diretamente no secret manager. Um projeto com credencial ativa retorna `409 credential_already_exists`.
 
-A resposta retornará `201` com um objeto contendo:
-- `credentialId`: identificador da credencial no MapScrape
-- `apiKey`: a chave secreta única (exibida apenas esta uma vez — armazenar em secret server-side)
-- `consumerName`: "Beleza Digital"
-- `consumerProject`: "beleza-digital"
+### GET /api/v1/provisioning/credentials
+Lista metadados de credenciais; não retorna chaves em texto claro.
 
-Após o provisionamento, o projeto consumidor "Beleza Digital" deve:
-1. Usar `MAPSCRAPE_API_BASE_URL` como endpoint base
-2. Usar `MAPSCRAPE_API_KEY` (a chave obtida acima) exclusivamente no backend, no cabeçalho `Authorization: Bearer`
-3. Never expôr a chave em variáveis `VITE_*`, frontend, logs ou repositório
-4. As chamadas autenticadas seguirão o padrão: `Authorization: Bearer <MAPSCRAPE_API_KEY>`
+### DELETE /api/v1/provisioning/credentials/{id}
+Revoga a credencial ativa. Retorna `200 {"data":{"credentialId":"...","status":"revoked"}}`; não encontrada/ativa: `404 active_credential_not_found`.
 
-O provisionamento deve ser executado pelo operador/infraestrutura autorizada que controla o serviço central e os secrets do projeto de destino. O repositório consumidor não precisa clonar MapScrape nem executar seu instalador: recebe somente `MAPSCRAPE_API_BASE_URL` e a chave individual `MAPSCRAPE_API_KEY`, gravada como secret server-side.
+### POST /api/v1/provisioning/credentials/{id}/rotate
+Revoga a chave anterior e emite uma nova, retornada uma única vez. Retorna `201` com `data.apiKey`, `data.credentialId`, `data.previousCredentialId`, `data.consumerName`, `data.consumerProject` e `data.revealOnce`. A chave anterior deixa de funcionar imediatamente. Se a criação da nova falhar após a revogação, a chave antiga continua revogada; faça nova emissão. Armazene a substituta diretamente no secret manager.
 
-Quando a automação de provisionamento for executada por infraestrutura autorizada, ela pode usar `MAPSCRAPE_BASE_URL`, `MAPSCRAPE_PROVISIONING_TOKEN`, `CONSUMER_NAME`, `CONSUMER_PROJECT` e `TARGET_PROVIDER`; para Vercel, `VERCEL_TOKEN`, `VERCEL_PROJECT_ID` e opcionalmente `VERCEL_TEAM_ID`; para Cloudflare, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_WORKER_NAME`.
+## 4. Projetos e categorias de pesquisa
 
-A chave bootstrap continua sendo uma autorização administrativa compartilhada: distribua-a somente como secret de organização/CI para agentes confiáveis. O instalador não elimina a necessidade dessa autorização inicial.
+Projeto e categoria são cadastros separados. A categoria de pesquisa NÃO é o campo `category` que vem da ficha do Google Maps. Nomes são aparados e normalizados (Unicode NFKC, espaços normalizados, comparação sem diferenciar maiúsculas/minúsculas em pt-BR) para evitar duplicação dentro do escopo do consumidor. Não há compartilhamento por nome entre consumidores.
 
-A chave bootstrap continua sendo uma autorização administrativa compartilhada: distribua-a somente como secret de organização/CI para agentes confiáveis. O instalador não elimina a necessidade dessa autorização inicial.
+### GET /api/v1/projects
+Retorna `200 {"data":[Project...]}`. Projeto contém `id`, `name`, `consumer_project`, `created_at`, `updated_at`.
 
-## Endpoints
+### POST /api/v1/projects
+Request: `{"name":"Prospecção de clínicas em Porto Alegre"}`. Retorna `201 {"data": Project}`. Nome ausente/vazio: `422 project_name_required`. A repetição do mesmo nome normalizado retorna o projeto já existente (operação idempotente por nome e escopo).
 
-### GET /api/v1/health
+### GET /api/v1/categories
+Retorna `200 {"data":[Category...]}`. Categoria contém `id`, `name`, `consumer_project`, `created_at`.
 
-Não requer chave. Retorna status do serviço, estado da conexão com o banco, quantidade de leads e timestamp. Não verifica a conexão com o navegador de raspagem.
+### POST /api/v1/categories
+Request: `{"name":"Clínica odontológica"}`. Retorna `201 {"data": Category}`. Nome ausente/vazio: `422 category_name_required`. A repetição do nome normalizado retorna o cadastro existente.
 
-Resposta de sucesso: `200`.
+## 5. Endpoints de consumidor
+
+### GET /api/v1/health — público
+Sem autenticação. Sucesso `200`: `{"status":"ok","service":"mapscrape-api","apiVersion":"v1","database":"connected","totalLeads":123,"timestamp":"..."}`. Falha de banco: `503` com `status:"degraded"` e `database:"unavailable"`. Não verifica conectividade do navegador de raspagem nem garante que uma coleta funciona.
+
+### POST /api/v1/jobs — iniciar coleta assíncrona
+Request:
+```json
+{
+  "projectName": "Prospecção Porto Alegre",
+  "categoryName": "Clínica odontológica",
+  "segment": "clínicas odontológicas",
+  "location": "Porto Alegre, RS",
+  "limit": 20
+}
+```
+- `segment`: string não vazia, obrigatória; termo que orienta a busca.
+- `location`: string não vazia, obrigatória; local da pesquisa.
+- `limit`: inteiro de 1 a 100; padrão 20.
+- `projectName`: string opcional; padrão `${segment} · ${location}`.
+- `categoryName`: string opcional; padrão igual a `segment`.
+- O servidor resolve/cria projeto e categoria antes de gravar o job e vincula `project_id` e `category_id`.
+- Retorna `202` com `data.jobId`, `data.status`, `data.statusUrl` e `data.resultsUrl`. Os URLs são relativos à base; resolva-os contra `MAPSCRAPE_API_BASE_URL`.
+- `202` significa aceito/iniciado, não concluído nem prova de resultados.
+- Erros: `422 invalid_request` para segment/location vazios; `422 invalid_limit` para limite inválido; `500 job_start_failed` se falhar persistência/início.
+- Não há chave de idempotência implementada no contrato atual. Não repita automaticamente um POST após timeout; confirme antes se um job foi criado.
+
+### GET /api/v1/jobs/{id} — status e progresso
+Retorna `200 {"data": Job}`; `404 job_not_found` para job inexistente ou fora do escopo. Campos persistidos: `id`, `segment`, `project_name`, `project_id`, `category_id`, `location`, `limit_requested`, `status`, `status_message`, `total_found`, `total_collected`, `total_duplicates`, `total_errors`, `current_step`, `created_at`, `completed_at`; a resposta também inclui `isRunning`. Campos opcionais podem faltar em registros legados.
+Estados: `running`, `completed`, `partial`, `stopped`, `failed`. Faça polling limitado com intervalo crescente e pare ao chegar a um estado terminal.
+
+### GET /api/v1/jobs/{id}/results?limit=50&offset=0
+Verifica primeiro se o job pertence ao consumidor. Retorna leads paginados no mesmo formato de `GET /api/v1/leads`. `limit`: inteiro 1–100, padrão 50. `offset`: inteiro >=0, padrão 0. Erros: `404 job_not_found`, `422 invalid_pagination`.
 
 ### GET /api/v1/leads
-
-Requer autenticação.
-
-Parâmetros:
-- `query`: busca textual nos campos nome, categoria, endereço, telefone e website.
-- `jobId`: restringe os resultados à coleta indicada.
-- `sortBy`: `name`, `category`, `rating`, `review_count` ou `collected_at`.
-- `sortOrder`: `asc` ou `desc`.
-- `limit`: inteiro de 1 a 100; padrão 50.
-- `offset`: inteiro >= 0; padrão 0.
+Consulta leads já persistidos do consumidor autenticado.
+Query parameters:
+| Nome | Tipo | Padrão / domínio | Comportamento |
+|---|---|---|---|
+| `query` | string | opcional | Busca textual nos campos de nome, categoria, endereço, telefone e website. |
+| `jobId` | string | opcional | Restringe à coleta indicada. |
+| `sortBy` | string | padrão interno | Campo de ordenação; opções documentadas: `name`, `category`, `rating`, `review_count`, `collected_at`. |
+| `sortOrder` | string | `desc` | `asc` ordena crescente; outros valores caem para `desc`. |
+| `limit` | integer | 50; 1–100 | Tamanho máximo da página. |
+| `offset` | integer | 0; >=0 | Deslocamento a partir do início. |
 
 Resposta:
-
 ```json
 {
-  "data": [
-    {
-      "id": "identificador-persistido",
-      "job_id": "identificador-da-coleta",
-      "name": "Nome conforme a ficha",
-      "category": "Categoria observada",
-      "address": "Endereço observado",
-      "phone": "",
-      "website": "",
-      "rating": "",
-      "review_count": "",
-      "price_range": "",
-      "opening_hours": "",
-      "business_status": "",
-      "latitude": "",
-      "longitude": "",
-      "maps_url": "https://www.google.com/maps/...",
-      "description": "",
-      "services_attributes": {},
-      "photos": [],
-      "videos": [],
-      "logo_url": "",
-      "booking_url": "",
-      "social_links": [],
-      "reviews": [],
-      "review_topics": [],
-      "additional_attributes": {},
-      "media_items": [],
-      "plus_code": "",
-      "collected_at": "timestamp persistido"
-    }
-  ],
-  "pagination": {
-    "total": 1,
-    "limit": 50,
-    "offset": 0,
-    "hasMore": false
-  }
+  "data": [{"id":"lead-id","job_id":"job-id","name":"Nome","category":"Categoria observada","address":"","phone":"","website":"","rating":"","review_count":"","price_range":"","opening_hours":"","business_status":"","latitude":"","longitude":"","maps_url":"","description":"","services_attributes":{},"photos":[],"videos":[],"logo_url":"","booking_url":"","social_links":[],"reviews":[],"review_topics":[],"additional_attributes":{},"media_items":[],"plus_code":"","collected_at":"2026-01-01T12:00:00.000Z"}],
+  "pagination": {"total":1,"limit":50,"offset":0,"hasMore":false}
 }
 ```
-
-O exemplo é ilustrativo, não um registro real. Valores vazios significam que o campo não contém valor persistido; não devem ser interpretados como uma afirmação de que o negócio não possui esse dado. Campos estruturados são normalizados pela API: `photos`, `videos` e `social_links` são arrays; `reviews`, `review_topics`, `additional_attributes`, `media_items` e `services_attributes` são convertidos de JSON quando válido, preservando como texto o conteúdo que não seja JSON válido.
+O exemplo é ilustrativo. Use `pagination.hasMore` para decidir se busca a página seguinte. Não assuma que `total` representa resultados ainda não coletados.
 
 ### GET /api/v1/leads/{id}
+Retorna `200 {"data": Lead}` com o registro completo se ele pertence ao consumidor; caso contrário, `404 lead_not_found`.
 
-Requer autenticação. Retorna o registro completo sob `data`, incluindo os arrays e objetos estruturados acima. Retorna `404` quando o ID não existe.
+## 6. Catálogo de campos de Lead
 
-### POST /api/v1/jobs
+Todos os campos escalares abaixo são strings na implementação atual (inclusive `rating`, `review_count`, `latitude` e `longitude`). Preserve strings originais e converta números com validação apenas no seu domínio. Campos vazios indicam ausência de valor persistido, não uma negativa sobre o negócio.
 
-Requer autenticação. Inicia uma coleta assíncrona.
+| Campo | Tipo JSON atual | Descrição |
+|---|---|---|
+| `id` | string | ID persistido do lead. |
+| `job_id` | string | ID da coleta de origem. |
+| `name` | string | Nome exibido na ficha. |
+| `category` | string | Categoria extraída da ficha, não o cadastro de categoria de pesquisa. |
+| `address` | string | Endereço exibido. |
+| `phone` | string | Telefone público, se exibido. |
+| `website` | string | Site exibido. |
+| `rating` | string | Nota da ficha como texto. |
+| `review_count` | string | Quantidade de avaliações como texto. |
+| `price_range` | string | Faixa de preço quando disponível. |
+| `opening_hours` | string | Horários de funcionamento capturados. |
+| `business_status` | string | Status operacional exibido. |
+| `latitude`, `longitude` | string | Coordenadas como texto. |
+| `maps_url` | string | URL da ficha no Google Maps. |
+| `description` | string | Descrição pública. |
+| `services_attributes` | object ou string | Serviços e atributos; texto pode ser preservado em dados legados/JSON inválido. |
+| `photos` | array<string> | URLs de fotos. |
+| `videos` | array<string> | URLs/fontes de vídeo. |
+| `logo_url` | string | URL da imagem de perfil/logo. |
+| `booking_url` | string | URL de agendamento. |
+| `social_links` | array<string> | URLs sociais identificadas. |
+| `reviews` | array ou string | Avaliações públicas; estrutura de cada item depende do conteúdo capturado. |
+| `review_topics` | array ou string | Tópicos/contagens de avaliações. |
+| `additional_attributes` | object ou string | Atributos públicos adicionais. |
+| `media_items` | array ou string | Mídia estruturada quando disponível. |
+| `plus_code` | string | Plus Code geográfico exibido. |
+| `collected_at` | string | Timestamp textual da coleta. |
 
-Request:
+`photos`, `videos` e `social_links` são normalizados para arrays. `reviews`, `review_topics`, `additional_attributes`, `media_items` e `services_attributes` são interpretados como JSON quando possível; conteúdo inválido pode ser preservado como string. A presença de um campo no schema não garante que a página de origem o disponibilizou em toda execução.
 
-```json
-{ "segment": "barbearia", "location": "Itaim Bibi, São Paulo, SP", "limit": 20 }
-```
+## 7. Paginação, erros e retentativas
 
-- `segment`: string obrigatória.
-- `location`: string obrigatória.
-- `limit`: inteiro de 1 a 100; padrão 20.
+Formato de paginação de leads/resultados: `pagination.total`, `pagination.limit`, `pagination.offset`, `pagination.hasMore`. Para avançar, use `offset += limit` enquanto `hasMore === true`.
 
-Resposta `202`:
+| HTTP | Códigos de erro típicos | Ação |
+|---|---|---|
+| `401` | `unauthorized`, `provisioning_unauthorized` | Corrigir secret/autorização; não repetir sem alteração. |
+| `404` | `lead_not_found`, `job_not_found`, `active_credential_not_found` | Confirmar ID e escopo. Recursos de outro consumidor são tratados como não encontrados. |
+| `409` | `credential_already_exists`, `credential_rotation_conflict` | Resolver conflito de credencial no fluxo administrativo. |
+| `422` | `invalid_request`, `invalid_limit`, `invalid_pagination`, `project_name_required`, `category_name_required`, `invalid_consumer` | Corrigir payload ou parâmetros. |
+| `500` | `job_start_failed`, `lead_query_failed`, `job_query_failed`, etc. | Registrar status/código sem segredo e investigar; não repetir POST cegamente. |
+| `503` | `authentication_unavailable`, health degradado | Dependência indisponível; leituras podem ser repetidas com backoff limitado. |
 
-```json
-{
-  "data": {
-    "jobId": "job_...",
-    "status": "running",
-    "statusUrl": "/api/v1/jobs/job_...",
-    "resultsUrl": "/api/v1/jobs/job_.../results"
-  }
-}
-```
+Não há quota por consumidor nem endpoint separado para avaliações/mídias implementados neste contrato. Não há `Idempotency-Key` documentado para criação de job. Evite retries automáticos em POST. Use timeout e backoff limitado em leituras.
 
-Guarde o `jobId`; não mantenha a requisição aberta aguardando a coleta. O consumidor deve consultar o status separadamente.
-
-### GET /api/v1/jobs/{id}
-
-Requer autenticação. Retorna os campos do trabalho, status, contadores, mensagem e `isRunning`. Estados de trabalho seguem os tipos usados pelo aplicativo, incluindo `running`, `completed`, `partial`, `stopped` e `failed`.
-
-### GET /api/v1/jobs/{id}/results
-
-Requer autenticação. Retorna os leads persistidos para uma coleta, com a mesma forma de dados e paginação de `GET /api/v1/leads`. Parâmetros `limit` (1–100, padrão 50) e `offset` (>=0, padrão 0).
-
-## Erros
-
-- `401 unauthorized`: chave ausente ou inválida.
-- `404 lead_not_found` / `job_not_found`: ID inexistente.
-- `422 invalid_request`, `invalid_limit` ou `invalid_pagination`: parâmetros inválidos.
-- `500`: falha ao consultar ou iniciar a operação.
-- `503`: indisponibilidade do banco ou falha na consulta de credenciais. O endpoint de saúde pode retornar `503` quando o banco estiver indisponível.
-
-A versão atual oferece cadastro/revogação de credenciais individuais e trilha de auditoria da emissão/revogação. Ainda não há quotas de consumo por consumidor nem endpoint dedicado para reviews/mídias: esses dados vêm dentro do registro completo. Não trate quotas por consumidor como existentes.
-
-## Exemplo cURL
+## 8. Exemplo ponta a ponta com cURL
 
 ```bash
-export MAPSCRAPE_API_BASE_URL="https://URL-REAL-DO-SERVICO"
-export MAPSCRAPE_API_KEY="segredo-fornecido-pelo-operador"
-curl -fsS "$MAPSCRAPE_API_BASE_URL/api/v1/leads?query=barbearia&limit=20&offset=0" \
+export MAPSCRAPE_API_BASE_URL="https://mapscrape-v2.vercel.app"
+# Defina MAPSCRAPE_API_KEY no ambiente seguro; não grave a chave em um arquivo versionado.
+curl -fsS "$MAPSCRAPE_API_BASE_URL/api/v1/projects" -H "Authorization: Bearer $MAPSCRAPE_API_KEY"
+curl -fsS -X POST "$MAPSCRAPE_API_BASE_URL/api/v1/jobs" \
   -H "Authorization: Bearer $MAPSCRAPE_API_KEY" \
-  -H "Accept: application/json"
+  -H "Content-Type: application/json" \
+  -d '{"projectName":"Prospecção POA","categoryName":"Clínicas","segment":"clínicas","location":"Porto Alegre, RS","limit":10}'
+# Leia data.jobId da resposta; substitua JOB_ID nas próximas chamadas.
+curl -fsS "$MAPSCRAPE_API_BASE_URL/api/v1/jobs/JOB_ID" -H "Authorization: Bearer $MAPSCRAPE_API_KEY"
+curl -fsS "$MAPSCRAPE_API_BASE_URL/api/v1/jobs/JOB_ID/results?limit=50&offset=0" -H "Authorization: Bearer $MAPSCRAPE_API_KEY"
 ```
 
-Substitua a URL e a chave pelos valores reais provisionados para o ambiente. Não reutilize esse exemplo literal em produção.
+## 9. Qualidade e validação
 
-## Persistência e qualidade
+O health check valida serviço/banco, não a conexão com navegador nem a raspagem ponta a ponta. Um `202` comprova aceitação da solicitação, não a coleta. Uma validação real deve usar credencial autorizada, uma busca pequena, polling até estado terminal, confirmar contadores e consultar resultados persistidos. Não use registros de teste criados diretamente no banco como prova de integração pela API.
 
-A API lê os registros persistidos pelo MapScrape e não promete disponibilidade integral de todos os dados públicos. A extração de avaliações, tópicos, atributos e mídias depende do conteúdo que a página expõe e da execução de coleta. Verifique `collected_at`, estado da coleta e campos vazios antes de tomar decisões comerciais.
+Fontes: [portal](https://mapscrape-v2.vercel.app/docs/), [OpenAPI](https://mapscrape-v2.vercel.app/openapi.yaml), [documentação de projetos/categorias](./PROJECTS-CATEGORIES-API.md).
