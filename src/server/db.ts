@@ -594,7 +594,7 @@ export async function resolveSearchCategory(consumerProject: string, name: strin
   });
   if (existing.rows.length) return existing.rows[0] as unknown as SearchCategoryRecord;
   const record: SearchCategoryRecord = {
-    id: `cat_${crypto.randomUUID().replace(/-/g, '')}`,
+    id: `cat_${randomUUID().replace(/-/g, '')}`,
     consumer_project: consumerProject,
     name: name.trim().replace(/\\s+/g, ' ').slice(0, 120),
     normalized_name: normalized,
