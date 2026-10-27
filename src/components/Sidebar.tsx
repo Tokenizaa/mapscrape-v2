@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Table2, FileDown, History, ClipboardList, MapPin, LayoutDashboard, FolderKanban } from 'lucide-react';
+import { Search, Table2, FileDown, History, ClipboardList, MapPin, LayoutDashboard, FolderKanban, KeyRound, BookOpen, ExternalLink, CheckCircle2, AlertCircle, StopCircle } from 'lucide-react';
 import { ScrapeJob } from '../shared/types';
 
 export type ScreenTab = 'dashboard' | 'projects' | 'credentials' | 'search' | 'results' | 'export' | 'history' | 'logs';
@@ -30,6 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const navItems = [
     { id: 'dashboard' as ScreenTab, label: 'Visão geral', icon: LayoutDashboard },
     { id: 'projects' as ScreenTab, label: 'Projetos', icon: FolderKanban },
+    { id: 'credentials' as ScreenTab, label: 'Credenciais de API', icon: KeyRound },
     {
       id: 'search' as ScreenTab,
       label: 'Pesquisar',
