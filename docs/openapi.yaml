@@ -741,6 +741,36 @@ components:
               items: {}
             - type: string
         plus_code: { type: string }
+        postal_code: { type: string, description: CEP/código postal extraído quando identificável no endereço exibido. }
+        country: { type: string, description: País identificado no endereço público, sem inferência quando ausente. }
+        city: { type: string, description: Cidade identificada no endereço público. }
+        state: { type: string, description: Estado/região identificado no endereço público. }
+        source_place_id: { type: string, description: Identificador da ficha extraído da URL do Google Maps quando presente. }
+        source_url: { type: string, format: uri, description: URL de origem usada para a coleta. }
+        popular_times:
+          description: Dados de movimento efetivamente expostos no DOM; não garante cobertura semanal completa.
+          anyOf:
+            - type: array
+              items: { type: object, additionalProperties: true }
+            - type: string
+        rating_distribution:
+          description: Contagens por estrelas 1–5 somente quando explicitamente exibidas.
+          anyOf:
+            - type: object
+              additionalProperties: { type: integer }
+            - type: string
+        review_highlights:
+          description: Trechos de resumo de avaliações capturados quando expostos separadamente dos reviews individuais.
+          anyOf:
+            - type: array
+              items: { type: string }
+            - type: string
+        field_status:
+          description: Status por campo; not_observed_in_session significa que o extrator não observou valor nesta sessão e não prova que o dado inexiste na fonte.
+          anyOf:
+            - type: object
+              additionalProperties: true
+            - type: string
         collected_at: { type: string, description: Timestamp textual persistido. }
     Job:
       type: object
