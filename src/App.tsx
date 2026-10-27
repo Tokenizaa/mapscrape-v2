@@ -12,6 +12,7 @@ import { HistoryScreen } from './components/HistoryScreen';
 import { LogsScreen } from './components/LogsScreen';
 import { DashboardScreen } from './components/DashboardScreen';
 import { ProjectsScreen } from './components/ProjectsScreen';
+import { CredentialsScreen } from './components/CredentialsScreen';
 import { PlaceRecord, ScrapeJob } from './shared/types';
 import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-react';
 
@@ -323,6 +324,8 @@ export default function App() {
           {currentTab === 'dashboard' && <DashboardScreen totalPlaces={totalPlaces} jobs={jobs} currentJob={currentJob} isScraping={isScraping} onNavigate={setCurrentTab} />}
 
           {currentTab === 'projects' && <ProjectsScreen jobs={jobs} onOpenJob={(jobId) => { setSelectedJobId(jobId); setCurrentPage(1); setCurrentTab('results'); }} />}
+
+          {currentTab === 'credentials' && <CredentialsScreen />}
 
           {currentTab === 'search' && (
             <SearchScreen
