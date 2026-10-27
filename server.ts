@@ -174,7 +174,7 @@ export async function createApp() {
 
   app.use(express.json());
 
-  const accountAuthLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: 'too_many_attempts', message: 'Muitas tentativas. Aguarde 15 minutos e tente novamente.' } });
+  const accountAuthLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, skipSuccessfulRequests: true, standardHeaders: true, legacyHeaders: false, message: { error: 'too_many_attempts', message: 'Muitas tentativas inválidas. Aguarde 15 minutos e tente novamente.' } });
 
   app.post('/api/auth/register', accountAuthLimiter, async (req: Request, res: Response) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
