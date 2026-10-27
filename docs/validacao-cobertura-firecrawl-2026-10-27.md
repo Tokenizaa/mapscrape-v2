@@ -23,7 +23,7 @@ Esses commits corrigem defeitos reais, mas **não equivalem a aprovação verde*
 | `business_status` | Extração por labels e classes da ficha | Implementação presente; precisa validar idiomas/layouts |
 | `price_range` | Seletores presentes; documentação Firecrawl informa que preço não apareceu na sessão limitada | Campo vazio não permite distinguir limite da sessão de falha de seletor |
 | `opening_hours` | Tenta expandir botão e ler linhas/elementos de horário | Parcial: se a expansão falhar ou o DOM mudar, pode ficar vazio; não marcar como indisponível sem evidência da sessão |
-| `popular_times` | Não há campo nem extração dedicada no `PlaceRecord`/`extractor.ts` atual | Lacuna real de implementação |
+| `popular_times` | Campo no tipo, migração de banco, extração de rótulos/valores visíveis, merge e contrato OpenAPI | Implementado para conteúdo exposto no DOM; não garante gráfico completo nem cobertura de todos os dias |
 | `booking_url` | Tipo, banco e extrator existem; detecção de rótulos corrigida nesta rodada | Implementado, mas ainda sem validação real pós-correção |
 | `photos` / `media_items` | Captura DOM, lazy loading e scroll de galeria; URLs e itens estruturados persistidos | Parcial: o total observado (ex. 187) não é comparado com o total capturado; não garantir completude |
 | `thumbnail_url` | Campo gerado para `media_items`; URL original é mantida quando não transformável | Parcial: URL diferente não garante que a miniatura exista ou carregue; validar HTTP/UI |
@@ -31,11 +31,11 @@ Esses commits corrigem defeitos reais, mas **não equivalem a aprovação verde*
 | `logo_url` | Detecta imagens com rótulos de perfil/logo | Parcial: heurística conservadora; vazio significa “não identificada pelo extrator”, não prova de inexistência |
 | `social_links` | Coleta links sociais explícitos no DOM da página | Implementado; sem comprovação de que todos os links estão expostos |
 | `reviews` | Abre painel, tenta expandir e rolar; persiste JSON | Parcial: quantidade visível depende da interface e do acesso permitido; não prometer coletar todas as avaliações |
-| `review_highlights` | Não há campo dedicado; alguns textos podem existir dentro de `reviews` | Lacuna de modelagem: os destaques Firecrawl não são garantidos no resultado |
+| `review_highlights` | Campo dedicado no tipo/banco; extrator procura elementos de resumo explícitos e persiste array JSON | Implementado de forma conservadora; ausência permanece `not_observed_in_session` |
 | `review_topics` / contagens | Coleta chips/contagens explícitas e persiste JSON | Parcial: seletor pode perder chips ou contagens; validar contra evidência Firecrawl |
 | `additional_attributes` / acessibilidade | Coleta texto e seções da aba Sobre em JSON genérico | Parcial: conteúdo existe em estrutura genérica, não em campos normalizados de acessibilidade |
-| `rating_distribution` | Ausente do tipo, banco e extrator | Lacuna real de implementação |
-| `postal_code`, `country`, `city`, `state`, `source_url`, `source_place_id` | Não existem como campos dedicados no `PlaceRecord` atual; endereço/URL podem conter parte da informação | Lacuna de modelagem; não considerar esses campos implementados |
+| `rating_distribution` | Campo dedicado no tipo/banco; extrator só aceita rótulos acessíveis que explicitam estrelas e contagens | Implementado com critério conservador; precisa fixture/browser real para validar variantes de layout |
+| `postal_code`, `country`, `city`, `state`, `source_url`, `source_place_id` | Campos dedicados no tipo/banco; extração conservadora do endereço exibido e identificador/URL de origem | Implementados; componentes de endereço só são preenchidos quando o formato exibido permite identificar com segurança |
 | Rótulos de interface (`ui_controls`) | Não persistidos como dados de negócio | Correto não os tratar como atributos comerciais; só implementar se houver requisito explícito |
 | `collected_at` | Definido no extrator e persistido | Implementação presente |
 
@@ -47,6 +47,16 @@ O documento de 26/10/2026 registra para a Bearzil: rating 4.9, 278 avaliações,
 - Logo separado e miniaturas: não extraídos pelo Firecrawl; o código tem heurísticas, mas não há prova de captura.
 - Distribuição por estrelas: não estruturada no schema atual.
 - Avaliações: três visíveis naquela sessão, não as 278 completas.
+
+## Implementação adicional nesta rodada
+
+- `src/shared/types.ts`: novos campos estruturados para CEP, país, cidade, estado, ID/URL da fonte, popular times, distribuição de estrelas, destaques e status por campo.
+- `src/server/db.ts`: colunas e migrações compatíveis com bancos existentes; inclusão dos campos em insert e update.
+- `src/server/scraper/extractor.ts`: captura conservadora de popular-times, contagem por estrelas e destaques visíveis; parsing de componentes do endereço; extração de source place ID; status por campo.
+- `src/server/scraper/runner.ts`: merge de enriquecimento sem sobrescrever dados antigos por valores vazios.
+- `public/openapi.yaml`, `docs/openapi.yaml` e `docs/API.md`: contrato documenta os novos campos e explica que ausência observada não prova inexistência na fonte.
+
+`field_status` usa `captured` ou `not_observed_in_session`. Esse status é intencionalmente honesto: sem instrumentação do DOM e evidência da sessão não é possível distinguir universalmente uma mudança de seletor de um campo não exposto pelo Google Maps. Essa limitação deve ser resolvida por evidência real, não por valores inventados.
 
 ## Critérios para selo verde
 
@@ -61,4 +71,4 @@ Só aprovar quando todos os itens abaixo forem comprovados:
 
 ## Status desta revisão
 
-**AMARELO — correções pontuais aplicadas; aprovação verde ainda não demonstrada.** Não foi possível afirmar que os testes automatizados, a coleta real, a persistência visual e o deployment passaram apenas com a inspeção de código e os commits.
+**AMARELO — lacunas de modelagem e persistência tratadas no código; aprovação verde ainda depende de CI, coleta real e deployment.** Os commits do GitHub não substituem a execução dos testes, comparação da ficha visual, confirmação de persistência e reteste na URL pública.
