@@ -140,6 +140,33 @@ export async function initDb(): Promise<void> {
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_api_credentials_status ON api_credentials (status);`);
   await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_api_credentials_active_project ON api_credentials (consumer_project) WHERE status = 'active';`);
   await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      consumer_project TEXT NOT NULL,
+      name TEXT NOT NULL,
+      normalized_name TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (consumer_project, normalized_name)
+    );
+  `);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_projects_scope ON projects (consumer_project, normalized_name);`);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS search_categories (
+      id TEXT PRIMARY KEY,
+      consumer_project TEXT NOT NULL,
+      name TEXT NOT NULL,
+      normalized_name TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE (consumer_project, normalized_name)
+    );
+  `);
+  await db.execute(`CREATE INDEX IF NOT EXISTS idx_search_categories_scope ON search_categories (consumer_project, normalized_name);`);
+  for (const [column, definition] of [['project_id', "TEXT"], ['category_id', "TEXT"]] as const) {
+    try { await db.execute(`ALTER TABLE searches ADD COLUMN ${column} ${definition};`); } catch {}
+  }
+
 }
 
 export async function createApiCredential(input: {
@@ -477,4 +504,90 @@ export async function getRunReport(jobId: string): Promise<string | null> {
   }
   // Read legacy uncompressed reports if the schema was populated by an earlier build.
   return row.report_json;
+}
+
+
+export interface ProjectRecord {
+  id: string;
+  consumer_project: string;
+  name: string;
+  normalized_name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SearchCategoryRecord {
+  id: string;
+  consumer_project: string;
+  name: string;
+  normalized_name: string;
+  created_at: string;
+}
+
+function normalizeCatalogName(value: string): string {
+  return value.normalize('NFKC').trim().replace(/\\s+/g, ' ').toLocaleLowerCase('pt-BR');
+}
+
+export async function listProjects(consumerProject: string): Promise<ProjectRecord[]> {
+  const result = await getDb().execute({
+    sql: `SELECT * FROM projects WHERE consumer_project = ? ORDER BY name COLLATE NOCASE`,
+    args: [consumerProject],
+  });
+  return result.rows as unknown as ProjectRecord[];
+}
+
+export async function resolveProject(consumerProject: string, name: string): Promise<ProjectRecord> {
+  const normalized = normalizeCatalogName(name);
+  if (!normalized) throw new Error('project_name_required');
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM projects WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
+    args: [consumerProject, normalized],
+  });
+  if (existing.rows.length) return existing.rows[0] as unknown as ProjectRecord;
+  const now = new Date().toISOString();
+  const record: ProjectRecord = {
+    id: `prj_${crypto.randomUUID().replace(/-/g, '')}`,
+    consumer_project: consumerProject,
+    name: name.trim().replace(/\\s+/g, ' ').slice(0, 120),
+    normalized_name: normalized,
+    created_at: now,
+    updated_at: now,
+  };
+  await db.execute({
+    sql: `INSERT INTO projects (id, consumer_project, name, normalized_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`,
+    args: [record.id, record.consumer_project, record.name, record.normalized_name, record.created_at, record.updated_at],
+  });
+  return record;
+}
+
+export async function listSearchCategories(consumerProject: string): Promise<SearchCategoryRecord[]> {
+  const result = await getDb().execute({
+    sql: `SELECT * FROM search_categories WHERE consumer_project = ? ORDER BY name COLLATE NOCASE`,
+    args: [consumerProject],
+  });
+  return result.rows as unknown as SearchCategoryRecord[];
+}
+
+export async function resolveSearchCategory(consumerProject: string, name: string): Promise<SearchCategoryRecord> {
+  const normalized = normalizeCatalogName(name);
+  if (!normalized) throw new Error('category_name_required');
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
+    args: [consumerProject, normalized],
+  });
+  if (existing.rows.length) return existing.rows[0] as unknown as SearchCategoryRecord;
+  const record: SearchCategoryRecord = {
+    id: `cat_${crypto.randomUUID().replace(/-/g, '')}`,
+    consumer_project: consumerProject,
+    name: name.trim().replace(/\\s+/g, ' ').slice(0, 120),
+    normalized_name: normalized,
+    created_at: new Date().toISOString(),
+  };
+  await db.execute({
+    sql: `INSERT INTO search_categories (id, consumer_project, name, normalized_name, created_at) VALUES (?, ?, ?, ?, ?)`,
+    args: [record.id, record.consumer_project, record.name, record.normalized_name, record.created_at],
+  });
+  return record;
 }
