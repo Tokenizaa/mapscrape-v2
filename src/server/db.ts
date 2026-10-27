@@ -111,6 +111,11 @@ export async function initDb(): Promise<void> {
     await db.execute(`ALTER TABLE places ADD COLUMN logo_url TEXT DEFAULT '';`);
   } catch {}
 
+  // Migra bancos existentes: booking_url já é usado por INSERT/UPDATE, mas versões antigas não tinham a coluna.
+  try {
+    await db.execute(`ALTER TABLE places ADD COLUMN booking_url TEXT DEFAULT '';`);
+  } catch {}
+
   try {
     await db.execute(`ALTER TABLE places ADD COLUMN social_links TEXT DEFAULT '';`);
   } catch {}
