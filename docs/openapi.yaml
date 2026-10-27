@@ -741,6 +741,22 @@ components:
               items: {}
             - type: string
         plus_code: { type: string }
+        attributes:
+          description: Lista JSON de atributos públicos normalizados.
+          anyOf:
+            - type: array
+              items: { type: string }
+            - type: string
+        accessibility_attributes:
+          description: Lista JSON de atributos públicos de acessibilidade.
+          anyOf:
+            - type: array
+              items: { type: string }
+            - type: string
+        next_opening_text: { type: string, description: Texto de próxima abertura exposto pelo Maps. }
+        next_open_day: { type: string, description: Dia de abertura explicitamente identificado. }
+        next_open_time: { type: string, description: Horário de abertura explicitamente identificado. }
+        visible_photos_count: { type: string, description: Contagem explícita exibida na ficha, nunca inferida do número capturado. }
         postal_code: { type: string, description: CEP/código postal extraído quando identificável no endereço exibido. }
         country: { type: string, description: País identificado no endereço público, sem inferência quando ausente. }
         city: { type: string, description: Cidade identificada no endereço público. }
