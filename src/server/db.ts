@@ -573,7 +573,8 @@ export async function listProjects(consumerProject: string): Promise<ProjectReco
 }
 
 export async function resolveProject(consumerProject: string, name: string): Promise<ProjectRecord> {
-  const normalized = normalizeCatalogName(name);
+  const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
+  const normalized = normalizeCatalogName(canonicalName);
   if (!normalized) throw new Error('project_name_required');
   const db = getDb();
   const existing = await db.execute({
@@ -585,7 +586,7 @@ export async function resolveProject(consumerProject: string, name: string): Pro
   const record: ProjectRecord = {
     id: `prj_${randomUUID().replace(/-/g, '')}`,
     consumer_project: consumerProject,
-    name: name.trim().replace(/\s+/g, ' ').slice(0, 120),
+    name: canonicalName,
     normalized_name: normalized,
     created_at: now,
     updated_at: now,
@@ -610,7 +611,8 @@ export async function listSearchCategories(consumerProject: string): Promise<Sea
 }
 
 export async function resolveSearchCategory(consumerProject: string, name: string): Promise<SearchCategoryRecord> {
-  const normalized = normalizeCatalogName(name);
+  const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
+  const normalized = normalizeCatalogName(canonicalName);
   if (!normalized) throw new Error('category_name_required');
   const db = getDb();
   const existing = await db.execute({
@@ -621,7 +623,7 @@ export async function resolveSearchCategory(consumerProject: string, name: strin
   const record: SearchCategoryRecord = {
     id: `cat_${randomUUID().replace(/-/g, '')}`,
     consumer_project: consumerProject,
-    name: name.trim().replace(/\s+/g, ' ').slice(0, 120),
+    name: canonicalName,
     normalized_name: normalized,
     created_at: new Date().toISOString(),
   };
