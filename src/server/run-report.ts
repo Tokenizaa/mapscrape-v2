@@ -25,7 +25,7 @@ function escapeHtml(value: unknown): string {
 }
 
 function renderReportHtml(report: any): string {
-  const saved = report.data_quality.saved_records as any[];
+  const saved = (report.data_quality.processed_records || report.data_quality.saved_records) as any[];
   const duplicates = report.duplicates as any[];
   const events = (report.audit.events as any[]).slice(0, 80);
   const run = report.run;
@@ -84,7 +84,7 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
       return { at: event.created_at, message: event.message, ...metadata };
     });
 
-  const placeQuality = processedPlaces.map((place) => ({
+  const toPlaceQuality = (places: PlaceRecord[]) => places.map((place) => ({
     id: place.id,
     name: place.name,
     maps_url: place.maps_url,
@@ -93,6 +93,8 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
     missing_fields: missingFields(place),
     populated_fields: Object.keys(place).filter((key) => String((place as unknown as Record<string, unknown>)[key] ?? '').trim()).length,
   }));
+  const savedQuality = toPlaceQuality(savedPlaces);
+  const processedQuality = toPlaceQuality(processedPlaces);
 
   const report = {
     schema_version: 1,
@@ -123,12 +125,13 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
       new_candidates_found: Number(finishMetadata.newCandidatesFound ?? finishMetadata.totalFound ?? 0),
     },
     data_quality: {
-      records_with_missing_fields: placeQuality.filter((place) => place.missing_fields.length > 0).length,
+      records_with_missing_fields: processedQuality.filter((place) => place.missing_fields.length > 0).length,
       missing_field_frequency: Object.fromEntries(
-        [...new Set(placeQuality.flatMap((place) => place.missing_fields))]
-          .map((field) => [field, placeQuality.filter((place) => place.missing_fields.includes(field)).length])
+        [...new Set(processedQuality.flatMap((place) => place.missing_fields))]
+          .map((field) => [field, processedQuality.filter((place) => place.missing_fields.includes(field)).length])
       ),
-      saved_records: placeQuality,
+      saved_records: savedQuality,
+      processed_records: processedQuality,
     },
     duplicates: duplicateEvents,
     artifacts: { json_file: jobId + '.json', pdf_file: jobId + '.pdf', pdf_generated: false as boolean },
