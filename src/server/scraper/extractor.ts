@@ -134,8 +134,8 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     const dayPattern = /segunda(?:-feira)?|terça(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sábado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday|montag|dienstag|mittwoch|donnerstag|freitag|samstag|sonntag/i;
     const scheduleRows = new Set<string>();
     const addScheduleRow = (value: string) => {
-      const normalized = value.replace(/\\s+/g, ' ').trim();
-      if (normalized && dayPattern.test(normalized) && /\\d{1,2}[:h.]?\\d{0,2}|fechado|closed|aberto|open|24 horas/i.test(normalized)) {
+      const normalized = value.replace(/\s+/g, ' ').trim();
+      if (normalized && dayPattern.test(normalized) && /\d{1,2}[:h.]?\d{0,2}|fechado|closed|aberto|open|24 horas/i.test(normalized)) {
         scheduleRows.add(normalized);
       }
     };
@@ -144,7 +144,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     }
     // Some Maps layouts render the weekly schedule as accessible rows rather than a table.
     document.querySelectorAll('[role="row"],[aria-label],[data-item-id="oh"],button[data-item-id="oh"]').forEach((node) => {
-      const value = [attr(node, 'aria-label'), text(node)].filter(Boolean).join(' ').replace(/\\s+/g, ' ').trim();
+      const value = [attr(node, 'aria-label'), text(node)].filter(Boolean).join(' ').replace(/\s+/g, ' ').trim();
       if (value.length < 220) addScheduleRow(value);
     });
     let opening_hours = Array.from(scheduleRows).join(' | ');
