@@ -270,11 +270,12 @@ export async function createApp() {
   // 5. Query places (with search, sort, pagination)
   app.get('/api/places', async (req: Request, res: Response) => {
     try {
-      const { jobId, query, sortBy, sortOrder, offset, limit } = req.query;
+      const { jobId, query, category, sortBy, sortOrder, offset, limit } = req.query;
 
       const result = await getPlaces({
         jobId: jobId ? String(jobId) : undefined,
         query: query ? String(query) : undefined,
+        category: category ? String(category) : undefined,
         sortBy: sortBy ? String(sortBy) : undefined,
         sortOrder: sortOrder === 'asc' ? 'asc' : 'desc',
         offset: offset ? Number(offset) : 0,
