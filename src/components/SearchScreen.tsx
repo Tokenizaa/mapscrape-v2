@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Play,
   Square,
@@ -44,10 +44,13 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
   // Active category group tab
   const [activeCategoryGroup, setActiveCategoryGroup] = useState<number>(0);
-  const [showCategories, setShowCategories] = useState<boolean>(true);
+  const [showCategories, setShowCategories] = useState<boolean>(false);
 
   const [limit, setLimit] = useState<number>(20);
   const [validationError, setValidationError] = useState('');
+
+  // Ref for smooth scroll to progress panel
+  const progressRef = useRef<HTMLDivElement>(null);
 
   // Find current state
   const currentState = BRAZILIAN_STATES.find((s) => s.uf === selectedUf) || BRAZILIAN_STATES[0];
@@ -116,7 +119,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
           Pesquisar no Google Maps
         </h1>
         <p className="mt-3 text-base sm:text-lg text-zinc-400 max-w-3xl leading-relaxed">
-          Selecione a categoria e a localização desejada no Brasil (ou insira uma personalizada). O Puppeteer percorrerá a página pública do Google Maps e extrairá fichas reais com fotos, vídeos, logo, contatos, avaliações e horários para persistência no SQLite.
+          Selecione a categoria e a localização desejada.
         </p>
       </div>
 

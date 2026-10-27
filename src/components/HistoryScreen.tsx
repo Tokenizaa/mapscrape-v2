@@ -121,7 +121,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                           : job.status === 'running'
                           ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 animate-pulse'
                           : job.status === 'partial'
-                          ? 'bg-amber-500/10 text-amber-300 border-amber-500/30'
+                          ? 'bg-teal-500/10 text-teal-300 border-teal-500/30'
                           : job.status === 'stopped'
                           ? 'bg-zinc-800 text-zinc-300 border-zinc-700'
                           : 'bg-rose-500/10 text-rose-300 border-rose-500/30'

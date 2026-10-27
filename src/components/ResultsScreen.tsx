@@ -646,7 +646,21 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
                           title="Abrir ficha do Google Maps"
                           className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
                         >
-                          <ExternalLink className="h-4 w-4" />
+                          <ExternalLink className="h-4 w-4" />{place.plus_code && (
+                        <span className="text-xs sm:text-sm text-zinc-400 font-medium">
+                          {place.plus_code}
+                        </span>
+                      )}{place.booking_url && (
+                        <a
+                          href={place.booking_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded-lg p-2 text-emerald-400 hover:bg-emerald-800 hover:text-zinc-100 transition-colors"
+                        >
+                          <span>Agendar</span>
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
                         </a>
                       )}
                       <button

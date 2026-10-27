@@ -162,7 +162,7 @@ export async function createApp() {
   // --- API Endpoints ---
 
   // 1. Start scraping job
-  app.post('/api/scrape/start', async (req: Request, res: Response) => {
+  app.post('/api/scrape/start', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { segment, projectName, location, limit } = req.body;
 
@@ -178,7 +178,7 @@ export async function createApp() {
 
       const newJob: ScrapeJob & { user_id: string } = {
         id: jobId,
-        user_id: (req as any).user?.id || "dev-user-1",
+        user_id: (req as any).user?.id || (req as any).mapscrapeConsumer?.id || 'operator-static-key',
         segment: segment.trim(),
         project_name: typeof projectName === 'string' && projectName.trim() ? projectName.trim().slice(0, 120) : `${segment.trim()} · ${location.trim()}`,
         location: location.trim(),
@@ -270,9 +270,10 @@ export async function createApp() {
   });
 
   // 5. Query places (with search, sort, pagination)
-  app.get('/api/places', async (req: Request, res: Response) => {
+  app.get('/api/places', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { jobId, query, category, sortBy, sortOrder, offset, limit } = req.query;
+      const consumer = (req as any).mapscrapeConsumer;
 
       const result = await getPlaces({
         jobId: jobId ? String(jobId) : undefined,
@@ -291,15 +292,16 @@ export async function createApp() {
   });
 
   // Distinct categories from persisted place records for the directory filter.
-  app.get('/api/categories', async (_req: Request, res: Response) => {
+  app.get('/api/categories', authenticatedConsumer, async (_req: Request, res: Response) => {
     try { return res.json({ categories: await listPlaceCategories() }); }
     catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao consultar categorias.' }); }
   });
 
   // 6. Get all places for a job (or overall)
-  app.get('/api/places/all', async (req: Request, res: Response) => {
+  app.get('/api/places/all', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { jobId } = req.query;
+      const consumer = (req as any).mapscrapeConsumer;
       const records = await getAllPlaces(jobId ? String(jobId) : undefined);
       return res.json(records);
     } catch (err: any) {
@@ -308,7 +310,7 @@ export async function createApp() {
   });
 
   // 7. List past searches history
-  app.get('/api/history', async (_req: Request, res: Response) => {
+  app.get('/api/history', authenticatedConsumer, async (_req: Request, res: Response) => {
     try {
       const history = await listJobs();
       return res.json(history);
@@ -318,7 +320,7 @@ export async function createApp() {
   });
 
   // 8. Delete past search
-  app.delete('/api/history/:id', async (req: Request, res: Response) => {
+  app.delete('/api/history/:id', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { id } = req.params;
       await deleteJob(id);
@@ -329,7 +331,7 @@ export async function createApp() {
   });
 
   // 9. Export CSV
-  app.post('/api/export/csv', async (req: Request, res: Response) => {
+  app.post('/api/export/csv', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const { jobId, placeIds, fields, filename } = req.body;
 
@@ -358,7 +360,7 @@ export async function createApp() {
   });
 
   // Download the JSON evidence report generated for a collection run.
-  app.get('/api/reports/:jobId', async (req: Request, res: Response) => {
+  app.get('/api/reports/:jobId', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const report = await readRunReport(String(req.params.jobId || ''));
       if (!report) return res.status(404).json({ error: 'Relatório ainda não existe para esta pesquisa.' });
@@ -370,7 +372,7 @@ export async function createApp() {
     }
   });
 
-  app.get('/api/reports/:jobId/pdf', async (req: Request, res: Response) => {
+  app.get('/api/reports/:jobId/pdf', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const jobId = String(req.params.jobId || '');
       const pdf = await readRunReportPdf(jobId);
@@ -384,9 +386,10 @@ export async function createApp() {
   });
 
   // Field coverage is calculated from persisted records, not the current UI page.
-  app.get('/api/field-coverage', async (req: Request, res: Response) => {
+  app.get('/api/field-coverage', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const jobId = req.query.jobId ? String(req.query.jobId) : undefined;
+      const consumer = (req as any).mapscrapeConsumer;
       const records = await getAllPlaces(jobId);
       const fields: { key: keyof PlaceRecord; label: string }[] = [
         { key: 'name', label: 'Nome' },
@@ -432,7 +435,7 @@ export async function createApp() {
   });
 
   // 10. Structured audit log query
-  app.get('/api/logs', async (req: Request, res: Response) => {
+  app.get('/api/logs', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const result = await listAuditLogs({
         limit: req.query.limit ? Number(req.query.limit) : 100,
@@ -450,7 +453,7 @@ export async function createApp() {
   });
 
   // Download newline-delimited JSON, easy to attach to GitHub issues or commit as evidence.
-  app.get('/api/logs/export', async (req: Request, res: Response) => {
+  app.get('/api/logs/export', authenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const result = await listAuditLogs({
         limit: 500,

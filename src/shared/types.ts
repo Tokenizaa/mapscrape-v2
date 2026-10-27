@@ -92,6 +92,7 @@ export const EXPORTABLE_FIELDS: { key: keyof PlaceRecord; label: string; descrip
   { key: 'review_topics', label: 'Categorias dos comentários', description: 'Tópicos sugeridos pelo Google Maps e suas contagens' },
   { key: 'additional_attributes', label: 'Atributos adicionais', description: 'Informações públicas da aba Sobre, incluindo facilidades e serviços' },
   { key: 'media_items', label: 'Mídia estruturada', description: 'Itens de mídia com tipo, URL, texto alternativo e miniatura' },
+  { key: 'booking_url', label: 'URL de Agendamento', description: 'Link "Agendar on-line" ou "Book online" da ficha' },
   { key: 'plus_code', label: 'Plus Code', description: 'Código geográfico apresentado na ficha' },
   { key: 'collected_at', label: 'Data e hora da coleta', description: 'Registrada pelo aplicativo' },
 ];

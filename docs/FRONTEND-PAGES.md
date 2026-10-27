@@ -363,7 +363,7 @@ Menu lateral fixo com acesso a todas as telas, exibição de status vivo da cole
 
 | Área | Status | Próximo Passo |
 |------|--------|---------------|
-| `booking_url` no tipo/DB | ✅ Implementado (types.ts line 22, db places table) | ⚠️ Documentação (API.md, openapi.yaml) já atualizada |
+| `booking_url` no tipo/DB e UI | ✅ Implementado (types.ts line 22, db places table + display em ResultsScreen cards e table) | — |
 | Tela de Diretório dedicada | ❓ Não existe componente próprio | 📋 Integrar ao prompt de melhorias |
 | Filtro visual por categoria no ResultsScreen | ❓ Apenas busca textual | 📋 Conforme prompt de implementação |
 | Paginação do Histórico | ❓ Limitado a lista completa | 📋 Implementar quando jobs aumentarem |

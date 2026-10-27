@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, Table2, FileDown, History, ClipboardList, MapPin, LayoutDashboard, FolderKanban, KeyRound, BookOpen, ExternalLink, CheckCircle2, AlertCircle, StopCircle } from 'lucide-react';
+import { Search, Table2, FileDown, History, ClipboardList, MapPin, LayoutDashboard, FolderKanban, KeyRound, BookOpen, ExternalLink, CheckCircle2, AlertCircle, StopCircle, Database } from 'lucide-react';
 import { ScrapeJob } from '../shared/types';
 
 export type ScreenTab = 'dashboard' | 'projects' | 'credentials' | 'search' | 'results' | 'export' | 'history' | 'logs';

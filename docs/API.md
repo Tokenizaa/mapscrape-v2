@@ -31,7 +31,34 @@ O endpoint de provisionamento usa uma credencial bootstrap separada: `MAPSCRAPE_
 - `POST /api/v1/provisioning/credentials/{credentialId}/rotate` — revoga a chave ativa anterior e emite uma substituta; retorna a nova `apiKey` uma única vez. A chave anterior deixa de autenticar imediatamente. Se a emissão da substituta falhar, a anterior permanece revogada e uma nova emissão deve ser feita.
 - `scripts/provision-consumer.mjs` — emite a chave, grava-a diretamente em Vercel Production ou Cloudflare Worker Secret e valida uma chamada de leitura. Não imprime nem salva a chave em arquivo.
 
-O provisionamento deve ser executado pelo operador/infraestrutura autorizada que controla o serviço central e os secrets do projeto de destino. O repositório consumidor não precisa clonar MapScrape nem executar seu instalador: recebe somente `MAPSCRAPE_API_BASE_URL` e a chave individual `MAPSCRAPE_API_KEY`, gravada como secret server-side. Quando a automação de provisionamento for executada por infraestrutura autorizada, ela pode usar `MAPSCRAPE_BASE_URL`, `MAPSCRAPE_PROVISIONING_TOKEN`, `CONSUMER_NAME`, `CONSUMER_PROJECT` e `TARGET_PROVIDER`; para Vercel, `VERCEL_TOKEN`, `VERCEL_PROJECT_ID` e opcionalmente `VERCEL_TEAM_ID`; para Cloudflare, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_WORKER_NAME`.
+## Provisionando o consumidor Beleza Digital
+
+Para provisionar a credencial do consumidor "Beleza Digital", a infraestrutura autorizada deve executar:
+
+```bash
+curl -s -X POST "https://MAPSCRAPE_API_BASE_URL/api/v1/provisioning/credentials" \
+  -H "Content-Type: application/json" \
+  -H "X-MapScrape-Provisioning-Token: MAPSCRAPE_PROVISIONING_TOKEN" \
+  -d '{"consumerName": "Beleza Digital", "consumerProject": "beleza-digital"}'
+```
+
+A resposta retornará `201` com um objeto contendo:
+- `credentialId`: identificador da credencial no MapScrape
+- `apiKey`: a chave secreta única (exibida apenas esta uma vez — armazenar em secret server-side)
+- `consumerName`: "Beleza Digital"
+- `consumerProject`: "beleza-digital"
+
+Após o provisionamento, o projeto consumidor "Beleza Digital" deve:
+1. Usar `MAPSCRAPE_API_BASE_URL` como endpoint base
+2. Usar `MAPSCRAPE_API_KEY` (a chave obtida acima) exclusivamente no backend, no cabeçalho `Authorization: Bearer`
+3. Never expôr a chave em variáveis `VITE_*`, frontend, logs ou repositório
+4. As chamadas autenticadas seguirão o padrão: `Authorization: Bearer <MAPSCRAPE_API_KEY>`
+
+O provisionamento deve ser executado pelo operador/infraestrutura autorizada que controla o serviço central e os secrets do projeto de destino. O repositório consumidor não precisa clonar MapScrape nem executar seu instalador: recebe somente `MAPSCRAPE_API_BASE_URL` e a chave individual `MAPSCRAPE_API_KEY`, gravada como secret server-side.
+
+Quando a automação de provisionamento for executada por infraestrutura autorizada, ela pode usar `MAPSCRAPE_BASE_URL`, `MAPSCRAPE_PROVISIONING_TOKEN`, `CONSUMER_NAME`, `CONSUMER_PROJECT` e `TARGET_PROVIDER`; para Vercel, `VERCEL_TOKEN`, `VERCEL_PROJECT_ID` e opcionalmente `VERCEL_TEAM_ID`; para Cloudflare, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` e `CLOUDFLARE_WORKER_NAME`.
+
+A chave bootstrap continua sendo uma autorização administrativa compartilhada: distribua-a somente como secret de organização/CI para agentes confiáveis. O instalador não elimina a necessidade dessa autorização inicial.
 
 A chave bootstrap continua sendo uma autorização administrativa compartilhada: distribua-a somente como secret de organização/CI para agentes confiáveis. O instalador não elimina a necessidade dessa autorização inicial.
 
