@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
-import { countPlaces, getAllPlaces, getJob, getRunReport, saveRunReport } from './db';
+import { countPlaces, getAllPlaces, getJob, getPlacesByIds, getRunReport, saveRunReport } from './db';
 import { listAuditLogs } from './audit-log';
 import { PlaceRecord } from '../shared/types';
 
@@ -59,6 +59,19 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
     listAuditLogs({ jobId, limit: 500 }),
   ]);
 
+  // Enrichment updates an existing global record and intentionally preserves its original job_id.
+  // Include those updated records in this run's evidence without rewriting historical ownership.
+  const enrichedPlaceIds = Array.from(new Set(audit.logs
+    .filter((event) => event.event === 'place.enriched')
+    .flatMap((event) => {
+      try {
+        const metadata = JSON.parse(event.metadata || '{}') as Record<string, unknown>;
+        return typeof metadata.placeId === 'string' ? [metadata.placeId] : [];
+      } catch { return []; }
+    })));
+  const enrichedPlaces = enrichedPlaceIds.length ? await getPlacesByIds(enrichedPlaceIds) : [];
+  const processedPlaces = Array.from(new Map([...savedPlaces, ...enrichedPlaces].map((place) => [place.id, place])).values());
+
   const finishEvent = audit.logs.find((event) => event.event === 'job.finished');
   let finishMetadata: Record<string, unknown> = {};
   try { finishMetadata = JSON.parse(finishEvent?.metadata || '{}'); } catch {}
@@ -71,7 +84,7 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
       return { at: event.created_at, message: event.message, ...metadata };
     });
 
-  const placeQuality = savedPlaces.map((place) => ({
+  const placeQuality = processedPlaces.map((place) => ({
     id: place.id,
     name: place.name,
     maps_url: place.maps_url,
@@ -92,7 +105,9 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
       total_after: currentCount,
       net_growth: currentCount - baselineCount,
       records_saved_by_run: savedPlaces.length,
-      records_saved_by_run_matches_job_counter: savedPlaces.length === job.total_collected,
+      records_enriched_by_run: enrichedPlaces.length,
+      records_processed_by_run: processedPlaces.length,
+      records_saved_by_run_matches_job_counter: processedPlaces.length === job.total_collected,
     },
     collection: {
       requested_limit: job.limit_requested,
