@@ -190,12 +190,10 @@ export async function createApp() {
       const isFirstAccount = await countUsers() === 0;
       let role: 'admin' | 'user' = 'user';
       if (isFirstAccount) {
-        const expectedSetupToken = process.env.MAPSCRAPE_ADMIN_SETUP_TOKEN?.trim() || '';
-        const suppliedSetupToken = typeof req.body?.setupToken === 'string' ? req.body.setupToken : '';
-        if (email !== bootstrapEmail || !expectedSetupToken || !suppliedSetupToken || !safeEqual(expectedSetupToken, suppliedSetupToken)) {
+        if (email !== bootstrapEmail) {
           return res.status(403).json({
-            error: 'initial_admin_setup_required',
-            message: 'O primeiro cadastro exige o e-mail administrador e o token de configuração inicial definido no ambiente do servidor.',
+            error: 'initial_admin_email_required',
+            message: `O primeiro cadastro deve usar o e-mail administrador configurado: ${bootstrapEmail}.`,
           });
         }
         role = 'admin';
