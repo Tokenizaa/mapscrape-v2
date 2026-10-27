@@ -15,6 +15,14 @@ import {
 import { ScrapeJob } from '../shared/types';
 import { BRAZILIAN_STATES, POPULAR_CATEGORIES } from '../shared/brazilLocations';
 
+// Requisições internas usam a sessão da conta; API keys ficam reservadas a integrações externas.
+async function accountFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const token = window.sessionStorage.getItem('mapscrape_session_token');
+  const headers = new Headers(init.headers || {});
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+  return fetch(input, { ...init, headers, cache: init.cache || 'no-store' });
+}
+
 interface SearchScreenProps {
   currentJob: ScrapeJob | null;
   isScraping: boolean;
@@ -62,11 +70,11 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
     if (!apiReady) return;
     let active = true;
     void Promise.all([
-      fetch('/api/projects', { cache: 'no-store' }).then(async (response) => {
+      accountFetch('/api/projects', { cache: 'no-store' }).then(async (response) => {
         if (!response.ok) throw new Error(`Projetos: HTTP ${response.status}`);
         return response.json();
       }),
-      fetch('/api/search-categories', { cache: 'no-store' }).then(async (response) => {
+      accountFetch('/api/search-categories', { cache: 'no-store' }).then(async (response) => {
         if (!response.ok) throw new Error(`Categorias: HTTP ${response.status}`);
         return response.json();
       }),
@@ -92,7 +100,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
       return;
     }
     try {
-      const response = await fetch('/api/projects', {
+      const response = await accountFetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
       });
       const data = await response.json();
@@ -115,7 +123,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
       return;
     }
     try {
-      const response = await fetch('/api/search-categories', {
+      const response = await accountFetch('/api/search-categories', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
       });
       const data = await response.json();
