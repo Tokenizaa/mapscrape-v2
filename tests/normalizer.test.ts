@@ -8,6 +8,8 @@ import {
   normalizeBusinessStatus,
   normalizePriceRange,
   extractCoordinates,
+  parseAddressComponents,
+  extractSourcePlaceId,
 } from '../src/server/scraper/normalizer';
 
 describe('Normalizer Module', () => {
@@ -50,6 +52,26 @@ describe('Normalizer Module', () => {
     expect(normalizeBusinessStatus('Aberto ⋅ Fecha às 22:00')).toContain('Aberto');
     expect(normalizeBusinessStatus('Fechado permanentemente')).toBe('Fechado permanentemente');
     expect(normalizeBusinessStatus('Fechado temporariamente')).toBe('Fechado temporariamente');
+  });
+
+  it('parses structured components from observed Google Maps addresses without mistaking street numbers for postal codes', () => {
+    expect(parseAddressComponents(
+      'Alameda Joaquim Eugênio de Lima, 1756 - Jardim Paulista, São Paulo - SP, 01403-002, Brazil'
+    )).toEqual({ postal_code: '01403-002', country: 'Brazil', city: 'São Paulo', state: 'SP' });
+
+    expect(parseAddressComponents(
+      'Augusta St, 1140 - Consolação, São Paulo - SP 01413-100, Brazil'
+    )).toEqual({ postal_code: '01413-100', country: 'Brazil', city: 'São Paulo', state: 'SP' });
+
+    expect(parseAddressComponents('Rua sem CEP, Porto Alegre - RS, Brazil')).toEqual({
+      postal_code: '', country: 'Brazil', city: 'Porto Alegre', state: 'RS',
+    });
+  });
+
+  it('extracts a Maps place identifier only when it exists in the URL', () => {
+    expect(extractSourcePlaceId('https://www.google.com/maps/place/Test/data=!1s0x94ce59e8ef43b0db:0x50225dda5a2046ee!8m2'))
+      .toBe('0x94ce59e8ef43b0db:0x50225dda5a2046ee');
+    expect(extractSourcePlaceId('https://www.google.com/maps/@-23.55,-46.65,17z')).toBe('');
   });
 
   it('extracts coordinates from URLs correctly', () => {
