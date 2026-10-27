@@ -680,6 +680,7 @@ export async function runScraperJob(
       const item = itemsToProcess[i];
       const placeNum = i + 1;
       const previewTitle = item.previewName || `Estabelecimento #${placeNum}`;
+      let detailPage: Page | null = null;
 
       try {
         // Keep every per-place operation inside the isolation boundary: a
@@ -688,10 +689,15 @@ export async function runScraperJob(
         if (existingPlace) {
           if (needsEnrichment(existingPlace)) {
             await emitProgress(`[${placeNum}/${itemsToProcess.length}] Atualizando ficha existente: ${existingPlace.name}...`);
-            await page.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            await page.waitForSelector('h1', { timeout: 12000 }).catch(() => {});
+            detailPage = await browser!.newPage();
+            await detailPage.emulateLocale('pt-BR');
+            await detailPage.emulateTimezone('America/Sao_Paulo');
+            await detailPage.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' });
+            await detailPage.setViewport({ width: 1366, height: 768 });
+            await detailPage.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+            await detailPage.waitForSelector('h1', { timeout: 12000 }).catch(() => {});
             await new Promise((resolve) => setTimeout(resolve, 700));
-            const fresh = await extractPlaceDetails(page, jobId, item.url);
+            const fresh = await extractPlaceDetails(detailPage, jobId, item.url);
             const merged = mergePlaceRecords(existingPlace, fresh);
             await updatePlace(existingPlace.id, merged);
             totalCollected++;
@@ -715,13 +721,19 @@ export async function runScraperJob(
           `[${placeNum}/${itemsToProcess.length}] Extraindo ficha: ${previewTitle}...`
         );
 
-        await page.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+        // Keep the search tab isolated from Google Maps detail-page navigation.
+        detailPage = await browser!.newPage();
+        await detailPage.emulateLocale('pt-BR');
+        await detailPage.emulateTimezone('America/Sao_Paulo');
+        await detailPage.setExtraHTTPHeaders({ 'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8' });
+        await detailPage.setViewport({ width: 1366, height: 768 });
+        await detailPage.goto(item.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
         // Wait for the place title without requiring the Maps network to become idle.
-        await page.waitForSelector('h1', { timeout: 12000 }).catch(() => {});
+        await detailPage.waitForSelector('h1', { timeout: 12000 }).catch(() => {});
         await new Promise((resolve) => setTimeout(resolve, 700));
 
-        const placeRecord = await extractPlaceDetails(page, jobId, item.url);
+        const placeRecord = await extractPlaceDetails(detailPage, jobId, item.url);
 
         // Reject structurally broken detail pages rather than persisting a blank
         // or unrelated record after a Google Maps UI change.
@@ -756,6 +768,10 @@ export async function runScraperJob(
           );
         } catch (progressError) {
           console.error('Falha ao reportar erro de ficha; continuando coleta:', progressError);
+        }
+      } finally {
+        if (detailPage) {
+          try { await detailPage.close(); } catch { /* The remote target may already be closed. */ }
         }
       }
 
