@@ -474,15 +474,34 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     await new Promise((resolve) => setTimeout(resolve, 120));
     clickByText(/^See photos$|^Ver fotos$|^Ver todas as fotos$|^Fotos$/i);
     await new Promise((resolve) => setTimeout(resolve, 220));
-    let galleryContainer = (document.querySelector('[role="dialog"]') as HTMLElement | null) || findReviewContainer();
+    const findGalleryContainer = (): HTMLElement | null => {
+      const dialog = document.querySelector('[role="dialog"]') as HTMLElement | null;
+      if (dialog) {
+        const scrollables = [dialog, ...Array.from(dialog.querySelectorAll<HTMLElement>('*'))]
+          .filter((element) => element.scrollHeight > element.clientHeight + 80 && element.clientHeight > 100)
+          .sort((a, b) => a.clientHeight - b.clientHeight);
+        return scrollables[0] || dialog;
+      }
+      const galleryImage = Array.from(document.querySelectorAll<HTMLImageElement>('div[role="main"] img[src*="googleusercontent.com"]'))
+        .find((image) => image.naturalWidth > 64 && image.naturalHeight > 64);
+      let parent = galleryImage?.parentElement as HTMLElement | null;
+      while (parent && parent !== document.body) {
+        if (parent.scrollHeight > parent.clientHeight + 80 && parent.clientHeight > 100) return parent;
+        parent = parent.parentElement;
+      }
+      return null;
+    };
+    let galleryContainer = findGalleryContainer();
     let previousGalleryCount = -1;
     let galleryStagnant = 0;
-    for (let iteration = 0; iteration < 50; iteration++) {
+    for (let iteration = 0; iteration < 80; iteration++) {
       const before = photoUrls.length;
       document.querySelectorAll('[role="dialog"] img, div[role="main"] img[src*="googleusercontent.com"]').forEach((node) => {
         const image = node as HTMLImageElement;
         addPhoto(image.currentSrc || image.src || attr(node, 'src'));
         addPhoto(attr(node, 'data-src'));
+        const srcset = attr(node, 'srcset');
+        if (srcset) srcset.split(',').forEach((part) => addPhoto(part.trim().split(/\\s+/)[0]));
       });
       document.querySelectorAll('[role="dialog"] video, [role="dialog"] [data-video-url], [role="dialog"] button[aria-label*="video"], [role="dialog"] button[aria-label*="vídeo"]').forEach((node) => {
         const media = node as HTMLVideoElement;
@@ -493,11 +512,11 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
       });
       if (photoUrls.length === previousGalleryCount && photoUrls.length === before) galleryStagnant += 1;
       else galleryStagnant = 0;
-      if (galleryStagnant >= 4) break;
+      if (galleryStagnant >= 6) break;
       previousGalleryCount = photoUrls.length;
-      if (!galleryContainer) galleryContainer = document.querySelector('[role="dialog"]') as HTMLElement | null;
+      galleryContainer = findGalleryContainer() || galleryContainer;
       if (galleryContainer) galleryContainer.scrollTop = galleryContainer.scrollHeight;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 120));
     }
 
     // Build typed media entries so the UI can render photos as images and video
