@@ -373,14 +373,16 @@ export async function updatePlace(id: string, place: PlaceRecord): Promise<void>
   });
 }
 
-export async function findPlaceByUrl(url: string): Promise<PlaceRecord | null> {
+export async function findPlaceByUrl(url: string, consumerProject?: string): Promise<PlaceRecord | null> {
   if (!url || !url.trim()) return null;
   const db = getDb();
   const cleanUrl = url.trim().split('?')[0].replace(/\/$/, '');
   if (!cleanUrl) return null;
   const res = await db.execute({
-    sql: `SELECT * FROM places WHERE rtrim(substr(maps_url, 1, instr(maps_url || '?', '?') - 1), '/') = ? LIMIT 1`,
-    args: [cleanUrl],
+    sql: consumerProject
+      ? `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id WHERE rtrim(substr(p.maps_url, 1, instr(p.maps_url || '?', '?') - 1), '/') = ? AND s.user_id = ? LIMIT 1`
+      : `SELECT * FROM places WHERE rtrim(substr(maps_url, 1, instr(maps_url || '?', '?') - 1), '/') = ? LIMIT 1`,
+    args: consumerProject ? [cleanUrl, consumerProject] : [cleanUrl],
   });
   return res.rows.length ? res.rows[0] as unknown as PlaceRecord : null;
 }
@@ -497,16 +499,17 @@ export async function countPlaces(): Promise<number> {
 
 
 /** Latest saved Maps URL for the exact same search, used as a resume checkpoint. */
-export async function getLastCollectedPlaceForSearch(segment: string, location: string): Promise<PlaceRecord | null> {
+export async function getLastCollectedPlaceForSearch(segment: string, location: string, consumerProject?: string): Promise<PlaceRecord | null> {
   const db = getDb();
   const result = await db.execute({
-    sql: `SELECT p.* FROM places p
-          INNER JOIN searches s ON s.id = p.job_id
-          WHERE lower(trim(s.segment)) = lower(trim(?))
-            AND lower(trim(s.location)) = lower(trim(?))
-          ORDER BY p.collected_at DESC
-          LIMIT 1`,
-    args: [segment, location],
+    sql: consumerProject
+      ? `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id
+          WHERE lower(trim(s.segment)) = lower(trim(?)) AND lower(trim(s.location)) = lower(trim(?)) AND s.user_id = ?
+          ORDER BY p.collected_at DESC LIMIT 1`
+      : `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id
+          WHERE lower(trim(s.segment)) = lower(trim(?)) AND lower(trim(s.location)) = lower(trim(?))
+          ORDER BY p.collected_at DESC LIMIT 1`,
+    args: consumerProject ? [segment, location, consumerProject] : [segment, location],
   });
   return result.rows.length ? result.rows[0] as unknown as PlaceRecord : null;
 }
