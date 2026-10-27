@@ -1,6 +1,7 @@
 import { createClient, Client } from '@libsql/client';
 import path from 'path';
 import fs from 'fs';
+import { gzipSync, gunzipSync } from 'node:zlib';
 import { PlaceRecord, ScrapeJob } from '../shared/types';
 
 let dbClient: Client | null = null;
@@ -436,11 +437,12 @@ export async function getLastCollectedPlaceForSearch(segment: string, location: 
 /** Persist run evidence in the remote database; serverless filesystems are ephemeral/read-only. */
 export async function saveRunReport(jobId: string, reportJson: string, generatedAt: string): Promise<void> {
   const db = getDb();
+  const compressed = 'gzip-base64:' + gzipSync(Buffer.from(reportJson, 'utf8')).toString('base64');
   await db.execute({
     sql: `INSERT INTO run_reports (job_id, report_json, generated_at)
           VALUES (?, ?, ?)
           ON CONFLICT(job_id) DO UPDATE SET report_json = excluded.report_json, generated_at = excluded.generated_at`,
-    args: [jobId, reportJson, generatedAt],
+    args: [jobId, compressed, generatedAt],
   });
 }
 
@@ -451,5 +453,10 @@ export async function getRunReport(jobId: string): Promise<string | null> {
     args: [jobId],
   });
   const row = result.rows[0] as unknown as { report_json?: string } | undefined;
-  return typeof row?.report_json === 'string' ? row.report_json : null;
+  if (typeof row?.report_json !== 'string') return null;
+  if (row.report_json.startsWith('gzip-base64:')) {
+    return gunzipSync(Buffer.from(row.report_json.slice('gzip-base64:'.length), 'base64')).toString('utf8');
+  }
+  // Read legacy uncompressed reports if the schema was populated by an earlier build.
+  return row.report_json;
 }
