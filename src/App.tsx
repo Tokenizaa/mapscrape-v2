@@ -20,11 +20,34 @@ import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-
 export default function App() {
   const [currentTab, setCurrentTab] = useState<ScreenTab>('dashboard');
   const [apiKeyInput, setApiKeyInput] = useState('');
-  const [hasApiKey, setHasApiKey] = useState(() => Boolean(window.sessionStorage.getItem('mapscrape_session_token') || window.sessionStorage.getItem('mapscrape_api_key')));
+  const [hasApiKey, setHasApiKey] = useState(() => Boolean(window.sessionStorage.getItem('mapscrape_session_token')));
   const [authUser, setAuthUser] = useState<{ id: string; email: string; name: string; role: 'admin' | 'user' } | null>(() => {
     try { return JSON.parse(window.sessionStorage.getItem('mapscrape_user') || 'null'); } catch { return null; }
   });
   const [apiKeyError, setApiKeyError] = useState('');
+
+  useEffect(() => {
+    const token = window.sessionStorage.getItem('mapscrape_session_token');
+    if (!token) return;
+    let active = true;
+    fetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(data.error || 'session_expired');
+        if (active && data.user) {
+          setAuthUser(data.user);
+          window.sessionStorage.setItem('mapscrape_user', JSON.stringify(data.user));
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        window.sessionStorage.removeItem('mapscrape_session_token');
+        window.sessionStorage.removeItem('mapscrape_user');
+        setAuthUser(null);
+        setHasApiKey(false);
+      });
+    return () => { active = false; };
+  }, []);
   const [isConnectingApi, setIsConnectingApi] = useState(false);
 
   const handleConnectApiKey = async (event: React.FormEvent) => {
