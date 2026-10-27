@@ -111,7 +111,7 @@ export function parseAddressComponents(raw: string | null | undefined): AddressC
     address.match(/\b\d{5}\b/)?.[0] ||
     address.match(/\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b/i)?.[0] ||
     '';
-  const stateMatch = address.match(/(?:-|,)\s*([A-Z]{2})\s*(?:,|$)/);
+  const stateMatch = address.match(/(?:-|,)\s*([A-Z]{2})(?=\s*(?:\d{5}(?:-\d{3})?|,|$))/);
   const state = stateMatch?.[1] || '';
   const countryMatch = address.match(/,\s*(Brazil|Brasil|United States|United Kingdom|Canada|Australia|Portugal|España|Spain|France|Deutschland|Germany|Italy|México|Mexico)\s*$/i);
   const country = countryMatch?.[1] || '';
