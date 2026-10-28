@@ -78,11 +78,23 @@ Retorna `200 {"data":[Project...]}`. Projeto contém `id`, `name`, `consumer_pro
 ### POST /api/v1/projects
 Request: `{"name":"Prospecção de clínicas em Porto Alegre"}`. Retorna `201 {"data": Project}`. Nome ausente/vazio: `422 project_name_required`. A repetição do mesmo nome normalizado retorna o projeto já existente (operação idempotente por nome e escopo).
 
+### PATCH /api/v1/projects/{id}
+Request: `{"name":"Novo nome do projeto"}`. Atualiza o projeto do consumidor. Retorna `200 {"data": Project}`. Nome ausente/vazio: `422 project_name_required`. Conflito com outro projeto existente: `409 project_name_conflict`. Não encontrado: `404 project_not_found`.
+
+### DELETE /api/v1/projects/{id}
+Exclui o projeto do consumidor mantendo as pesquisas históricas desvinculadas. Retorna `200 {"data": {"id":"...", "status":"deleted"}}`. Não encontrado: `404 project_not_found`.
+
 ### GET /api/v1/categories
 Retorna `200 {"data":[Category...]}`. Categoria contém `id`, `name`, `consumer_project`, `created_at`.
 
 ### POST /api/v1/categories
 Request: `{"name":"Clínica odontológica"}`. Retorna `201 {"data": Category}`. Nome ausente/vazio: `422 category_name_required`. A repetição do nome normalizado retorna o cadastro existente.
+
+### PATCH /api/v1/categories/{id}
+Request: `{"name":"Novo nome da categoria"}`. Atualiza a categoria do consumidor. Retorna `200 {"data": Category}`. Nome ausente/vazio: `422 category_name_required`. Conflito: `409 category_name_conflict`. Não encontrada: `404 category_not_found`.
+
+### DELETE /api/v1/categories/{id}
+Exclui a categoria de pesquisa do consumidor mantendo as pesquisas históricas. Retorna `200 {"data": {"id":"...", "status":"deleted"}}`. Não encontrada: `404 category_not_found`.
 
 ## 5. Endpoints de consumidor
 

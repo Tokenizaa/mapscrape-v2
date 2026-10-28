@@ -1,0 +1,240 @@
+{
+  "schema_version": 1,
+  "report_type": "mapscrape-run-audit",
+  "generated_at": "2026-10-28T02:14:12.192Z",
+  "application": "Tokenizaa/mapscrape-v2",
+  "run": {
+    "id": "job_1793153639215_l1eun",
+    "segment": "Cafeteria",
+    "location": "Batel, Curitiba, PR",
+    "limit_requested": 1,
+    "status": "completed",
+    "status_message": "Coleta concluída: 1 registros salvos, 0 duplicados e 0 falhas.",
+    "total_found": 1,
+    "total_collected": 1,
+    "total_duplicates": 0,
+    "total_errors": 0,
+    "current_step": "Coleta concluída: 1 registros salvos, 0 duplicados e 0 falhas.",
+    "created_at": "2026-10-28T02:13:59.215Z",
+    "completed_at": "2026-10-28T02:14:11.968Z",
+    "user_id": "account:usr_010f03f90d95d10973ff3956938095eb",
+    "project_name": "Cafés Curitiba",
+    "project_id": "prj_e76d35a286ab46aaaf198571a1662f55",
+    "category_id": "cat_1bb8235e4276478488b869fca8f5f3ae"
+  },
+  "database": {
+    "total_before": 27,
+    "total_after": 28,
+    "net_growth": 1,
+    "records_saved_by_run": 1,
+    "records_enriched_by_run": 0,
+    "records_processed_by_run": 1,
+    "records_saved_by_run_matches_job_counter": true
+  },
+  "collection": {
+    "requested_limit": 1,
+    "status": "completed",
+    "total_found": 1,
+    "total_collected": 1,
+    "total_duplicates": 0,
+    "total_errors": 0,
+    "duplicate_only_run": false,
+    "reached_successful_new_record_target": true,
+    "scroll_attempts": 1,
+    "reached_end_of_list": false,
+    "new_candidates_found": 1
+  },
+  "data_quality": {
+    "records_with_missing_fields": 1,
+    "missing_field_frequency": {
+      "website": 1,
+      "review_count": 1
+    },
+    "saved_records": [
+      {
+        "id": "place_1793153651343_t7zw48a",
+        "name": "Café du Centre",
+        "maps_url": "https://www.google.com/maps/place/Caf%C3%A9+du+Centre/@-25.4405067,-49.2900997,17z/data=!4m7!3m6!1s0x94dce38c42418605:0x9c6c9bc2f98a2faf!8m2!3d-25.4405067!4d-49.2900997!10e1!16s%2Fg%2F11b_068jnj?entry=ttu&g_ep=EgoyMDI2MTAyMC4wIKXMDSoASAFQAw%3D%3D",
+        "collected_at": "2026-10-28T02:14:11.344Z",
+        "fields": {
+          "id": "place_1793153651343_t7zw48a",
+          "job_id": "job_1793153639215_l1eun",
+          "name": "Café du Centre",
+          "category": "Cafeteria",
+          "address": "R. Francisco Rocha, 612 - Batel, Curitiba - PR, 80420-130, Brasil",
+          "phone": "+55 41 3044-5566",
+          "website": "",
+          "rating": "4,6",
+          "review_count": "",
+          "price_range": "",
+          "opening_hours": "terça-feira14:30–20:30 | terça-feira, 14:30 a 20:30, Copiar horário de funcionamento",
+          "business_status": "Fechado",
+          "latitude": "-25.4405067",
+          "longitude": "-49.2900997",
+          "maps_url": "https://www.google.com/maps/place/Caf%C3%A9+du+Centre/@-25.4405067,-49.2900997,17z/data=!4m7!3m6!1s0x94dce38c42418605:0x9c6c9bc2f98a2faf!8m2!3d-25.4405067!4d-49.2900997!10e1!16s%2Fg%2F11b_068jnj?entry=ttu&g_ep=EgoyMDI2MTAyMC4wIKXMDSoASAFQAw%3D%3D",
+          "description": "Diversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados.",
+          "services_attributes": "· Acessibilidade: Diversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados., Assento com acessibilidade para pessoas em cadeira de rodas, Banheiro com acessibilidade para pessoas em cadeira de rodas, Entrada com acessibilidade para pessoas em cadeira de rodas, Estacionamento com acessibilidade para pessoas em cadeira de rodas",
+          "collected_at": "2026-10-28T02:14:11.344Z",
+          "photos": "https://lh3.googleusercontent.com/grass-cs/AABkmLeDlq9VAAEzyRH1how9Mzqmc1Zh-nSRplDIbaAAlZfna-Msq2s6HuJ6DbuSveTC48_kYMQtFZdfePQiQwZIfAUDIVmk44cekdWTBpnnMEoSI-Ci2QWUcbmveHscjjBOk1riEtVG=w408-h544-k-no",
+          "logo_url": "",
+          "videos": "",
+          "social_links": "",
+          "booking_url": "",
+          "reviews": "[]",
+          "review_topics": "[]",
+          "additional_attributes": "{\"about_text\":\"Visão geral\\nSobre\\nDiversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados.\\nAcessibilidade\\n\\nAssento com acessibilidade para pessoas em cadeira de rodas\\n\\nBanheiro com acessibilidade para pessoas em cadeira de rodas\\n\\nEntrada com acessibilidade para pessoas em cadeira de rodas\\n\\nEstacionamento com acessibilidade para pessoas em cadeira de rodas\\n\\nEsta é uma visualização limitada do Google Maps. Ver mais\",\"sections\":[{\"category\":\"Acessibilidade\",\"items\":[\"Diversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados.\",\"\",\"Assento com acessibilidade para pessoas em cadeira de rodas\",\"Banheiro com acessibilidade para pessoas em cadeira de rodas\",\"Entrada com acessibilidade para pessoas em cadeira de rodas\",\"Estacionamento com acessibilidade para pessoas em cadeira de rodas\"]}],\"labeled_attributes\":[]}",
+          "media_items": "[{\"type\":\"image\",\"url\":\"https://lh3.googleusercontent.com/grass-cs/AABkmLeDlq9VAAEzyRH1how9Mzqmc1Zh-nSRplDIbaAAlZfna-Msq2s6HuJ6DbuSveTC48_kYMQtFZdfePQiQwZIfAUDIVmk44cekdWTBpnnMEoSI-Ci2QWUcbmveHscjjBOk1riEtVG=w408-h544-k-no\",\"thumbnail_url\":\"https://lh3.googleusercontent.com/grass-cs/AABkmLeDlq9VAAEzyRH1how9Mzqmc1Zh-nSRplDIbaAAlZfna-Msq2s6HuJ6DbuSveTC48_kYMQtFZdfePQiQwZIfAUDIVmk44cekdWTBpnnMEoSI-Ci2QWUcbmveHscjjBOk1riEtVG=w400-h300-k-no\",\"title\":\"\"}]",
+          "plus_code": "",
+          "attributes": "[\"Diversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados.\",\"\"]",
+          "accessibility_attributes": "[\"Assento com acessibilidade para pessoas em cadeira de rodas\",\"Banheiro com acessibilidade para pessoas em cadeira de rodas\",\"Entrada com acessibilidade para pessoas em cadeira de rodas\",\"Estacionamento com acessibilidade para pessoas em cadeira de rodas\"]",
+          "next_opening_text": "Abre qua. às 14:30",
+          "next_open_day": "",
+          "next_open_time": "14:30",
+          "visible_photos_count": "",
+          "postal_code": "80420-130",
+          "country": "Brasil",
+          "city": "Curitiba",
+          "state": "PR",
+          "source_place_id": "0x94dce38c42418605:0x9c6c9bc2f98a2faf",
+          "source_url": "https://www.google.com/maps/place/Caf%C3%A9+du+Centre/data=!4m7!3m6!1s0x94dce38c42418605:0x9c6c9bc2f98a2faf!8m2!3d-25.4405067!4d-49.2900997!16s%2Fg%2F11b_068jnj!19sChIJBYZBQozj3JQRry-K-cKbbJw",
+          "popular_times": "[]",
+          "rating_distribution": "{}",
+          "review_highlights": "[]",
+          "field_status": "{\"name\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"category\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"address\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"phone\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"website\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"rating\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"review_count\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"price_range\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"opening_hours\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"business_status\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"booking_url\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"photos\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"videos\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"logo_url\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"social_links\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"reviews\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"review_topics\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"additional_attributes\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"media_items\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"plus_code\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"attributes\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"accessibility_attributes\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"next_opening_text\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"next_open_day\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"next_open_time\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"visible_photos_count\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"popular_times\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"rating_distribution\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"review_highlights\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"postal_code\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"country\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"city\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"state\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"source_place_id\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"source_url\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"}}"
+        },
+        "missing_fields": [
+          "website",
+          "review_count"
+        ],
+        "populated_fields": 34
+      }
+    ],
+    "processed_records": [
+      {
+        "id": "place_1793153651343_t7zw48a",
+        "name": "Café du Centre",
+        "maps_url": "https://www.google.com/maps/place/Caf%C3%A9+du+Centre/@-25.4405067,-49.2900997,17z/data=!4m7!3m6!1s0x94dce38c42418605:0x9c6c9bc2f98a2faf!8m2!3d-25.4405067!4d-49.2900997!10e1!16s%2Fg%2F11b_068jnj?entry=ttu&g_ep=EgoyMDI2MTAyMC4wIKXMDSoASAFQAw%3D%3D",
+        "collected_at": "2026-10-28T02:14:11.344Z",
+        "fields": {
+          "id": "place_1793153651343_t7zw48a",
+          "job_id": "job_1793153639215_l1eun",
+          "name": "Café du Centre",
+          "category": "Cafeteria",
+          "address": "R. Francisco Rocha, 612 - Batel, Curitiba - PR, 80420-130, Brasil",
+          "phone": "+55 41 3044-5566",
+          "website": "",
+          "rating": "4,6",
+          "review_count": "",
+          "price_range": "",
+          "opening_hours": "terça-feira14:30–20:30 | terça-feira, 14:30 a 20:30, Copiar horário de funcionamento",
+          "business_status": "Fechado",
+          "latitude": "-25.4405067",
+          "longitude": "-49.2900997",
+          "maps_url": "https://www.google.com/maps/place/Caf%C3%A9+du+Centre/@-25.4405067,-49.2900997,17z/data=!4m7!3m6!1s0x94dce38c42418605:0x9c6c9bc2f98a2faf!8m2!3d-25.4405067!4d-49.2900997!10e1!16s%2Fg%2F11b_068jnj?entry=ttu&g_ep=EgoyMDI2MTAyMC4wIKXMDSoASAFQAw%3D%3D",
+          "description": "Diversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados.",
+          "services_attributes": "· Acessibilidade: Diversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados., Assento com acessibilidade para pessoas em cadeira de rodas, Banheiro com acessibilidade para pessoas em cadeira de rodas, Entrada com acessibilidade para pessoas em cadeira de rodas, Estacionamento com acessibilidade para pessoas em cadeira de rodas",
+          "collected_at": "2026-10-28T02:14:11.344Z",
+          "photos": "https://lh3.googleusercontent.com/grass-cs/AABkmLeDlq9VAAEzyRH1how9Mzqmc1Zh-nSRplDIbaAAlZfna-Msq2s6HuJ6DbuSveTC48_kYMQtFZdfePQiQwZIfAUDIVmk44cekdWTBpnnMEoSI-Ci2QWUcbmveHscjjBOk1riEtVG=w408-h544-k-no",
+          "logo_url": "",
+          "videos": "",
+          "social_links": "",
+          "booking_url": "",
+          "reviews": "[]",
+          "review_topics": "[]",
+          "additional_attributes": "{\"about_text\":\"Visão geral\\nSobre\\nDiversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados.\\nAcessibilidade\\n\\nAssento com acessibilidade para pessoas em cadeira de rodas\\n\\nBanheiro com acessibilidade para pessoas em cadeira de rodas\\n\\nEntrada com acessibilidade para pessoas em cadeira de rodas\\n\\nEstacionamento com acessibilidade para pessoas em cadeira de rodas\\n\\nEsta é uma visualização limitada do Google Maps. Ver mais\",\"sections\":[{\"category\":\"Acessibilidade\",\"items\":[\"Diversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados.\",\"\",\"Assento com acessibilidade para pessoas em cadeira de rodas\",\"Banheiro com acessibilidade para pessoas em cadeira de rodas\",\"Entrada com acessibilidade para pessoas em cadeira de rodas\",\"Estacionamento com acessibilidade para pessoas em cadeira de rodas\"]}],\"labeled_attributes\":[]}",
+          "media_items": "[{\"type\":\"image\",\"url\":\"https://lh3.googleusercontent.com/grass-cs/AABkmLeDlq9VAAEzyRH1how9Mzqmc1Zh-nSRplDIbaAAlZfna-Msq2s6HuJ6DbuSveTC48_kYMQtFZdfePQiQwZIfAUDIVmk44cekdWTBpnnMEoSI-Ci2QWUcbmveHscjjBOk1riEtVG=w408-h544-k-no\",\"thumbnail_url\":\"https://lh3.googleusercontent.com/grass-cs/AABkmLeDlq9VAAEzyRH1how9Mzqmc1Zh-nSRplDIbaAAlZfna-Msq2s6HuJ6DbuSveTC48_kYMQtFZdfePQiQwZIfAUDIVmk44cekdWTBpnnMEoSI-Ci2QWUcbmveHscjjBOk1riEtVG=w400-h300-k-no\",\"title\":\"\"}]",
+          "plus_code": "",
+          "attributes": "[\"Diversos tipos de cafés, chás, salgados, doces e tortas, em espaço de decoração clássica e detalhes dourados.\",\"\"]",
+          "accessibility_attributes": "[\"Assento com acessibilidade para pessoas em cadeira de rodas\",\"Banheiro com acessibilidade para pessoas em cadeira de rodas\",\"Entrada com acessibilidade para pessoas em cadeira de rodas\",\"Estacionamento com acessibilidade para pessoas em cadeira de rodas\"]",
+          "next_opening_text": "Abre qua. às 14:30",
+          "next_open_day": "",
+          "next_open_time": "14:30",
+          "visible_photos_count": "",
+          "postal_code": "80420-130",
+          "country": "Brasil",
+          "city": "Curitiba",
+          "state": "PR",
+          "source_place_id": "0x94dce38c42418605:0x9c6c9bc2f98a2faf",
+          "source_url": "https://www.google.com/maps/place/Caf%C3%A9+du+Centre/data=!4m7!3m6!1s0x94dce38c42418605:0x9c6c9bc2f98a2faf!8m2!3d-25.4405067!4d-49.2900997!16s%2Fg%2F11b_068jnj!19sChIJBYZBQozj3JQRry-K-cKbbJw",
+          "popular_times": "[]",
+          "rating_distribution": "{}",
+          "review_highlights": "[]",
+          "field_status": "{\"name\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"category\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"address\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"phone\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"website\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"rating\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"review_count\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"price_range\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"opening_hours\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"business_status\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"booking_url\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"photos\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"videos\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"logo_url\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"social_links\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"reviews\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"review_topics\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"additional_attributes\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"media_items\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"plus_code\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"attributes\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"accessibility_attributes\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"next_opening_text\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"next_open_day\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"next_open_time\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"visible_photos_count\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"popular_times\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"rating_distribution\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"review_highlights\":{\"status\":\"not_observed_in_session\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"postal_code\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"country\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"city\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"state\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"source_place_id\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"},\"source_url\":{\"status\":\"captured\",\"observed_at\":\"2026-10-28T02:14:11.343Z\"}}"
+        },
+        "missing_fields": [
+          "website",
+          "review_count"
+        ],
+        "populated_fields": 34
+      }
+    ]
+  },
+  "duplicates": [],
+  "artifacts": {
+    "json_file": "job_1793153639215_l1eun.json",
+    "pdf_file": "job_1793153639215_l1eun.pdf",
+    "pdf_generated": true
+  },
+  "audit": {
+    "returned_count": 5,
+    "total_matching_events": 5,
+    "events": [
+      {
+        "id": "log_1793153651968_f6sko9b",
+        "created_at": "2026-10-28T02:14:11.967Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "job.finished",
+        "message": "Coleta concluída: 1 registros salvos, 0 duplicados e 0 falhas.",
+        "job_id": "job_1793153639215_l1eun",
+        "metadata": "{\"status\":\"completed\",\"totalFound\":1,\"totalCollected\":1,\"totalDuplicates\":0,\"totalErrors\":0,\"scrollAttempts\":1,\"reachedEndOfList\":false,\"databaseCountBefore\":27,\"newCandidatesFound\":1,\"eligibleCandidatesEvaluated\":1,\"requestedLimit\":1}"
+      },
+      {
+        "id": "log_1793153651345_oo9uco7",
+        "created_at": "2026-10-28T02:14:11.345Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "place.saved",
+        "message": "Ficha salva no SQLite.",
+        "job_id": "job_1793153639215_l1eun",
+        "metadata": "{\"placeId\":\"place_1793153651343_t7zw48a\",\"name\":\"Café du Centre\",\"mapsUrl\":\"https://www.google.com/maps/place/Caf%C3%A9+du+Centre/@-25.4405067,-49.2900997,17z/data=!4m7!3m6!1s0x94dce38c42418605:0x9c6c9bc2f98a2faf!8m2!3d-25.4405067!4d-49.2900997!10e1!16s%2Fg%2F11b_068jnj?entry=ttu&g_ep=EgoyMDI2MTAyMC4wIKXMDSoASAFQAw%3D%3D\",\"missingFields\":[\"website\",\"review_count\",\"price_range\",\"videos\",\"logo_url\",\"booking_url\",\"social_links\",\"reviews\",\"review_topics\",\"plus_code\",\"next_open_day\",\"visible_photos_count\"]}"
+      },
+      {
+        "id": "log_1793153642849_tcipgg8",
+        "created_at": "2026-10-28T02:14:02.849Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.discovered",
+        "message": "Novas fichas candidatas encontradas na lista.",
+        "job_id": "job_1793153639215_l1eun",
+        "metadata": "{\"totalFound\":1,\"newCandidates\":1,\"newInBatch\":1,\"duplicatesSeen\":0,\"scrollAttempt\":1}"
+      },
+      {
+        "id": "log_1793153639218_ydop4ac",
+        "created_at": "2026-10-28T02:13:59.218Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "job.browser_start",
+        "message": "Inicializando Chromium.",
+        "job_id": "job_1793153639215_l1eun",
+        "metadata": "{\"segment\":\"[REDACIONADO]\",\"location\":\"[REDACIONADO]\",\"limitRequested\":1,\"databaseCountBefore\":27}"
+      },
+      {
+        "id": "log_1793153639215_o3s61nc",
+        "created_at": "2026-10-28T02:13:59.215Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "job.started",
+        "message": "Coleta iniciada.",
+        "job_id": "job_1793153639215_l1eun",
+        "metadata": "{\"segment\":\"[REDACIONADO]\",\"location\":\"[REDACIONADO]\",\"limit\":1}"
+      }
+    ],
+    "truncated": false
+  },
+  "interpretation": {
+    "database_growth_is_measured_by_before_after_count": true,
+    "zero_growth_is_not_reported_as_new_data": false,
+    "note": "O relatório descreve evidências locais observadas. Crescimento líquido e contagem por job são métricas distintas; não comprovam que o Google Maps tenha retornado todos os resultados possíveis."
+  }
+}

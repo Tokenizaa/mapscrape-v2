@@ -90,14 +90,19 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
         payload.jobId = selectedJobId;
       }
 
+      const token = window.sessionStorage.getItem('mapscrape_session_token');
       const response = await fetch('/api/export/csv', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error('Falha ao gerar arquivo CSV.');
+        const errorText = await response.text().catch(() => '');
+        throw new Error(errorText || 'Falha ao gerar arquivo CSV.');
       }
 
       // Download trigger

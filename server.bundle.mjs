@@ -17,11 +17,17 @@ var __export = (target, all) => {
 var db_exports = {};
 __export(db_exports, {
   countPlaces: () => countPlaces,
+  countUsers: () => countUsers,
   createApiCredential: () => createApiCredential,
   createJob: () => createJob,
+  createUser: () => createUser,
   deleteJob: () => deleteJob,
+  deleteProject: () => deleteProject,
+  deleteSearchCategory: () => deleteSearchCategory,
   findActiveApiCredential: () => findActiveApiCredential,
   findPlaceByUrl: () => findPlaceByUrl,
+  findUserByEmail: () => findUserByEmail,
+  findUserById: () => findUserById,
   getAllPlaces: () => getAllPlaces,
   getDb: () => getDb,
   getJob: () => getJob,
@@ -34,15 +40,23 @@ __export(db_exports, {
   listApiCredentials: () => listApiCredentials,
   listJobs: () => listJobs,
   listPlaceCategories: () => listPlaceCategories,
+  listProjects: () => listProjects,
+  listSearchCategories: () => listSearchCategories,
   placeExistsByUrl: () => placeExistsByUrl,
+  resolveProject: () => resolveProject,
+  resolveSearchCategory: () => resolveSearchCategory,
   revokeApiCredential: () => revokeApiCredential,
   saveRunReport: () => saveRunReport,
   updateJobProgress: () => updateJobProgress,
-  updatePlace: () => updatePlace
+  updatePlace: () => updatePlace,
+  updateProject: () => updateProject,
+  updateSearchCategory: () => updateSearchCategory,
+  updateUserLogin: () => updateUserLogin
 });
 import { createClient } from "@libsql/client";
 import path from "path";
 import { gzipSync, gunzipSync } from "node:zlib";
+import { randomUUID } from "node:crypto";
 function getDb() {
   if (!dbClient) {
     const remoteUrl = process.env.TURSO_DATABASE_URL?.trim();
@@ -59,9 +73,18 @@ function getDb() {
   }
   return dbClient;
 }
-async function initDb() {
-  const db = getDb();
-  await db.execute(`
+function initDb() {
+  if (!initPromise) {
+    initPromise = (async () => {
+      const db = getDb();
+      if (!process.env.TURSO_DATABASE_URL) {
+        try {
+          await db.execute("PRAGMA busy_timeout = 10000;");
+          await db.execute("PRAGMA synchronous = NORMAL;");
+        } catch {
+        }
+      }
+      await db.execute(`
     CREATE TABLE IF NOT EXISTS searches (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -80,15 +103,15 @@ async function initDb() {
       completed_at TEXT
     );
   `);
-  try {
-    await db.execute(`ALTER TABLE searches ADD COLUMN project_name TEXT NOT NULL DEFAULT '';`);
-  } catch {
-  }
-  try {
-    await db.execute(`ALTER TABLE searches ADD COLUMN user_id TEXT NOT NULL DEFAULT '';`);
-  } catch {
-  }
-  await db.execute(`
+      try {
+        await db.execute(`ALTER TABLE searches ADD COLUMN project_name TEXT NOT NULL DEFAULT '';`);
+      } catch {
+      }
+      try {
+        await db.execute(`ALTER TABLE searches ADD COLUMN user_id TEXT NOT NULL DEFAULT '';`);
+      } catch {
+      }
+      await db.execute(`
     CREATE TABLE IF NOT EXISTS run_reports (
       job_id TEXT PRIMARY KEY,
       report_json TEXT NOT NULL,
@@ -96,7 +119,7 @@ async function initDb() {
       FOREIGN KEY (job_id) REFERENCES searches (id) ON DELETE CASCADE
     );
   `);
-  await db.execute(`
+      await db.execute(`
     CREATE TABLE IF NOT EXISTS places (
       id TEXT PRIMARY KEY,
       job_id TEXT NOT NULL,
@@ -125,40 +148,87 @@ async function initDb() {
       additional_attributes TEXT DEFAULT '{}',
       media_items TEXT DEFAULT '[]',
       plus_code TEXT DEFAULT '',
+      attributes TEXT DEFAULT '[]',
+      accessibility_attributes TEXT DEFAULT '[]',
+      next_opening_text TEXT DEFAULT '',
+      next_open_day TEXT DEFAULT '',
+      next_open_time TEXT DEFAULT '',
+      visible_photos_count TEXT DEFAULT '',
+      postal_code TEXT DEFAULT '',
+      country TEXT DEFAULT '',
+      city TEXT DEFAULT '',
+      state TEXT DEFAULT '',
+      source_place_id TEXT DEFAULT '',
+      source_url TEXT DEFAULT '',
+      popular_times TEXT DEFAULT '{}',
+      rating_distribution TEXT DEFAULT '{}',
+      review_highlights TEXT DEFAULT '[]',
+      field_status TEXT DEFAULT '{}',
       collected_at TEXT NOT NULL,
       FOREIGN KEY (job_id) REFERENCES searches (id) ON DELETE CASCADE
     );
   `);
-  try {
-    await db.execute(`ALTER TABLE places ADD COLUMN photos TEXT DEFAULT '';`);
-  } catch {
-  }
-  try {
-    await db.execute(`ALTER TABLE places ADD COLUMN videos TEXT DEFAULT '';`);
-  } catch {
-  }
-  try {
-    await db.execute(`ALTER TABLE places ADD COLUMN logo_url TEXT DEFAULT '';`);
-  } catch {
-  }
-  try {
-    await db.execute(`ALTER TABLE places ADD COLUMN social_links TEXT DEFAULT '';`);
-  } catch {
-  }
-  for (const [column, definition] of [
-    ["reviews", `TEXT DEFAULT '[]'`],
-    ["review_topics", `TEXT DEFAULT '[]'`],
-    ["additional_attributes", `TEXT DEFAULT '{}'`],
-    ["media_items", `TEXT DEFAULT '[]'`],
-    ["plus_code", `TEXT DEFAULT ''`]
-  ]) {
-    try {
-      await db.execute(`ALTER TABLE places ADD COLUMN ${column} ${definition};`);
-    } catch {
-    }
-  }
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);`);
-  await db.execute(`
+      try {
+        await db.execute(`ALTER TABLE places ADD COLUMN photos TEXT DEFAULT '';`);
+      } catch {
+      }
+      try {
+        await db.execute(`ALTER TABLE places ADD COLUMN videos TEXT DEFAULT '';`);
+      } catch {
+      }
+      try {
+        await db.execute(`ALTER TABLE places ADD COLUMN logo_url TEXT DEFAULT '';`);
+      } catch {
+      }
+      try {
+        await db.execute(`ALTER TABLE places ADD COLUMN booking_url TEXT DEFAULT '';`);
+      } catch {
+      }
+      try {
+        await db.execute(`ALTER TABLE places ADD COLUMN social_links TEXT DEFAULT '';`);
+      } catch {
+      }
+      for (const [column, definition] of [
+        ["reviews", `TEXT DEFAULT '[]'`],
+        ["review_topics", `TEXT DEFAULT '[]'`],
+        ["additional_attributes", `TEXT DEFAULT '{}'`],
+        ["media_items", `TEXT DEFAULT '[]'`],
+        ["plus_code", `TEXT DEFAULT ''`],
+        ["attributes", `TEXT DEFAULT '[]'`],
+        ["accessibility_attributes", `TEXT DEFAULT '[]'`],
+        ["next_opening_text", `TEXT DEFAULT ''`],
+        ["next_open_day", `TEXT DEFAULT ''`],
+        ["next_open_time", `TEXT DEFAULT ''`],
+        ["visible_photos_count", `TEXT DEFAULT ''`],
+        ["postal_code", `TEXT DEFAULT ''`],
+        ["country", `TEXT DEFAULT ''`],
+        ["city", `TEXT DEFAULT ''`],
+        ["state", `TEXT DEFAULT ''`],
+        ["source_place_id", `TEXT DEFAULT ''`],
+        ["source_url", `TEXT DEFAULT ''`],
+        ["popular_times", `TEXT DEFAULT '{}'`],
+        ["rating_distribution", `TEXT DEFAULT '{}'`],
+        ["review_highlights", `TEXT DEFAULT '[]'`],
+        ["field_status", `TEXT DEFAULT '{}'`]
+      ]) {
+        try {
+          await db.execute(`ALTER TABLE places ADD COLUMN ${column} ${definition};`);
+        } catch {
+        }
+      }
+      await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);`);
+      await db.execute(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
+      created_at TEXT NOT NULL,
+      last_login_at TEXT
+    );
+  `);
+      await db.execute(`
     CREATE TABLE IF NOT EXISTS api_credentials (
       id TEXT PRIMARY KEY,
       consumer_name TEXT NOT NULL,
@@ -170,9 +240,79 @@ async function initDb() {
       revoked_at TEXT
     );
   `);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_api_credentials_status ON api_credentials (status);`);
-  await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_api_credentials_active_project ON api_credentials (consumer_project) WHERE status = 'active';`);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
+      await db.execute(`CREATE INDEX IF NOT EXISTS idx_api_credentials_status ON api_credentials (status);`);
+      await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_api_credentials_active_project ON api_credentials (consumer_project) WHERE status = 'active';`);
+      await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
+      await db.execute(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id TEXT PRIMARY KEY,
+      consumer_project TEXT NOT NULL,
+      name TEXT NOT NULL,
+      normalized_name TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (consumer_project, normalized_name)
+    );
+  `);
+      await db.execute(`CREATE INDEX IF NOT EXISTS idx_projects_scope ON projects (consumer_project, normalized_name);`);
+      await db.execute(`
+    CREATE TABLE IF NOT EXISTS search_categories (
+      id TEXT PRIMARY KEY,
+      consumer_project TEXT NOT NULL,
+      name TEXT NOT NULL,
+      normalized_name TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE (consumer_project, normalized_name)
+    );
+  `);
+      await db.execute(`CREATE INDEX IF NOT EXISTS idx_search_categories_scope ON search_categories (consumer_project, normalized_name);`);
+      for (const [column, definition] of [["project_id", "TEXT"], ["category_id", "TEXT"]]) {
+        try {
+          await db.execute(`ALTER TABLE searches ADD COLUMN ${column} ${definition};`);
+        } catch {
+        }
+      }
+      const legacySearches = await db.execute(`
+    SELECT id, user_id, project_name, segment, location, project_id, category_id
+    FROM searches
+    WHERE project_id IS NULL OR category_id IS NULL
+  `);
+      for (const row of legacySearches.rows) {
+        const scope = row.user_id?.trim() || "legacy-unassigned";
+        const projectName = row.project_name?.trim() || `${row.segment} \xB7 ${row.location}`;
+        const project = row.project_id ? null : await resolveProject(scope, projectName);
+        const category = row.category_id ? null : await resolveSearchCategory(scope, row.segment || "Sem categoria");
+        if (project || category) {
+          await db.execute({
+            sql: `UPDATE searches SET project_id = COALESCE(project_id, ?), category_id = COALESCE(category_id, ?) WHERE id = ?`,
+            args: [project?.id || null, category?.id || null, row.id]
+          });
+        }
+      }
+    })();
+  }
+  return initPromise;
+}
+async function findUserByEmail(email) {
+  const result = await getDb().execute({ sql: "SELECT * FROM users WHERE email = ? LIMIT 1", args: [email.toLowerCase()] });
+  return result.rows.length ? result.rows[0] : null;
+}
+async function findUserById(id) {
+  const result = await getDb().execute({ sql: "SELECT id, email, display_name, role, created_at, last_login_at FROM users WHERE id = ? LIMIT 1", args: [id] });
+  return result.rows.length ? result.rows[0] : null;
+}
+async function countUsers() {
+  const result = await getDb().execute("SELECT COUNT(*) AS count FROM users");
+  return Number(result.rows[0]?.count || 0);
+}
+async function createUser(input) {
+  await getDb().execute({
+    sql: "INSERT INTO users (id, email, display_name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+    args: [input.id, input.email.toLowerCase(), input.displayName, input.passwordHash, input.role, input.createdAt]
+  });
+}
+async function updateUserLogin(id, timestamp) {
+  await getDb().execute({ sql: "UPDATE users SET last_login_at = ? WHERE id = ?", args: [timestamp, id] });
 }
 async function createApiCredential(input) {
   const db = getDb();
@@ -210,15 +350,17 @@ async function createJob(job) {
   const db = getDb();
   await db.execute({
     sql: `INSERT INTO searches (
-      id, user_id, segment, project_name, location, limit_requested, status, status_message,
+      id, user_id, segment, project_name, project_id, category_id, location, limit_requested, status, status_message,
       total_found, total_collected, total_duplicates, total_errors,
       current_step, created_at, completed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       job.id,
       job.user_id,
       job.segment,
       job.project_name || `${job.segment} \xB7 ${job.location}`,
+      job.project_id || null,
+      job.category_id || null,
       job.location,
       job.limit_requested,
       job.status,
@@ -257,21 +399,21 @@ async function getJob(id, consumerProject) {
   if (res.rows.length === 0) return null;
   return res.rows[0];
 }
-async function listJobs() {
+async function listJobs(consumerProject) {
   const db = getDb();
-  const res = await db.execute(`SELECT * FROM searches ORDER BY created_at DESC`);
+  const res = await db.execute({
+    sql: consumerProject ? `SELECT * FROM searches WHERE user_id = ? ORDER BY created_at DESC` : `SELECT * FROM searches ORDER BY created_at DESC`,
+    args: consumerProject ? [consumerProject] : []
+  });
   return res.rows;
 }
-async function deleteJob(id) {
+async function deleteJob(id, consumerProject) {
   const db = getDb();
-  await db.execute({
-    sql: `DELETE FROM places WHERE job_id = ?`,
-    args: [id]
-  });
-  await db.execute({
-    sql: `DELETE FROM searches WHERE id = ?`,
-    args: [id]
-  });
+  const job = await getJob(id, consumerProject);
+  if (!job) return false;
+  await db.execute({ sql: `DELETE FROM places WHERE job_id = ?`, args: [id] });
+  await db.execute({ sql: `DELETE FROM searches WHERE id = ?`, args: [id] });
+  return true;
 }
 async function insertPlace(place) {
   const db = getDb();
@@ -280,8 +422,10 @@ async function insertPlace(place) {
       id, job_id, name, category, address, phone, website,
       rating, review_count, price_range, opening_hours, business_status,
       latitude, longitude, maps_url, description, services_attributes,
-      photos, videos, logo_url, booking_url, social_links, reviews, review_topics, additional_attributes, media_items, plus_code, collected_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      photos, videos, logo_url, booking_url, social_links, reviews, review_topics, additional_attributes, media_items, plus_code,
+      attributes, accessibility_attributes, next_opening_text, next_open_day, next_open_time, visible_photos_count,
+      postal_code, country, city, state, source_place_id, source_url, popular_times, rating_distribution, review_highlights, field_status, collected_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       place.id,
       place.job_id,
@@ -310,6 +454,22 @@ async function insertPlace(place) {
       place.additional_attributes || "{}",
       place.media_items || "[]",
       place.plus_code || "",
+      place.attributes || "[]",
+      place.accessibility_attributes || "[]",
+      place.next_opening_text || "",
+      place.next_open_day || "",
+      place.next_open_time || "",
+      place.visible_photos_count || "",
+      place.postal_code || "",
+      place.country || "",
+      place.city || "",
+      place.state || "",
+      place.source_place_id || "",
+      place.source_url || place.maps_url || "",
+      place.popular_times || "{}",
+      place.rating_distribution || "{}",
+      place.review_highlights || "[]",
+      place.field_status || "{}",
       place.collected_at
     ]
   });
@@ -321,7 +481,10 @@ async function updatePlace(id, place) {
       name = ?, category = ?, address = ?, phone = ?, website = ?, rating = ?, review_count = ?,
       price_range = ?, opening_hours = ?, business_status = ?, latitude = ?, longitude = ?, maps_url = ?,
       description = ?, services_attributes = ?, photos = ?, videos = ?, logo_url = ?, booking_url = ?, social_links = ?,
-      reviews = ?, review_topics = ?, additional_attributes = ?, media_items = ?, plus_code = ?, collected_at = ?
+      reviews = ?, review_topics = ?, additional_attributes = ?, media_items = ?, plus_code = ?,
+      attributes = ?, accessibility_attributes = ?, next_opening_text = ?, next_open_day = ?, next_open_time = ?, visible_photos_count = ?,
+      postal_code = ?, country = ?, city = ?, state = ?, source_place_id = ?, source_url = ?, popular_times = ?,
+      rating_distribution = ?, review_highlights = ?, field_status = ?, collected_at = ?
       WHERE id = ?`,
     args: [
       place.name,
@@ -349,19 +512,35 @@ async function updatePlace(id, place) {
       place.additional_attributes || "{}",
       place.media_items || "[]",
       place.plus_code || "",
+      place.attributes || "[]",
+      place.accessibility_attributes || "[]",
+      place.next_opening_text || "",
+      place.next_open_day || "",
+      place.next_open_time || "",
+      place.visible_photos_count || "",
+      place.postal_code || "",
+      place.country || "",
+      place.city || "",
+      place.state || "",
+      place.source_place_id || "",
+      place.source_url || place.maps_url || "",
+      place.popular_times || "{}",
+      place.rating_distribution || "{}",
+      place.review_highlights || "[]",
+      place.field_status || "{}",
       place.collected_at,
       id
     ]
   });
 }
-async function findPlaceByUrl(url) {
+async function findPlaceByUrl(url, consumerProject) {
   if (!url || !url.trim()) return null;
   const db = getDb();
   const cleanUrl = url.trim().split("?")[0].replace(/\/$/, "");
   if (!cleanUrl) return null;
   const res = await db.execute({
-    sql: `SELECT * FROM places WHERE rtrim(substr(maps_url, 1, instr(maps_url || '?', '?') - 1), '/') = ? LIMIT 1`,
-    args: [cleanUrl]
+    sql: consumerProject ? `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id WHERE rtrim(substr(p.maps_url, 1, instr(p.maps_url || '?', '?') - 1), '/') = ? AND s.user_id = ? LIMIT 1` : `SELECT * FROM places WHERE rtrim(substr(maps_url, 1, instr(maps_url || '?', '?') - 1), '/') = ? LIMIT 1`,
+    args: consumerProject ? [cleanUrl, consumerProject] : [cleanUrl]
   });
   return res.rows.length ? res.rows[0] : null;
 }
@@ -418,21 +597,31 @@ async function getPlacesByIds(ids, consumerProject) {
   const res = await db.execute({ sql, args: consumerProject ? [...ids, consumerProject] : ids });
   return res.rows;
 }
-async function getAllPlaces(jobId) {
+async function getAllPlaces(jobId, consumerProject) {
   const db = getDb();
+  const where = [];
+  const args = [];
   if (jobId) {
-    const res2 = await db.execute({
-      sql: `SELECT * FROM places WHERE job_id = ? ORDER BY collected_at DESC`,
-      args: [jobId]
-    });
-    return res2.rows;
+    where.push("p.job_id = ?");
+    args.push(jobId);
   }
-  const res = await db.execute(`SELECT * FROM places ORDER BY collected_at DESC`);
+  if (consumerProject) {
+    where.push("s.user_id = ?");
+    args.push(consumerProject);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+  const res = await db.execute({
+    sql: `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id ${whereSql} ORDER BY p.collected_at DESC`,
+    args
+  });
   return res.rows;
 }
-async function listPlaceCategories() {
+async function listPlaceCategories(consumerProject) {
   const db = getDb();
-  const result = await db.execute("SELECT DISTINCT trim(category) AS category FROM places WHERE trim(category) <> '' ORDER BY lower(trim(category)) ASC");
+  const result = await db.execute({
+    sql: consumerProject ? "SELECT DISTINCT trim(p.category) AS category FROM places p INNER JOIN searches s ON s.id = p.job_id WHERE trim(p.category) <> '' AND s.user_id = ? ORDER BY lower(trim(p.category)) ASC" : "SELECT DISTINCT trim(category) AS category FROM places WHERE trim(category) <> '' ORDER BY lower(trim(category)) ASC",
+    args: consumerProject ? [consumerProject] : []
+  });
   return result.rows.map((row) => String(row.category || "")).filter(Boolean);
 }
 async function countPlaces() {
@@ -440,16 +629,15 @@ async function countPlaces() {
   const result = await db.execute("SELECT COUNT(*) AS count FROM places");
   return Number(result.rows[0]?.count ?? 0);
 }
-async function getLastCollectedPlaceForSearch(segment, location) {
+async function getLastCollectedPlaceForSearch(segment, location, consumerProject) {
   const db = getDb();
   const result = await db.execute({
-    sql: `SELECT p.* FROM places p
-          INNER JOIN searches s ON s.id = p.job_id
-          WHERE lower(trim(s.segment)) = lower(trim(?))
-            AND lower(trim(s.location)) = lower(trim(?))
-          ORDER BY p.collected_at DESC
-          LIMIT 1`,
-    args: [segment, location]
+    sql: consumerProject ? `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id
+          WHERE lower(trim(s.segment)) = lower(trim(?)) AND lower(trim(s.location)) = lower(trim(?)) AND s.user_id = ?
+          ORDER BY p.collected_at DESC LIMIT 1` : `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id
+          WHERE lower(trim(s.segment)) = lower(trim(?)) AND lower(trim(s.location)) = lower(trim(?))
+          ORDER BY p.collected_at DESC LIMIT 1`,
+    args: consumerProject ? [segment, location, consumerProject] : [segment, location]
   });
   return result.rows.length ? result.rows[0] : null;
 }
@@ -476,10 +664,169 @@ async function getRunReport(jobId) {
   }
   return row.report_json;
 }
-var dbClient;
+function normalizeCatalogName(value) {
+  return value.normalize("NFKC").trim().replace(/\s+/g, " ").toLocaleLowerCase("pt-BR");
+}
+async function listProjects(consumerProject) {
+  const result = await getDb().execute({
+    sql: `SELECT * FROM projects WHERE consumer_project = ? ORDER BY name COLLATE NOCASE`,
+    args: [consumerProject]
+  });
+  return result.rows;
+}
+async function resolveProject(consumerProject, name) {
+  const canonicalName = name.trim().replace(/\s+/g, " ").slice(0, 120);
+  const normalized = normalizeCatalogName(canonicalName);
+  if (!normalized) throw new Error("project_name_required");
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM projects WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
+    args: [consumerProject, normalized]
+  });
+  if (existing.rows.length) return existing.rows[0];
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  const record = {
+    id: `prj_${randomUUID().replace(/-/g, "")}`,
+    consumer_project: consumerProject,
+    name: canonicalName,
+    normalized_name: normalized,
+    created_at: now,
+    updated_at: now
+  };
+  await db.execute({
+    sql: `INSERT INTO projects (id, consumer_project, name, normalized_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (consumer_project, normalized_name) DO NOTHING`,
+    args: [record.id, record.consumer_project, record.name, record.normalized_name, record.created_at, record.updated_at]
+  });
+  const resolved = await db.execute({
+    sql: `SELECT * FROM projects WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
+    args: [consumerProject, normalized]
+  });
+  return resolved.rows[0];
+}
+async function listSearchCategories(consumerProject) {
+  const result = await getDb().execute({
+    sql: `SELECT * FROM search_categories WHERE consumer_project = ? ORDER BY name COLLATE NOCASE`,
+    args: [consumerProject]
+  });
+  return result.rows;
+}
+async function resolveSearchCategory(consumerProject, name) {
+  const canonicalName = name.trim().replace(/\s+/g, " ").slice(0, 120);
+  const normalized = normalizeCatalogName(canonicalName);
+  if (!normalized) throw new Error("category_name_required");
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
+    args: [consumerProject, normalized]
+  });
+  if (existing.rows.length) return existing.rows[0];
+  const record = {
+    id: `cat_${randomUUID().replace(/-/g, "")}`,
+    consumer_project: consumerProject,
+    name: canonicalName,
+    normalized_name: normalized,
+    created_at: (/* @__PURE__ */ new Date()).toISOString()
+  };
+  await db.execute({
+    sql: `INSERT INTO search_categories (id, consumer_project, name, normalized_name, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (consumer_project, normalized_name) DO NOTHING`,
+    args: [record.id, record.consumer_project, record.name, record.normalized_name, record.created_at]
+  });
+  const resolved = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
+    args: [consumerProject, normalized]
+  });
+  return resolved.rows[0];
+}
+async function updateProject(consumerProject, id, name) {
+  const canonicalName = name.trim().replace(/\s+/g, " ").slice(0, 120);
+  const normalized = normalizeCatalogName(canonicalName);
+  if (!normalized) throw new Error("project_name_required");
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM projects WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject]
+  });
+  if (!existing.rows.length) return null;
+  const conflict = await db.execute({
+    sql: `SELECT * FROM projects WHERE consumer_project = ? AND normalized_name = ? AND id != ? LIMIT 1`,
+    args: [consumerProject, normalized, id]
+  });
+  if (conflict.rows.length) throw new Error("project_name_conflict");
+  const now = (/* @__PURE__ */ new Date()).toISOString();
+  await db.execute({
+    sql: `UPDATE projects SET name = ?, normalized_name = ?, updated_at = ? WHERE id = ? AND consumer_project = ?`,
+    args: [canonicalName, normalized, now, id, consumerProject]
+  });
+  const updated = await db.execute({
+    sql: `SELECT * FROM projects WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject]
+  });
+  return updated.rows[0];
+}
+async function deleteProject(consumerProject, id) {
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM projects WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject]
+  });
+  if (!existing.rows.length) return false;
+  await db.execute({
+    sql: `UPDATE searches SET project_id = NULL WHERE project_id = ? AND user_id = ?`,
+    args: [id, consumerProject]
+  });
+  const res = await db.execute({
+    sql: `DELETE FROM projects WHERE id = ? AND consumer_project = ?`,
+    args: [id, consumerProject]
+  });
+  return (res.rowsAffected ?? 0) > 0;
+}
+async function updateSearchCategory(consumerProject, id, name) {
+  const canonicalName = name.trim().replace(/\s+/g, " ").slice(0, 120);
+  const normalized = normalizeCatalogName(canonicalName);
+  if (!normalized) throw new Error("category_name_required");
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject]
+  });
+  if (!existing.rows.length) return null;
+  const conflict = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE consumer_project = ? AND normalized_name = ? AND id != ? LIMIT 1`,
+    args: [consumerProject, normalized, id]
+  });
+  if (conflict.rows.length) throw new Error("category_name_conflict");
+  await db.execute({
+    sql: `UPDATE search_categories SET name = ?, normalized_name = ? WHERE id = ? AND consumer_project = ?`,
+    args: [canonicalName, normalized, id, consumerProject]
+  });
+  const updated = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject]
+  });
+  return updated.rows[0];
+}
+async function deleteSearchCategory(consumerProject, id) {
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject]
+  });
+  if (!existing.rows.length) return false;
+  await db.execute({
+    sql: `UPDATE searches SET category_id = NULL WHERE category_id = ? AND user_id = ?`,
+    args: [id, consumerProject]
+  });
+  const res = await db.execute({
+    sql: `DELETE FROM search_categories WHERE id = ? AND consumer_project = ?`,
+    args: [id, consumerProject]
+  });
+  return (res.rowsAffected ?? 0) > 0;
+}
+var dbClient, initPromise;
 var init_db = __esm({
   "src/server/db.ts"() {
     dbClient = null;
+    initPromise = null;
   }
 });
 
@@ -532,6 +879,7 @@ var init_browserless_endpoint = __esm({
 // server.ts
 init_db();
 import express from "express";
+import rateLimit from "express-rate-limit";
 import path3 from "path";
 import { fileURLToPath } from "url";
 
@@ -623,6 +971,10 @@ async function listAuditLogs(options = {}) {
   if (options.jobId) {
     where.push("job_id = ?");
     args.push(options.jobId);
+  }
+  if (options.consumerProject) {
+    where.push("EXISTS (SELECT 1 FROM searches s WHERE s.id = audit_logs.job_id AND s.user_id = ?)");
+    args.push(options.consumerProject);
   }
   if (options.query?.trim()) {
     const q = `%${options.query.trim().slice(0, 200)}%`;
@@ -919,6 +1271,27 @@ function normalizeBusinessStatus(raw) {
   }
   return cleaned;
 }
+function parseAddressComponents(raw) {
+  const address = normalizeAddress(raw);
+  const postal_code = address.match(/\b\d{5}-\d{3}\b/)?.[0] || address.match(/\b\d{5}\b/)?.[0] || address.match(/\b[A-Z]{1,2}\d[A-Z\d]? ?\d[A-Z]{2}\b/i)?.[0] || "";
+  const stateMatch = address.match(/(?:-|,)\s*([A-Z]{2})(?=\s*(?:\d{5}(?:-\d{3})?|,|$))/);
+  const state = stateMatch?.[1] || "";
+  const countryMatch = address.match(/,\s*(Brazil|Brasil|United States|United Kingdom|Canada|Australia|Portugal|España|Spain|France|Deutschland|Germany|Italy|México|Mexico)\s*$/i);
+  const country = countryMatch?.[1] || "";
+  let city = "";
+  if (stateMatch && typeof stateMatch.index === "number") {
+    const beforeState = address.slice(0, stateMatch.index).split(",").map((part) => part.trim()).filter(Boolean);
+    city = (beforeState[beforeState.length - 1] || "").split(/\s+-\s+/).pop()?.trim() || "";
+  } else if (country && address.split(",").length >= 2) {
+    const parts = address.split(",").map((part) => part.trim()).filter(Boolean);
+    city = parts[parts.length - 2] || "";
+  }
+  return { postal_code, country, city, state };
+}
+function extractSourcePlaceId(url) {
+  const value = String(url || "");
+  return value.match(/(0x[0-9a-f]+:0x[0-9a-f]+)/i)?.[1] || value.match(/!1s([^!/?]+)/)?.[1] || "";
+}
 function extractCoordinates(url) {
   if (!url) return { latitude: "", longitude: "" };
   const match3d = url.match(/!3d(-?\d+(?:\.\d+)?)/);
@@ -1173,7 +1546,7 @@ async function extractPlaceDetails(page, jobId, targetUrl) {
       'span[aria-label^="Precio:"]',
       ...selectors.priceRange
     ]);
-    const address = cleanLabel(attr(addressNode, "aria-label") || text(addressNode));
+    const address2 = cleanLabel(attr(addressNode, "aria-label") || text(addressNode));
     const phone = cleanLabel(attr(phoneNode, "aria-label") || text(phoneNode));
     const website = attr(websiteNode, "href") || cleanLabel(attr(websiteNode, "aria-label") || text(websiteNode));
     const price_range = cleanLabel(attr(priceNode, "aria-label") || text(priceNode));
@@ -1219,6 +1592,9 @@ async function extractPlaceDetails(page, jobId, targetUrl) {
       '[aria-label*="Aberto"], [aria-label*="Fechado"], [aria-label*="Open"], [aria-label*="Closed"],[aria-label*="Ferm\xE9"], [aria-label*="Ouvert"], [aria-label*="Cerrado"], [aria-label*="Abierto"],.ZDu9vd, .o0Svhf'
     ));
     const statusText = statusCandidates.map((el) => attr(el, "aria-label") || text(el)).find((value) => /aberto|fechado|open|closed|fermé|fermée|ouvert|abierto|cerrado/i.test(value)) || "";
+    const nextOpeningText = statusText.match(/(?:abre|opens|reopens|abertura)[^·|]*/i)?.[0]?.trim() || "";
+    const openingDayMatch = nextOpeningText.match(/\b(segunda(?:-feira)?|terça(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sábado|domingo|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thu|fri|sat|sun)\b/i);
+    const openingTimeMatch = nextOpeningText.match(/\b(\d{1,2}(?::\d{2})?\s*(?:a\.?m\.?|p\.?m\.?)?|\d{1,2}h(?:\d{2})?)\b/i);
     const description = firstText([
       '[data-item-id="description"]',
       '[aria-label*="Descri\xE7\xE3o"]',
@@ -1288,19 +1664,25 @@ async function extractPlaceDetails(page, jobId, targetUrl) {
       }
     });
     const bookingUrl = (() => {
-      const candidates = Array.from(document.querySelectorAll("a[href]")).filter((a) => {
-        const text2 = a.innerText || "";
-        const aria = a.getAttribute("aria-label") || "";
-        return /^agendar on-line|book online|reserve$/i.test(text2 + " " + aria);
+      const candidates = Array.from(document.querySelectorAll('a[href], button, [role="button"]')).map((node) => {
+        const label = [
+          node.innerText || "",
+          node.getAttribute("aria-label") || "",
+          node.getAttribute("data-tooltip") || "",
+          node.getAttribute("data-item-id") || "",
+          node.getAttribute("title") || ""
+        ].join(" ").replace(/\s+/g, " ").trim();
+        const href = node.getAttribute("href") || node.getAttribute("data-href") || "";
+        return { node, label, href };
+      }).filter(({ label, href }) => {
+        if (!href || /^(?:javascript:|#)$/i.test(href)) return false;
+        return /\b(?:agendar(?:\s+on[- ]?line)?|marcar\s+(?:um\s+)?hor[aá]rio|book\s+online|online\s+booking|reserv(?:ar|e|ation)|appointment|agendamento)\b/i.test(label) || /\b(?:avec\.beauty|booksy\.com|fresha\.com|treatwell\.|square\.site|mindbodyonline\.com)\b/i.test(href);
       });
-      if (candidates.length > 0) {
-        const href = candidates[0].getAttribute("href");
-        if (href) {
-          try {
-            return new URL(href, window.location.href).href;
-          } catch {
-            return "";
-          }
+      for (const candidate of candidates) {
+        try {
+          const url = new URL(candidate.href, window.location.href);
+          if (url.protocol === "https:" || url.protocol === "http:") return url.href;
+        } catch {
         }
       }
       return "";
@@ -1457,6 +1839,16 @@ async function extractPlaceDetails(page, jobId, targetUrl) {
         value: (node.innerText || "").replace(/\s+/g, " ").trim()
       })).filter((item) => item.label || item.value).filter((item) => item.value.length < 500).filter((item) => !/^(overview|visão geral|about|sobre|see more|ver mais|standard|padrão|satellite|satélite|globe view|visualização do globo|markers|marcadores)$/i.test(item.value)).slice(0, 200) : []
     };
+    const attributeSections = Array.isArray(additional_attributes.sections) ? additional_attributes.sections : [];
+    const allAttributeItems = attributeSections.flatMap(
+      (section) => (Array.isArray(section.items) ? section.items : []).map((item) => String(item || "").trim()).filter(Boolean)
+    );
+    const attributes = Array.from(new Set(allAttributeItems.filter(
+      (item) => !/wheelchair|cadeira de rodas|acessibilidade|accessible entrance|accessible parking|acessível/i.test(item)
+    )));
+    const accessibility_attributes = Array.from(new Set(allAttributeItems.filter(
+      (item) => /wheelchair|cadeira de rodas|acessibilidade|accessible entrance|accessible parking|acessível|accessible restroom|banheiro acessível/i.test(item)
+    )));
     const structuredAttributeLines = (additional_attributes.sections || []).flatMap((section) => {
       const category2 = String(section.category || "").trim();
       const items = Array.isArray(section.items) ? section.items.map((item) => String(item || "").trim()).filter(Boolean) : [];
@@ -1471,15 +1863,31 @@ async function extractPlaceDetails(page, jobId, targetUrl) {
     await new Promise((resolve) => setTimeout(resolve, 120));
     clickByText(/^See photos$|^Ver fotos$|^Ver todas as fotos$|^Fotos$/i);
     await new Promise((resolve) => setTimeout(resolve, 220));
-    let galleryContainer = document.querySelector('[role="dialog"]') || findReviewContainer();
+    const findGalleryContainer = () => {
+      const dialog = document.querySelector('[role="dialog"]');
+      if (dialog) {
+        const scrollables = [dialog, ...Array.from(dialog.querySelectorAll("*"))].filter((element) => element.scrollHeight > element.clientHeight + 80 && element.clientHeight > 100).sort((a, b) => a.clientHeight - b.clientHeight);
+        return scrollables[0] || dialog;
+      }
+      const galleryImage = Array.from(document.querySelectorAll('div[role="main"] img[src*="googleusercontent.com"]')).find((image) => image.naturalWidth > 64 && image.naturalHeight > 64);
+      let parent = galleryImage?.parentElement;
+      while (parent && parent !== document.body) {
+        if (parent.scrollHeight > parent.clientHeight + 80 && parent.clientHeight > 100) return parent;
+        parent = parent.parentElement;
+      }
+      return null;
+    };
+    let galleryContainer = findGalleryContainer();
     let previousGalleryCount = -1;
     let galleryStagnant = 0;
-    for (let iteration = 0; iteration < 50; iteration++) {
+    for (let iteration = 0; iteration < 80; iteration++) {
       const before = photoUrls.length;
       document.querySelectorAll('[role="dialog"] img, div[role="main"] img[src*="googleusercontent.com"]').forEach((node) => {
         const image = node;
         addPhoto(image.currentSrc || image.src || attr(node, "src"));
         addPhoto(attr(node, "data-src"));
+        const srcset = attr(node, "srcset");
+        if (srcset) srcset.split(",").forEach((part) => addPhoto(part.trim().split(/\s+/)[0]));
       });
       document.querySelectorAll('[role="dialog"] video, [role="dialog"] [data-video-url], [role="dialog"] button[aria-label*="video"], [role="dialog"] button[aria-label*="v\xEDdeo"]').forEach((node) => {
         const media = node;
@@ -1495,17 +1903,52 @@ async function extractPlaceDetails(page, jobId, targetUrl) {
       });
       if (photoUrls.length === previousGalleryCount && photoUrls.length === before) galleryStagnant += 1;
       else galleryStagnant = 0;
-      if (galleryStagnant >= 4) break;
+      if (galleryStagnant >= 6) break;
       previousGalleryCount = photoUrls.length;
-      if (!galleryContainer) galleryContainer = document.querySelector('[role="dialog"]');
+      galleryContainer = findGalleryContainer() || galleryContainer;
       if (galleryContainer) galleryContainer.scrollTop = galleryContainer.scrollHeight;
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 120));
     }
+    const makeThumbnailUrl = (url) => {
+      if (/=w\d+-h\d+[^&]*/i.test(url)) return url.replace(/=w\d+-h\d+[^&]*/i, "=w400-h300-k-no");
+      if (/=s\d+([^&]*)$/i.test(url)) return url.replace(/=s\d+([^&]*)$/i, "=w400-h300-k-no$1");
+      if (/=w\d+([^&]*)$/i.test(url)) return url.replace(/=w\d+([^&]*)$/i, "=w400-h300-k-no$1");
+      return "";
+    };
+    const visiblePhotoCountText = Array.from(document.querySelectorAll("button,[aria-label],span,div")).map((node) => [text(node), attr(node, "aria-label")].filter(Boolean).join(" ")).filter((value) => /\b\d{1,4}\s*(?:photos|fotos)\b/i.test(value) && value.length < 160).map((value) => value.match(/\b(\d{1,4})\s*(?:photos|fotos)\b/i)?.[1] || "").find(Boolean) || "";
     const media_items = [
-      ...photoUrls.map((url) => ({ type: "image", url, thumbnail_url: url, title: "" }))
+      ...photoUrls.map((url) => ({
+        type: "image",
+        url,
+        thumbnail_url: makeThumbnailUrl(url),
+        title: ""
+      }))
     ];
     const plusCodeNode = Array.from(document.querySelectorAll('[aria-label*="Plus code"],[aria-label*="Plus Code"],[data-item-id*="oloc"]')).find((node) => /plus code/i.test(node.getAttribute("aria-label") || ""));
     const plus_code = plusCodeNode?.getAttribute("aria-label")?.replace(/^plus code:\s*/i, "") || "";
+    const popularTimesNodes = Array.from(document.querySelectorAll(
+      '[aria-label*="Popular times"],[aria-label*="Hor\xE1rios de pico"],[aria-label*="Hor\xE1rios populares"],[data-day-of-week],[class*="popular-times"],[class*="PopularTimes"]'
+    ));
+    const popular_times = popularTimesNodes.map((node) => ({
+      label: attr(node, "aria-label"),
+      text: text(node).replace(/\s+/g, " ").trim(),
+      day: attr(node, "data-day-of-week"),
+      value: attr(node, "aria-valuenow") || attr(node, "data-value") || ""
+    })).filter((item) => item.label || item.text || item.day || item.value).filter((item) => (item.label + " " + item.text).length < 600).slice(0, 300);
+    const rating_distribution = {};
+    document.querySelectorAll("[aria-label]").forEach((node) => {
+      const label = attr(node, "aria-label").replace(/\s+/g, " ").trim();
+      const match = label.match(/([1-5])\s*(?:star|stars|estrela|estrelas)\D{0,24}(\d[\d.,\s]*)/i) || label.match(/(\d[\d.,\s]*)\s*(?:reviews?|avaliações?)\D{0,24}([1-5])\s*(?:star|stars|estrela|estrelas)/i);
+      if (!match) return;
+      const starsFirst = /star|estrela/i.test(label.slice(0, label.indexOf(match[0]) + match[0].length).split(match[2] || match[1])[0]);
+      const stars = starsFirst ? match[1] : match[2];
+      const countText = starsFirst ? match[2] : match[1];
+      const count = Number(countText.replace(/[.,\s]/g, ""));
+      if (stars && Number.isFinite(count)) rating_distribution[String(stars)] = count;
+    });
+    const review_highlights = Array.from(document.querySelectorAll(
+      '[data-review-summary], [class*="reviewSummary"], [class*="ReviewSummary"], [aria-label*="Review summary"], [aria-label*="Resumo das avalia\xE7\xF5es"]'
+    )).map((node) => (text(node) || attr(node, "aria-label")).replace(/\s+/g, " ").trim()).filter((value) => value.length > 12 && value.length < 500).filter((value, index, all) => all.indexOf(value) === index).slice(0, 30);
     let logo_url = "";
     const businessProfileImage = Array.from(document.querySelectorAll('button[aria-label^="Photo of"] img')).find((img) => {
       const label = img.parentElement?.getAttribute("aria-label") || img.closest("button")?.getAttribute("aria-label") || "";
@@ -1533,7 +1976,7 @@ async function extractPlaceDetails(page, jobId, targetUrl) {
       rating,
       review_count,
       price_range,
-      address,
+      address: address2,
       website,
       phone,
       opening_hours,
@@ -1550,17 +1993,71 @@ async function extractPlaceDetails(page, jobId, targetUrl) {
       additional_attributes,
       media_items,
       plus_code,
+      popular_times,
+      rating_distribution,
+      review_highlights,
+      attributes,
+      accessibility_attributes,
+      nextOpeningText,
+      nextOpeningDay: openingDayMatch?.[1] || "",
+      nextOpeningTime: openingTimeMatch?.[1] || "",
+      visiblePhotosCount: visiblePhotoCountText,
       currentUrl: window.location.href
     };
   }, SELECTORS.place);
   const finalUrl = raw.currentUrl || targetUrl;
   const coords = extractCoordinates(finalUrl);
+  const address = normalizeAddress(raw.address);
+  const addressComponents = parseAddressComponents(address);
+  const sourcePlaceId = extractSourcePlaceId(finalUrl);
+  const sourceUrl = targetUrl || finalUrl;
+  const fieldValues = {
+    name: raw.name,
+    category: raw.category,
+    address,
+    phone: raw.phone,
+    website: raw.website,
+    rating: raw.rating,
+    review_count: raw.review_count,
+    price_range: raw.price_range,
+    opening_hours: raw.opening_hours,
+    business_status: raw.business_status,
+    booking_url: raw.bookingUrl,
+    photos: raw.photos,
+    videos: raw.videos,
+    logo_url: raw.logo_url,
+    social_links: raw.social_links,
+    reviews: raw.reviews,
+    review_topics: raw.review_topics,
+    additional_attributes: raw.additional_attributes,
+    media_items: raw.media_items,
+    plus_code: raw.plus_code,
+    attributes: raw.attributes,
+    accessibility_attributes: raw.accessibility_attributes,
+    next_opening_text: raw.nextOpeningText,
+    next_open_day: raw.nextOpeningDay,
+    next_open_time: raw.nextOpeningTime,
+    visible_photos_count: raw.visiblePhotosCount,
+    popular_times: raw.popular_times,
+    rating_distribution: raw.rating_distribution,
+    review_highlights: raw.review_highlights,
+    postal_code: addressComponents.postal_code,
+    country: addressComponents.country,
+    city: addressComponents.city,
+    state: addressComponents.state,
+    source_place_id: sourcePlaceId,
+    source_url: sourceUrl
+  };
+  const fieldStatus = Object.fromEntries(Object.entries(fieldValues).map(([field, value]) => {
+    const present = Array.isArray(value) ? value.length > 0 : value && typeof value === "object" ? Object.keys(value).length > 0 : String(value ?? "").trim().length > 0;
+    return [field, { status: present ? "captured" : "not_observed_in_session", observed_at: (/* @__PURE__ */ new Date()).toISOString() }];
+  }));
   return {
     id: `place_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
     job_id: jobId,
     name: cleanText(raw.name),
     category: normalizeCategory(raw.category),
-    address: normalizeAddress(raw.address),
+    address,
     phone: normalizePhone(raw.phone),
     website: normalizeWebsite(raw.website),
     rating: normalizeRating(raw.rating),
@@ -1582,6 +2079,22 @@ async function extractPlaceDetails(page, jobId, targetUrl) {
     additional_attributes: JSON.stringify(raw.additional_attributes || {}),
     media_items: JSON.stringify(Array.isArray(raw.media_items) ? raw.media_items : []),
     plus_code: cleanText(raw.plus_code),
+    attributes: JSON.stringify(Array.isArray(raw.attributes) ? raw.attributes : []),
+    accessibility_attributes: JSON.stringify(Array.isArray(raw.accessibility_attributes) ? raw.accessibility_attributes : []),
+    next_opening_text: cleanText(raw.nextOpeningText),
+    next_open_day: cleanText(raw.nextOpeningDay),
+    next_open_time: cleanText(raw.nextOpeningTime),
+    visible_photos_count: cleanText(raw.visiblePhotosCount),
+    postal_code: cleanText(addressComponents.postal_code),
+    country: cleanText(addressComponents.country),
+    city: cleanText(addressComponents.city),
+    state: cleanText(addressComponents.state),
+    source_place_id: cleanText(sourcePlaceId),
+    source_url: cleanText(sourceUrl),
+    popular_times: JSON.stringify(Array.isArray(raw.popular_times) ? raw.popular_times : []),
+    rating_distribution: JSON.stringify(raw.rating_distribution || {}),
+    review_highlights: JSON.stringify(Array.isArray(raw.review_highlights) ? raw.review_highlights : []),
+    field_status: JSON.stringify(fieldStatus),
     collected_at: (/* @__PURE__ */ new Date()).toISOString(),
     booking_url: cleanText(raw.bookingUrl)
   };
@@ -1621,7 +2134,7 @@ function isBrowserConnected(browser) {
   return compatible.connected !== false;
 }
 function missingFields2(place) {
-  const fields = ["name", "category", "address", "phone", "website", "rating", "review_count", "price_range", "opening_hours", "business_status", "latitude", "longitude", "maps_url", "description", "services_attributes", "photos", "videos", "logo_url", "social_links", "reviews", "review_topics", "additional_attributes", "media_items", "plus_code", "collected_at"];
+  const fields = ["name", "category", "address", "phone", "website", "rating", "review_count", "price_range", "opening_hours", "business_status", "latitude", "longitude", "maps_url", "description", "services_attributes", "photos", "videos", "logo_url", "booking_url", "social_links", "reviews", "review_topics", "additional_attributes", "media_items", "plus_code", "attributes", "accessibility_attributes", "next_opening_text", "next_open_day", "next_open_time", "visible_photos_count", "postal_code", "country", "city", "state", "source_place_id", "source_url", "popular_times", "rating_distribution", "review_highlights", "field_status", "collected_at"];
   return fields.filter((field) => {
     const value = String(place[field] ?? "").trim();
     if (!value) return true;
@@ -1647,10 +2160,25 @@ function missingFields2(place) {
 var ENRICHMENT_FIELDS = [
   "review_count",
   "opening_hours",
+  "booking_url",
   "reviews",
   "review_topics",
   "additional_attributes",
-  "media_items"
+  "media_items",
+  "popular_times",
+  "rating_distribution",
+  "review_highlights",
+  "attributes",
+  "accessibility_attributes",
+  "next_opening_text",
+  "next_open_day",
+  "next_open_time",
+  "visible_photos_count",
+  "postal_code",
+  "country",
+  "city",
+  "state",
+  "source_place_id"
 ];
 function needsEnrichment(place) {
   const missing = missingFields2(place);
@@ -1685,6 +2213,18 @@ function mergePlaceRecords(existing, fresh) {
   const freshAttributes = parseJsonObject(fresh.additional_attributes);
   const oldAttributes = parseJsonObject(existing.additional_attributes);
   const hasFreshAttributes = Boolean(freshAttributes.about_text?.trim() || freshAttributes.sections?.length || freshAttributes.labeled_attributes?.length);
+  const freshPopularTimes = parseJsonArray(fresh.popular_times);
+  const oldPopularTimes = parseJsonArray(existing.popular_times);
+  const freshRatingDistribution = parseJsonObject(fresh.rating_distribution);
+  const oldRatingDistribution = parseJsonObject(existing.rating_distribution);
+  const freshHighlights = parseJsonArray(fresh.review_highlights);
+  const oldHighlights = parseJsonArray(existing.review_highlights);
+  const freshAttributesList = parseJsonArray(fresh.attributes);
+  const oldAttributesList = parseJsonArray(existing.attributes);
+  const freshAccessibility = parseJsonArray(fresh.accessibility_attributes);
+  const oldAccessibility = parseJsonArray(existing.accessibility_attributes);
+  const freshFieldStatus = parseJsonObject(fresh.field_status);
+  const oldFieldStatus = parseJsonObject(existing.field_status);
   return {
     ...existing,
     ...fresh,
@@ -1708,12 +2248,31 @@ function mergePlaceRecords(existing, fresh) {
     photos: mergeDelimited(existing.photos, fresh.photos),
     videos: mergeDelimited(existing.videos, fresh.videos),
     logo_url: fresh.logo_url || existing.logo_url,
+    booking_url: fresh.booking_url || existing.booking_url || "",
     social_links: mergeDelimited(existing.social_links, fresh.social_links),
     reviews: JSON.stringify(freshReviews.length ? freshReviews : oldReviews),
     review_topics: JSON.stringify(freshTopics.length ? freshTopics : oldTopics),
     additional_attributes: JSON.stringify(hasFreshAttributes ? freshAttributes : oldAttributes),
-    media_items: JSON.stringify(freshMedia.length ? freshMedia : oldMedia),
+    media_items: JSON.stringify(Array.from(
+      new Map([...oldMedia, ...freshMedia].filter((item) => item && typeof item === "object").map((item) => [String(item.type || "") + ":" + String(item.url || item.title || ""), item])).values()
+    )),
     plus_code: fresh.plus_code || existing.plus_code,
+    attributes: JSON.stringify(freshAttributesList.length ? freshAttributesList : oldAttributesList),
+    accessibility_attributes: JSON.stringify(freshAccessibility.length ? freshAccessibility : oldAccessibility),
+    next_opening_text: fresh.next_opening_text || existing.next_opening_text || "",
+    next_open_day: fresh.next_open_day || existing.next_open_day || "",
+    next_open_time: fresh.next_open_time || existing.next_open_time || "",
+    visible_photos_count: fresh.visible_photos_count || existing.visible_photos_count || "",
+    postal_code: fresh.postal_code || existing.postal_code || "",
+    country: fresh.country || existing.country || "",
+    city: fresh.city || existing.city || "",
+    state: fresh.state || existing.state || "",
+    source_place_id: fresh.source_place_id || existing.source_place_id || "",
+    source_url: fresh.source_url || existing.source_url || fresh.maps_url || existing.maps_url,
+    popular_times: JSON.stringify(freshPopularTimes.length ? freshPopularTimes : oldPopularTimes),
+    rating_distribution: JSON.stringify(Object.keys(freshRatingDistribution).length ? freshRatingDistribution : oldRatingDistribution),
+    review_highlights: JSON.stringify(freshHighlights.length ? freshHighlights : oldHighlights),
+    field_status: JSON.stringify({ ...oldFieldStatus, ...freshFieldStatus }),
     collected_at: fresh.collected_at || existing.collected_at || (/* @__PURE__ */ new Date()).toISOString()
   };
 }
@@ -1751,6 +2310,7 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
   let totalDuplicates = 0;
   let totalErrors = 0;
   let baselineCount = 0;
+  let consumerProject;
   const emitProgress = async (step, updates = {}) => {
     const jobUpdates = {
       current_step: step,
@@ -1779,6 +2339,9 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
     }
   };
   try {
+    const owningJob = await getJob(jobId);
+    if (!owningJob) throw new Error("Coleta n\xE3o encontrada no banco antes da execu\xE7\xE3o.");
+    consumerProject = owningJob.user_id;
     baselineCount = await countPlaces();
     await safeAudit({ category: "scraper", event: "job.browser_start", message: "Inicializando Chromium.", jobId, metadata: { segment, location, limitRequested, databaseCountBefore: baselineCount } });
     await emitProgress("Iniciando navegador Chromium...", { status: "running" });
@@ -1850,7 +2413,7 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
       if (!placeRecord.maps_url.includes("/maps/place/")) {
         placeRecord.maps_url = currentUrl;
       }
-      const existingDirectPlace = await findPlaceByUrl(currentUrl);
+      const existingDirectPlace = await findPlaceByUrl(currentUrl, consumerProject);
       if (existingDirectPlace) {
         if (needsEnrichment(existingDirectPlace)) {
           const merged = mergePlaceRecords(existingDirectPlace, placeRecord);
@@ -1910,7 +2473,7 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
     const eligibleUrlsInRun = /* @__PURE__ */ new Set();
     const retriedItems = /* @__PURE__ */ new Set();
     let duplicateUrlsDiscovered = 0;
-    const resumeRecord = await getLastCollectedPlaceForSearch(segment, location);
+    const resumeRecord = await getLastCollectedPlaceForSearch(segment, location, consumerProject);
     const resumeUrl = resumeRecord?.maps_url ? resumeRecord.maps_url.split("?")[0].replace(/\/$/, "") : "";
     let resumeReached = !resumeUrl;
     let resumeFallbackUsed = false;
@@ -1929,7 +2492,7 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
           level: "warn",
           category: "scraper",
           event: "results.resume_checkpoint_missing",
-          message: "O \xFAltimo resultado salvo n\xE3o reapareceu ap\xF3s 40 rolagens; retomada por checkpoint desativada e deduplica\xE7\xE3o global aplicada.",
+          message: "O checkpoint salvo n\xE3o reapareceu ap\xF3s 40 rolagens; continuando com deduplica\xE7\xE3o no banco sem consumir limite com fichas j\xE1 existentes.",
           jobId,
           metadata: { checkpointUrl: resumeUrl, scrollAttempts }
         });
@@ -1962,7 +2525,7 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
       let newUniqueLinksInBatch = 0;
       for (const item of currentLinks) {
         const canonicalUrl = item.url.split("?")[0].replace(/\/$/, "");
-        if (!canonicalUrl || seenUrlsInRun.has(canonicalUrl)) continue;
+        if (!canonicalUrl || seenUrlsInRun.has(canonicalUrl) || eligibleUrlsInRun.has(canonicalUrl)) continue;
         seenUrlsInRun.add(canonicalUrl);
         newUniqueLinksInBatch++;
         if (!resumeReached) {
@@ -1979,10 +2542,10 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
           continue;
         }
         if (eligibleUrlsInRun.size >= limitRequested) continue;
-        eligibleUrlsInRun.add(canonicalUrl);
-        const existingPlace = await findPlaceByUrl(canonicalUrl);
+        const existingPlace = await findPlaceByUrl(canonicalUrl, consumerProject);
         if (existingPlace) {
           if (needsEnrichment(existingPlace)) {
+            eligibleUrlsInRun.add(canonicalUrl);
             discoveredUrls.push({ ...item, url: canonicalUrl, previewName: existingPlace.name || item.previewName });
             newFoundInBatch++;
             await safeAudit({
@@ -2005,6 +2568,7 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
           });
           continue;
         }
+        eligibleUrlsInRun.add(canonicalUrl);
         discoveredUrls.push({ ...item, url: canonicalUrl });
         newFoundInBatch++;
       }
@@ -2180,7 +2744,7 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
       let detailPage = null;
       try {
         if (!browser || !isBrowserConnected(browser)) await connectAndTrackBrowser();
-        const existingPlace = await findPlaceByUrl(item.url);
+        const existingPlace = await findPlaceByUrl(item.url, consumerProject);
         if (existingPlace) {
           if (needsEnrichment(existingPlace)) {
             await emitProgress(`[${placeNum}/${itemsToProcess.length}] Atualizando ficha existente: ${existingPlace.name}...`);
@@ -2346,6 +2910,28 @@ var EXPORTABLE_FIELDS = [
   { key: "media_items", label: "M\xEDdia estruturada", description: "Itens de m\xEDdia com tipo, URL, texto alternativo e miniatura" },
   { key: "booking_url", label: "URL de Agendamento", description: 'Link "Agendar on-line" ou "Book online" da ficha' },
   { key: "plus_code", label: "Plus Code", description: "C\xF3digo geogr\xE1fico apresentado na ficha" },
+  { key: "attributes", label: "Atributos do estabelecimento", description: "Atributos p\xFAblicos normalizados" },
+  { key: "accessibility_attributes", label: "Acessibilidade", description: "Atributos p\xFAblicos de acessibilidade" },
+  { key: "next_opening_text", label: "Pr\xF3xima abertura (texto)", description: "Texto de pr\xF3xima abertura exibido pelo Maps" },
+  { key: "next_open_day", label: "Pr\xF3ximo dia de abertura", description: "Dia explicitamente identific\xE1vel no status" },
+  { key: "next_open_time", label: "Pr\xF3ximo hor\xE1rio de abertura", description: "Hor\xE1rio explicitamente identific\xE1vel no status" },
+  { key: "visible_photos_count", label: "Total de fotos informado", description: "Contagem textual expl\xEDcita do Maps, n\xE3o contagem inferida" },
+  { key: "postal_code", label: "CEP / c\xF3digo postal", description: "Quando expl\xEDcito no endere\xE7o p\xFAblico" },
+  { key: "country", label: "Pa\xEDs", description: "Componente do endere\xE7o quando identific\xE1vel" },
+  { key: "city", label: "Cidade", description: "Componente do endere\xE7o quando identific\xE1vel" },
+  { key: "state", label: "Estado / regi\xE3o", description: "Componente do endere\xE7o quando identific\xE1vel" },
+  { key: "source_place_id", label: "ID da ficha na fonte", description: "Identificador extra\xEDdo da URL do Google Maps" },
+  { key: "source_url", label: "URL original da fonte", description: "URL da ficha usada na coleta" },
+  { key: "attributes", label: "Atributos do estabelecimento", description: "Atributos p\xFAblicos normalizados" },
+  { key: "accessibility_attributes", label: "Acessibilidade", description: "Atributos p\xFAblicos de acessibilidade" },
+  { key: "next_opening_text", label: "Pr\xF3xima abertura (texto)", description: "Texto de pr\xF3xima abertura exibido pelo Maps" },
+  { key: "next_open_day", label: "Pr\xF3ximo dia de abertura", description: "Dia explicitamente identific\xE1vel no status" },
+  { key: "next_open_time", label: "Pr\xF3ximo hor\xE1rio de abertura", description: "Hor\xE1rio explicitamente identific\xE1vel no status" },
+  { key: "visible_photos_count", label: "Total de fotos informado", description: "Contagem textual expl\xEDcita do Maps, n\xE3o contagem inferida" },
+  { key: "popular_times", label: "Hor\xE1rios de movimento", description: "JSON de dados exibidos publicamente, quando dispon\xEDveis" },
+  { key: "rating_distribution", label: "Distribui\xE7\xE3o de avalia\xE7\xF5es", description: "Contagens por estrelas quando exibidas" },
+  { key: "review_highlights", label: "Destaques de avalia\xE7\xF5es", description: "Trechos de resumo exibidos pelo Maps" },
+  { key: "field_status", label: "Estado de captura dos campos", description: "JSON com status de observa\xE7\xE3o por campo" },
   { key: "collected_at", label: "Data e hora da coleta", description: "Registrada pelo aplicativo" }
 ];
 
@@ -2374,7 +2960,8 @@ function generateCsv(records, selectedFieldKeys) {
 }
 
 // server.ts
-import { timingSafeEqual, createHash, randomBytes } from "node:crypto";
+import { timingSafeEqual, createHash, randomBytes, scryptSync } from "node:crypto";
+import jwt from "jsonwebtoken";
 import { waitUntil } from "@vercel/functions";
 var __filename = fileURLToPath(import.meta.url);
 var __dirname = path3.dirname(__filename);
@@ -2387,15 +2974,69 @@ function hasStaticApiKey(value) {
   const configured = (process.env.MAPSCRAPE_API_KEYS || "").split(",").map((entry) => entry.trim()).filter(Boolean);
   return configured.some((candidate) => safeEqual(candidate, value));
 }
+function sessionSecret() {
+  return process.env.MAPSCRAPE_SESSION_SECRET?.trim() || "mapscrape-dev-session-secret-key-32ch";
+}
+function passwordHash(password, salt = randomBytes(16).toString("hex")) {
+  return `${salt}:${scryptSync(password, salt, 64).toString("hex")}`;
+}
+function passwordMatches(password, stored) {
+  const [salt, expected] = stored.split(":");
+  if (!salt || !expected) return false;
+  const actual = scryptSync(password, salt, 64);
+  const expectedBuffer = Buffer.from(expected, "hex");
+  return actual.length === expectedBuffer.length && timingSafeEqual(actual, expectedBuffer);
+}
+function createSessionToken(user) {
+  const secret = sessionSecret();
+  if (!secret) throw new Error("MAPSCRAPE_SESSION_SECRET ausente");
+  return jwt.sign({ email: user.email, role: user.role }, secret, { subject: user.id, expiresIn: "12h", issuer: "mapscrape" });
+}
+function verifiedSession(token) {
+  const secret = sessionSecret();
+  if (!secret) return null;
+  try {
+    const payload = jwt.verify(token, secret, { issuer: "mapscrape" });
+    if (typeof payload.sub !== "string" || typeof payload.email !== "string" || payload.role !== "admin" && payload.role !== "user") return null;
+    return { sub: payload.sub, email: payload.email, role: payload.role };
+  } catch {
+    return null;
+  }
+}
 async function authenticatedConsumer(req) {
   const match = /^Bearer\s+(.+)$/i.exec(req.header("authorization") || "");
-  if (!match) return null;
-  const supplied = match[1];
+  const supplied = match ? match[1] : typeof req.query.token === "string" ? req.query.token.trim() : null;
+  if (!supplied) return null;
+  const session = verifiedSession(supplied);
+  if (session) {
+    const user = await findUserById(session.sub);
+    if (!user || user.email !== session.email || user.role !== session.role) return null;
+    return { id: user.id, consumer_project: `account:${user.id}`, role: user.role, email: user.email, accountId: user.id };
+  }
   if (hasStaticApiKey(supplied)) return { id: "static-key", consumer_project: "operator-static-key" };
   const keyHash = createHash("sha256").update(supplied).digest("hex");
   return findActiveApiCredential(keyHash);
 }
+async function requireAuthenticatedConsumer(req, res, next) {
+  try {
+    const consumer = await authenticatedConsumer(req);
+    if (!consumer) {
+      res.status(401).json({ error: "unauthorized", message: "Informe uma chave de API v\xE1lida no cabe\xE7alho Authorization: Bearer." });
+      return;
+    }
+    req.mapscrapeConsumer = consumer;
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-MapScrape-Consumer", consumer.consumer_project);
+    next();
+  } catch (error) {
+    console.error("API credential lookup failed:", error instanceof Error ? error.message : "unknown");
+    res.status(503).json({ error: "authentication_unavailable" });
+  }
+}
 function hasProvisioningAccess(req) {
+  const match = /^Bearer\s+(.+)$/i.exec(req.header("authorization") || "");
+  const session = match ? verifiedSession(match[1]) : null;
+  if (session?.role === "admin") return true;
   const expected = process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
   const provided = req.header("x-mapscrape-provisioning-token") || "";
   return Boolean(expected && provided && safeEqual(expected, provided));
@@ -2430,6 +3071,18 @@ async function safeWriteAuditLog(input) {
 }
 async function createApp() {
   await initDb();
+  const bootstrapEmail = process.env.MAPSCRAPE_ADMIN_EMAIL?.trim().toLowerCase();
+  const bootstrapPassword = process.env.MAPSCRAPE_ADMIN_PASSWORD;
+  if (bootstrapEmail && bootstrapPassword && sessionSecret() && !await findUserByEmail(bootstrapEmail)) {
+    await createUser({
+      id: `usr_${randomBytes(16).toString("hex")}`,
+      email: bootstrapEmail,
+      displayName: "Administrador",
+      passwordHash: passwordHash(bootstrapPassword),
+      role: "admin",
+      createdAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
+  }
   await initAuditLog();
   await safeWriteAuditLog({ category: "server", event: "server.start", message: "Servidor iniciado e banco inicializado." });
   console.log("SQLite database initialized.");
@@ -2437,6 +3090,62 @@ async function createApp() {
   const PORT = Number(process.env.PORT) || 3e3;
   const isDev = process.env.NODE_ENV !== "production";
   app.use(express.json());
+  const accountAuthLimiter = rateLimit({ windowMs: 15 * 60 * 1e3, limit: 20, skipSuccessfulRequests: true, standardHeaders: true, legacyHeaders: false, message: { error: "too_many_attempts", message: "Muitas tentativas inv\xE1lidas. Aguarde 15 minutos e tente novamente." } });
+  app.post("/api/auth/register", accountAuthLimiter, async (req, res) => {
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const displayName = typeof req.body?.name === "string" ? req.body.name.trim().replace(/\s+/g, " ") : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!sessionSecret()) return res.status(503).json({ error: "auth_not_configured", message: "A autentica\xE7\xE3o ainda n\xE3o foi configurada pelo administrador." });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || displayName.length < 2 || displayName.length > 100 || password.length < 12 || password.length > 200) {
+      return res.status(422).json({ error: "invalid_registration", message: "Informe nome, e-mail v\xE1lido e senha com pelo menos 12 caracteres." });
+    }
+    try {
+      if (await findUserByEmail(email)) return res.status(409).json({ error: "email_already_registered", message: "Este e-mail j\xE1 possui cadastro." });
+      const bootstrapEmail2 = (process.env.MAPSCRAPE_ADMIN_EMAIL?.trim() || "olfnetto@gmail.com").toLowerCase();
+      const isFirstAccount = await countUsers() === 0;
+      let role = "user";
+      if (isFirstAccount) {
+        if (email !== bootstrapEmail2) {
+          return res.status(403).json({
+            error: "initial_admin_email_required",
+            message: `O primeiro cadastro deve usar o e-mail administrador configurado: ${bootstrapEmail2}.`
+          });
+        }
+        role = "admin";
+      }
+      const id = `usr_${randomBytes(16).toString("hex")}`;
+      await createUser({ id, email, displayName, passwordHash: passwordHash(password), role, createdAt: (/* @__PURE__ */ new Date()).toISOString() });
+      const token = createSessionToken({ id, email, role });
+      res.setHeader("Cache-Control", "no-store");
+      return res.status(201).json({ token, user: { id, email, name: displayName, role } });
+    } catch (error) {
+      return res.status(500).json({ error: "registration_failed", message: error instanceof Error ? error.message : "N\xE3o foi poss\xEDvel criar a conta." });
+    }
+  });
+  app.post("/api/auth/login", accountAuthLimiter, async (req, res) => {
+    const email = typeof req.body?.email === "string" ? req.body.email.trim().toLowerCase() : "";
+    const password = typeof req.body?.password === "string" ? req.body.password : "";
+    if (!sessionSecret()) return res.status(503).json({ error: "auth_not_configured", message: "A autentica\xE7\xE3o ainda n\xE3o foi configurada pelo administrador." });
+    try {
+      const user = await findUserByEmail(email);
+      if (!user || !passwordMatches(password, user.password_hash)) return res.status(401).json({ error: "invalid_credentials", message: "E-mail ou senha incorretos." });
+      await updateUserLogin(user.id, (/* @__PURE__ */ new Date()).toISOString());
+      const token = createSessionToken({ id: user.id, email: user.email, role: user.role });
+      res.setHeader("Cache-Control", "no-store");
+      return res.json({ token, user: { id: user.id, email: user.email, name: user.display_name, role: user.role } });
+    } catch (error) {
+      return res.status(500).json({ error: "login_failed", message: error instanceof Error ? error.message : "N\xE3o foi poss\xEDvel entrar." });
+    }
+  });
+  app.get("/api/auth/me", async (req, res) => {
+    const match = /^Bearer\s+(.+)$/i.exec(req.header("authorization") || "");
+    const session = match ? verifiedSession(match[1]) : null;
+    if (!session) return res.status(401).json({ error: "unauthorized" });
+    const user = await findUserById(session.sub);
+    if (!user || user.email !== session.email || user.role !== session.role) return res.status(401).json({ error: "session_expired" });
+    res.setHeader("Cache-Control", "no-store");
+    return res.json({ user: { id: user.id, email: user.email, name: user.display_name, role: user.role } });
+  });
   app.get("/api/health", async (_req, res) => {
     try {
       const { countPlaces: countPlaces2 } = await Promise.resolve().then(() => (init_db(), db_exports));
@@ -2500,9 +3209,11 @@ async function createApp() {
       });
     }
   };
-  app.post("/api/scrape/start", authenticatedConsumer, async (req, res) => {
+  app.post("/api/scrape/start", requireAuthenticatedConsumer, async (req, res) => {
     try {
-      const { segment, projectName, location, limit } = req.body;
+      const { segment, projectName, categoryName, location, limit } = req.body;
+      const consumer = req.mapscrapeConsumer;
+      if (!consumer) return res.status(401).json({ error: "unauthorized" });
       if (!segment || typeof segment !== "string" || !segment.trim()) {
         return res.status(400).json({ error: "O campo segmento \xE9 obrigat\xF3rio." });
       }
@@ -2510,12 +3221,18 @@ async function createApp() {
         return res.status(400).json({ error: "O campo localiza\xE7\xE3o \xE9 obrigat\xF3rio." });
       }
       const limitNum = Math.max(1, Math.min(100, Number(limit) || 20));
+      const finalProjectName = typeof projectName === "string" && projectName.trim() ? projectName.trim().slice(0, 120) : `${segment.trim()} \xB7 ${location.trim()}`;
+      const finalCategoryName = typeof categoryName === "string" && categoryName.trim() ? categoryName.trim().slice(0, 120) : segment.trim();
+      const project = await resolveProject(consumer.consumer_project, finalProjectName);
+      const category = await resolveSearchCategory(consumer.consumer_project, finalCategoryName);
       const jobId = `job_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
       const newJob = {
         id: jobId,
-        user_id: req.user?.id || req.mapscrapeConsumer?.id || "operator-static-key",
+        user_id: consumer.consumer_project,
         segment: segment.trim(),
-        project_name: typeof projectName === "string" && projectName.trim() ? projectName.trim().slice(0, 120) : `${segment.trim()} \xB7 ${location.trim()}`,
+        project_name: project.name,
+        project_id: project.id,
+        category_id: category.id,
         location: location.trim(),
         limit_requested: limitNum,
         status: "running",
@@ -2549,8 +3266,11 @@ async function createApp() {
       return res.status(500).json({ error: err.message || "Erro ao iniciar coleta." });
     }
   });
-  app.post("/api/scrape/stop/:id", async (req, res) => {
+  app.post("/api/scrape/stop/:id", requireAuthenticatedConsumer, async (req, res) => {
     const { id } = req.params;
+    const consumer = req.mapscrapeConsumer;
+    const ownedJob = await getJob(id, consumer.consumer_project);
+    if (!ownedJob) return res.status(404).json({ error: "Pesquisa n\xE3o encontrada." });
     const stopped = stopScrapeJob(id);
     await safeWriteAuditLog({ level: stopped ? "warn" : "info", category: "scraper", event: stopped ? "job.stop_requested" : "job.stop_not_active", message: stopped ? "Interrup\xE7\xE3o solicitada pelo usu\xE1rio." : "Solicita\xE7\xE3o de interrup\xE7\xE3o para tarefa n\xE3o ativa.", jobId: id });
     return res.json({
@@ -2559,9 +3279,10 @@ async function createApp() {
       message: stopped ? "Solicita\xE7\xE3o de interrup\xE7\xE3o enviada." : "A tarefa n\xE3o est\xE1 em execu\xE7\xE3o ativa."
     });
   });
-  app.get("/api/scrape/status/:id", async (req, res) => {
+  app.get("/api/scrape/status/:id", requireAuthenticatedConsumer, async (req, res) => {
     const { id } = req.params;
-    const job = await getJob(id);
+    const consumer = req.mapscrapeConsumer;
+    const job = await getJob(id, consumer.consumer_project);
     if (!job) {
       return res.status(404).json({ error: "Pesquisa n\xE3o encontrada." });
     }
@@ -2570,18 +3291,18 @@ async function createApp() {
       isRunning: isJobRunning(id)
     });
   });
-  app.get("/api/scrape/stream/:id", async (req, res) => {
+  app.get("/api/scrape/stream/:id", requireAuthenticatedConsumer, async (req, res) => {
     const { id } = req.params;
+    const consumer = req.mapscrapeConsumer;
+    const job = await getJob(id, consumer.consumer_project);
+    if (!job) return res.status(404).json({ error: "Pesquisa n\xE3o encontrada." });
     res.setHeader("Content-Type", "text/event-stream");
     res.setHeader("Cache-Control", "no-cache");
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
-    const job = await getJob(id);
-    if (job) {
-      res.write(`data: ${JSON.stringify(job)}
+    res.write(`data: ${JSON.stringify(job)}
 
 `);
-    }
     if (!sseClients.has(id)) {
       sseClients.set(id, []);
     }
@@ -2593,7 +3314,7 @@ async function createApp() {
       if (clients.length === 0) sseClients.delete(id);
     });
   });
-  app.get("/api/places", authenticatedConsumer, async (req, res) => {
+  app.get("/api/places", requireAuthenticatedConsumer, async (req, res) => {
     try {
       const { jobId, query, category, sortBy, sortOrder, offset, limit } = req.query;
       const consumer = req.mapscrapeConsumer;
@@ -2601,6 +3322,7 @@ async function createApp() {
         jobId: jobId ? String(jobId) : void 0,
         query: query ? String(query) : void 0,
         category: category ? String(category) : void 0,
+        consumerProject: consumer.consumer_project,
         sortBy: sortBy ? String(sortBy) : void 0,
         sortOrder: sortOrder === "asc" ? "asc" : "desc",
         offset: offset ? Number(offset) : 0,
@@ -2611,50 +3333,135 @@ async function createApp() {
       return res.status(500).json({ error: err.message || "Erro ao consultar locais." });
     }
   });
-  app.get("/api/categories", authenticatedConsumer, async (_req, res) => {
+  app.get("/api/categories", requireAuthenticatedConsumer, async (req, res) => {
     try {
-      return res.json({ categories: await listPlaceCategories() });
+      return res.json({ categories: await listPlaceCategories(req.mapscrapeConsumer.consumer_project) });
     } catch (err) {
       return res.status(500).json({ error: err.message || "Erro ao consultar categorias." });
     }
   });
-  app.get("/api/places/all", authenticatedConsumer, async (req, res) => {
+  app.get("/api/projects", requireAuthenticatedConsumer, async (req, res) => {
+    try {
+      const consumer = req.mapscrapeConsumer;
+      return res.json({ projects: await listProjects(consumer.consumer_project) });
+    } catch (err) {
+      return res.status(500).json({ error: err.message || "Erro ao consultar projetos." });
+    }
+  });
+  app.post("/api/projects", requireAuthenticatedConsumer, async (req, res) => {
+    try {
+      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+      if (!name) return res.status(422).json({ error: "project_name_required" });
+      const consumer = req.mapscrapeConsumer;
+      const project = await resolveProject(consumer.consumer_project, name);
+      return res.status(201).json({ project });
+    } catch (err) {
+      return res.status(500).json({ error: err.message || "Erro ao criar projeto." });
+    }
+  });
+  app.patch("/api/projects/:id", requireAuthenticatedConsumer, async (req, res) => {
+    try {
+      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+      if (!name) return res.status(422).json({ error: "project_name_required", message: "O nome do projeto \xE9 obrigat\xF3rio." });
+      const consumer = req.mapscrapeConsumer;
+      const updated = await updateProject(consumer.consumer_project, String(req.params.id), name);
+      if (!updated) return res.status(404).json({ error: "project_not_found", message: "Projeto n\xE3o encontrado." });
+      return res.json({ project: updated });
+    } catch (err) {
+      if (err.message === "project_name_conflict") return res.status(409).json({ error: "project_name_conflict", message: "J\xE1 existe um projeto com este nome." });
+      return res.status(500).json({ error: err.message || "Erro ao atualizar projeto." });
+    }
+  });
+  app.delete("/api/projects/:id", requireAuthenticatedConsumer, async (req, res) => {
+    try {
+      const consumer = req.mapscrapeConsumer;
+      const deleted = await deleteProject(consumer.consumer_project, String(req.params.id));
+      if (!deleted) return res.status(404).json({ error: "project_not_found", message: "Projeto n\xE3o encontrado." });
+      return res.json({ success: true, message: "Projeto exclu\xEDdo com sucesso." });
+    } catch (err) {
+      return res.status(500).json({ error: err.message || "Erro ao excluir projeto." });
+    }
+  });
+  app.get("/api/search-categories", requireAuthenticatedConsumer, async (req, res) => {
+    try {
+      const consumer = req.mapscrapeConsumer;
+      return res.json({ categories: await listSearchCategories(consumer.consumer_project) });
+    } catch (err) {
+      return res.status(500).json({ error: err.message || "Erro ao consultar categorias de pesquisa." });
+    }
+  });
+  app.post("/api/search-categories", requireAuthenticatedConsumer, async (req, res) => {
+    try {
+      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+      if (!name) return res.status(422).json({ error: "category_name_required" });
+      const consumer = req.mapscrapeConsumer;
+      const category = await resolveSearchCategory(consumer.consumer_project, name);
+      return res.status(201).json({ category });
+    } catch (err) {
+      return res.status(500).json({ error: err.message || "Erro ao criar categoria." });
+    }
+  });
+  app.patch("/api/search-categories/:id", requireAuthenticatedConsumer, async (req, res) => {
+    try {
+      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+      if (!name) return res.status(422).json({ error: "category_name_required", message: "O nome da categoria \xE9 obrigat\xF3rio." });
+      const consumer = req.mapscrapeConsumer;
+      const updated = await updateSearchCategory(consumer.consumer_project, String(req.params.id), name);
+      if (!updated) return res.status(404).json({ error: "category_not_found", message: "Categoria n\xE3o encontrada." });
+      return res.json({ category: updated });
+    } catch (err) {
+      if (err.message === "category_name_conflict") return res.status(409).json({ error: "category_name_conflict", message: "J\xE1 existe uma categoria com este nome." });
+      return res.status(500).json({ error: err.message || "Erro ao atualizar categoria." });
+    }
+  });
+  app.delete("/api/search-categories/:id", requireAuthenticatedConsumer, async (req, res) => {
+    try {
+      const consumer = req.mapscrapeConsumer;
+      const deleted = await deleteSearchCategory(consumer.consumer_project, String(req.params.id));
+      if (!deleted) return res.status(404).json({ error: "category_not_found", message: "Categoria n\xE3o encontrada." });
+      return res.json({ success: true, message: "Categoria exclu\xEDda com sucesso." });
+    } catch (err) {
+      return res.status(500).json({ error: err.message || "Erro ao excluir categoria." });
+    }
+  });
+  app.get("/api/places/all", requireAuthenticatedConsumer, async (req, res) => {
     try {
       const { jobId } = req.query;
       const consumer = req.mapscrapeConsumer;
-      const records = await getAllPlaces(jobId ? String(jobId) : void 0);
+      const records = await getAllPlaces(jobId ? String(jobId) : void 0, req.mapscrapeConsumer.consumer_project);
       return res.json(records);
     } catch (err) {
       return res.status(500).json({ error: err.message || "Erro ao consultar todos os locais." });
     }
   });
-  app.get("/api/history", authenticatedConsumer, async (_req, res) => {
+  app.get("/api/history", requireAuthenticatedConsumer, async (req, res) => {
     try {
-      const history = await listJobs();
+      const history = await listJobs(req.mapscrapeConsumer.consumer_project);
       return res.json(history);
     } catch (err) {
       return res.status(500).json({ error: err.message || "Erro ao consultar hist\xF3rico." });
     }
   });
-  app.delete("/api/history/:id", authenticatedConsumer, async (req, res) => {
+  app.delete("/api/history/:id", requireAuthenticatedConsumer, async (req, res) => {
     try {
       const { id } = req.params;
-      await deleteJob(id);
+      const deleted = await deleteJob(id, req.mapscrapeConsumer.consumer_project);
+      if (!deleted) return res.status(404).json({ error: "Pesquisa n\xE3o encontrada." });
       return res.json({ success: true, message: "Pesquisa removida com sucesso." });
     } catch (err) {
       return res.status(500).json({ error: err.message || "Erro ao remover hist\xF3rico." });
     }
   });
-  app.post("/api/export/csv", authenticatedConsumer, async (req, res) => {
+  app.post("/api/export/csv", requireAuthenticatedConsumer, async (req, res) => {
     try {
       const { jobId, placeIds, fields, filename } = req.body;
       let records = [];
       if (placeIds && Array.isArray(placeIds) && placeIds.length > 0) {
-        records = await getPlacesByIds(placeIds);
+        records = await getPlacesByIds(placeIds, req.mapscrapeConsumer.consumer_project);
       } else if (jobId) {
-        records = await getAllPlaces(jobId);
+        records = await getAllPlaces(jobId, req.mapscrapeConsumer.consumer_project);
       } else {
-        records = await getAllPlaces();
+        records = await getAllPlaces(void 0, req.mapscrapeConsumer.consumer_project);
       }
       const csvContent = generateCsv(records, fields);
       const safeFilename = filename ? String(filename).replace(/[^a-zA-Z0-9_-]/g, "_") : `mapscrape_export_${Date.now()}`;
@@ -2666,9 +3473,12 @@ async function createApp() {
       return res.status(500).json({ error: err.message || "Erro ao exportar CSV." });
     }
   });
-  app.get("/api/reports/:jobId", authenticatedConsumer, async (req, res) => {
+  app.get("/api/reports/:jobId", requireAuthenticatedConsumer, async (req, res) => {
     try {
-      const report = await readRunReport(String(req.params.jobId || ""));
+      const jobId = String(req.params.jobId || "");
+      const ownedJob = await getJob(jobId, req.mapscrapeConsumer.consumer_project);
+      if (!ownedJob) return res.status(404).json({ error: "Pesquisa n\xE3o encontrada." });
+      const report = await readRunReport(jobId);
       if (!report) return res.status(404).json({ error: "Relat\xF3rio ainda n\xE3o existe para esta pesquisa." });
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="mapscrape-report-${String(req.params.jobId).replace(/[^a-zA-Z0-9_-]/g, "_")}.json"`);
@@ -2677,9 +3487,11 @@ async function createApp() {
       return res.status(500).json({ error: err.message || "Erro ao carregar relat\xF3rio." });
     }
   });
-  app.get("/api/reports/:jobId/pdf", authenticatedConsumer, async (req, res) => {
+  app.get("/api/reports/:jobId/pdf", requireAuthenticatedConsumer, async (req, res) => {
     try {
       const jobId = String(req.params.jobId || "");
+      const ownedJob = await getJob(jobId, req.mapscrapeConsumer.consumer_project);
+      if (!ownedJob) return res.status(404).json({ error: "Pesquisa n\xE3o encontrada." });
       const pdf = await readRunReportPdf(jobId);
       if (!pdf) return res.status(404).json({ error: "PDF ainda n\xE3o existe para esta pesquisa. Confira se a execu\xE7\xE3o j\xE1 terminou e se a gera\xE7\xE3o do PDF foi bem-sucedida." });
       res.setHeader("Content-Type", "application/pdf");
@@ -2689,11 +3501,11 @@ async function createApp() {
       return res.status(500).json({ error: err.message || "Erro ao carregar PDF." });
     }
   });
-  app.get("/api/field-coverage", authenticatedConsumer, async (req, res) => {
+  app.get("/api/field-coverage", requireAuthenticatedConsumer, async (req, res) => {
     try {
       const jobId = req.query.jobId ? String(req.query.jobId) : void 0;
       const consumer = req.mapscrapeConsumer;
-      const records = await getAllPlaces(jobId);
+      const records = await getAllPlaces(jobId, req.mapscrapeConsumer.consumer_project);
       const fields = [
         { key: "name", label: "Nome" },
         { key: "category", label: "Categoria" },
@@ -2713,6 +3525,28 @@ async function createApp() {
         { key: "photos", label: "Fotos (URLs)" },
         { key: "videos", label: "V\xEDdeos (URLs)" },
         { key: "logo_url", label: "Logo / Foto de perfil" },
+        { key: "booking_url", label: "URL de agendamento" },
+        { key: "social_links", label: "Redes sociais" },
+        { key: "reviews", label: "Avalia\xE7\xF5es individuais" },
+        { key: "review_topics", label: "T\xF3picos das avalia\xE7\xF5es" },
+        { key: "review_highlights", label: "Destaques das avalia\xE7\xF5es" },
+        { key: "rating_distribution", label: "Distribui\xE7\xE3o por estrelas" },
+        { key: "popular_times", label: "Hor\xE1rios de movimento" },
+        { key: "attributes", label: "Atributos do estabelecimento" },
+        { key: "accessibility_attributes", label: "Acessibilidade" },
+        { key: "additional_attributes", label: "Atributos adicionais" },
+        { key: "media_items", label: "Galeria de m\xEDdia estruturada" },
+        { key: "visible_photos_count", label: "Total de fotos informado" },
+        { key: "next_opening_text", label: "Texto de pr\xF3xima abertura" },
+        { key: "next_open_day", label: "Dia de pr\xF3xima abertura" },
+        { key: "next_open_time", label: "Hor\xE1rio de pr\xF3xima abertura" },
+        { key: "postal_code", label: "CEP / c\xF3digo postal" },
+        { key: "country", label: "Pa\xEDs" },
+        { key: "city", label: "Cidade" },
+        { key: "state", label: "Estado / regi\xE3o" },
+        { key: "source_place_id", label: "ID da ficha na fonte" },
+        { key: "source_url", label: "URL original da fonte" },
+        { key: "field_status", label: "Status de captura por campo" },
         { key: "collected_at", label: "Data da coleta" }
       ];
       const coverage = fields.map((field) => {
@@ -2736,7 +3570,7 @@ async function createApp() {
       return res.status(500).json({ error: err.message || "Erro ao calcular cobertura dos campos." });
     }
   });
-  app.get("/api/logs", authenticatedConsumer, async (req, res) => {
+  app.get("/api/logs", requireAuthenticatedConsumer, async (req, res) => {
     try {
       const result = await listAuditLogs({
         limit: req.query.limit ? Number(req.query.limit) : 100,
@@ -2744,7 +3578,8 @@ async function createApp() {
         level: req.query.level ? String(req.query.level) : void 0,
         category: req.query.category ? String(req.query.category) : void 0,
         jobId: req.query.jobId ? String(req.query.jobId) : void 0,
-        query: req.query.query ? String(req.query.query) : void 0
+        query: req.query.query ? String(req.query.query) : void 0,
+        consumerProject: req.mapscrapeConsumer.consumer_project
       });
       return res.json(result);
     } catch (err) {
@@ -2753,7 +3588,7 @@ async function createApp() {
       return res.status(500).json({ error: err.message || "Erro ao consultar logs." });
     }
   });
-  app.get("/api/logs/export", authenticatedConsumer, async (req, res) => {
+  app.get("/api/logs/export", requireAuthenticatedConsumer, async (req, res) => {
     try {
       const result = await listAuditLogs({
         limit: 500,
@@ -2761,7 +3596,8 @@ async function createApp() {
         level: req.query.level ? String(req.query.level) : void 0,
         category: req.query.category ? String(req.query.category) : void 0,
         jobId: req.query.jobId ? String(req.query.jobId) : void 0,
-        query: req.query.query ? String(req.query.query) : void 0
+        query: req.query.query ? String(req.query.query) : void 0,
+        consumerProject: req.mapscrapeConsumer.consumer_project
       });
       const body = result.logs.map((log) => JSON.stringify({
         ...log,
@@ -2872,6 +3708,82 @@ async function createApp() {
       return res.status(503).json({ error: "authentication_unavailable" });
     }
   });
+  app.get("/api/v1/projects", async (req, res) => {
+    try {
+      return res.json({ data: await listProjects(req.mapscrapeConsumer.consumer_project) });
+    } catch (error) {
+      return res.status(500).json({ error: "project_list_failed", message: error instanceof Error ? error.message : "Falha ao listar projetos." });
+    }
+  });
+  app.post("/api/v1/projects", async (req, res) => {
+    try {
+      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+      if (!name) return res.status(422).json({ error: "project_name_required" });
+      const project = await resolveProject(req.mapscrapeConsumer.consumer_project, name);
+      return res.status(201).json({ data: project });
+    } catch (error) {
+      return res.status(500).json({ error: "project_create_failed", message: error instanceof Error ? error.message : "Falha ao criar projeto." });
+    }
+  });
+  app.patch("/api/v1/projects/:id", async (req, res) => {
+    try {
+      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+      if (!name) return res.status(422).json({ error: "project_name_required", message: "O nome do projeto \xE9 obrigat\xF3rio." });
+      const updated = await updateProject(req.mapscrapeConsumer.consumer_project, String(req.params.id), name);
+      if (!updated) return res.status(404).json({ error: "project_not_found", message: "Projeto n\xE3o encontrado." });
+      return res.json({ data: updated });
+    } catch (error) {
+      if (error.message === "project_name_conflict") return res.status(409).json({ error: "project_name_conflict", message: "J\xE1 existe um projeto com este nome." });
+      return res.status(500).json({ error: "project_update_failed" });
+    }
+  });
+  app.delete("/api/v1/projects/:id", async (req, res) => {
+    try {
+      const deleted = await deleteProject(req.mapscrapeConsumer.consumer_project, String(req.params.id));
+      if (!deleted) return res.status(404).json({ error: "project_not_found", message: "Projeto n\xE3o encontrado." });
+      return res.json({ data: { id: String(req.params.id), status: "deleted" } });
+    } catch {
+      return res.status(500).json({ error: "project_delete_failed" });
+    }
+  });
+  app.get("/api/v1/categories", async (req, res) => {
+    try {
+      return res.json({ data: await listSearchCategories(req.mapscrapeConsumer.consumer_project) });
+    } catch (error) {
+      return res.status(500).json({ error: "category_list_failed", message: error instanceof Error ? error.message : "Falha ao listar categorias." });
+    }
+  });
+  app.post("/api/v1/categories", async (req, res) => {
+    try {
+      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+      if (!name) return res.status(422).json({ error: "category_name_required" });
+      const category = await resolveSearchCategory(req.mapscrapeConsumer.consumer_project, name);
+      return res.status(201).json({ data: category });
+    } catch (error) {
+      return res.status(500).json({ error: "category_create_failed", message: error instanceof Error ? error.message : "Falha ao criar categoria." });
+    }
+  });
+  app.patch("/api/v1/categories/:id", async (req, res) => {
+    try {
+      const name = typeof req.body?.name === "string" ? req.body.name.trim() : "";
+      if (!name) return res.status(422).json({ error: "category_name_required", message: "O nome da categoria \xE9 obrigat\xF3rio." });
+      const updated = await updateSearchCategory(req.mapscrapeConsumer.consumer_project, String(req.params.id), name);
+      if (!updated) return res.status(404).json({ error: "category_not_found", message: "Categoria n\xE3o encontrada." });
+      return res.json({ data: updated });
+    } catch (error) {
+      if (error.message === "category_name_conflict") return res.status(409).json({ error: "category_name_conflict", message: "J\xE1 existe uma categoria com este nome." });
+      return res.status(500).json({ error: "category_update_failed" });
+    }
+  });
+  app.delete("/api/v1/categories/:id", async (req, res) => {
+    try {
+      const deleted = await deleteSearchCategory(req.mapscrapeConsumer.consumer_project, String(req.params.id));
+      if (!deleted) return res.status(404).json({ error: "category_not_found", message: "Categoria n\xE3o encontrada." });
+      return res.json({ data: { id: String(req.params.id), status: "deleted" } });
+    } catch {
+      return res.status(500).json({ error: "category_delete_failed" });
+    }
+  });
   app.get("/api/v1/leads", async (req, res) => {
     try {
       const limit = Number(req.query.limit ?? 50);
@@ -2909,11 +3821,19 @@ async function createApp() {
       if (!segment || !location) return res.status(422).json({ error: "invalid_request", message: "segment e location s\xE3o obrigat\xF3rios." });
       const limit = Number(req.body?.limit ?? 20);
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) return res.status(422).json({ error: "invalid_limit", message: "limit deve ser inteiro entre 1 e 100." });
+      const scope = req.mapscrapeConsumer.consumer_project;
+      const projectName = typeof req.body?.projectName === "string" && req.body.projectName.trim() ? req.body.projectName.trim() : `${segment} \xB7 ${location}`;
+      const categoryName = typeof req.body?.categoryName === "string" && req.body.categoryName.trim() ? req.body.categoryName.trim() : segment;
+      const project = await resolveProject(scope, projectName);
+      const category = await resolveSearchCategory(scope, categoryName);
       const jobId = `job_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
       const job = {
         id: jobId,
-        user_id: req.mapscrapeConsumer.consumer_project,
+        user_id: scope,
         segment,
+        project_name: project.name,
+        project_id: project.id,
+        category_id: category.id,
         location,
         limit_requested: limit,
         status: "running",

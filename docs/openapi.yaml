@@ -98,6 +98,49 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+  /api/v1/projects/{id}:
+    patch:
+      tags: [Projects]
+      summary: Atualizar nome do projeto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Projeto atualizado
+        '404':
+          description: Projeto não encontrado
+        '409':
+          description: Já existe projeto com este nome
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+    delete:
+      tags: [Projects]
+      summary: Excluir projeto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Projeto excluído
+        '404':
+          description: Projeto não encontrado
   /api/v1/categories:
     get:
       tags: [Categories]
@@ -154,6 +197,49 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+  /api/v1/categories/{id}:
+    patch:
+      tags: [Categories]
+      summary: Atualizar nome da categoria de pesquisa
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Categoria atualizada
+        '404':
+          description: Categoria não encontrada
+        '409':
+          description: Já existe categoria com este nome
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+    delete:
+      tags: [Categories]
+      summary: Excluir categoria de pesquisa
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Categoria excluída
+        '404':
+          description: Categoria não encontrada
   /api/v1/leads:
     get:
       tags: [Leads]

@@ -30,6 +30,8 @@ interface SearchScreenProps {
   onStartScrape: (projectName: string, categoryName: string, segment: string, location: string, limit: number) => Promise<void>;
   onStopScrape: () => Promise<void>;
   onGoToResults: () => void;
+  initialProjectName?: string;
+  initialCategoryName?: string;
 }
 
 export const SearchScreen: React.FC<SearchScreenProps> = ({
@@ -39,14 +41,27 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   onStartScrape,
   onStopScrape,
   onGoToResults,
+  initialProjectName,
+  initialCategoryName,
 }) => {
-  const [segment, setSegment] = useState('');
-  const [projectName, setProjectName] = useState('');
-  const [categoryName, setCategoryName] = useState('');
+  const [segment, setSegment] = useState(initialCategoryName || '');
+  const [projectName, setProjectName] = useState(initialProjectName || '');
+  const [categoryName, setCategoryName] = useState(initialCategoryName || '');
   const [projects, setProjects] = useState<Array<{id:string;name:string}>>([]);
   const [categories, setCategories] = useState<Array<{id:string;name:string}>>([]);
   const [catalogMessage, setCatalogMessage] = useState('');
   const [locationMode, setLocationMode] = useState<'brazil' | 'custom'>('brazil');
+
+  useEffect(() => {
+    if (initialProjectName) setProjectName(initialProjectName);
+  }, [initialProjectName]);
+
+  useEffect(() => {
+    if (initialCategoryName) {
+      setCategoryName(initialCategoryName);
+      if (!segment.trim()) setSegment(initialCategoryName);
+    }
+  }, [initialCategoryName]);
 
   // Brazil selector state
   const [selectedUf, setSelectedUf] = useState<string>('SP');

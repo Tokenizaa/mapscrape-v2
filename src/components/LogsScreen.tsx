@@ -35,12 +35,15 @@ export const LogsScreen: React.FC = () => {
     setLoading(true);
     setError('');
     try {
+      const token = window.sessionStorage.getItem('mapscrape_session_token');
       const params = new URLSearchParams({ limit: '100' });
       if (level) params.set('level', level);
       if (category) params.set('category', category);
       if (query.trim()) params.set('query', query.trim());
       if (jobId.trim()) params.set('jobId', jobId.trim());
-      const response = await fetch(`/api/logs?${params.toString()}`);
+      const response = await fetch(`/api/logs?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
       if (!response.ok) throw new Error('Não foi possível carregar os logs.');
       const data = await response.json();
       setLogs(data.logs ?? []);
@@ -54,13 +57,30 @@ export const LogsScreen: React.FC = () => {
 
   useEffect(() => { void loadLogs(); }, [loadLogs]);
 
-  const downloadLogs = () => {
-    const params = new URLSearchParams();
-    if (level) params.set('level', level);
-    if (category) params.set('category', category);
-    if (query.trim()) params.set('query', query.trim());
-    if (jobId.trim()) params.set('jobId', jobId.trim());
-    window.location.href = `/api/logs/export?${params.toString()}`;
+  const downloadLogs = async () => {
+    try {
+      const token = window.sessionStorage.getItem('mapscrape_session_token');
+      const params = new URLSearchParams();
+      if (level) params.set('level', level);
+      if (category) params.set('category', category);
+      if (query.trim()) params.set('query', query.trim());
+      if (jobId.trim()) params.set('jobId', jobId.trim());
+      const res = await fetch(`/api/logs/export?${params.toString()}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) throw new Error('Falha ao exportar logs.');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `mapscrape-audit-${new Date().toISOString().slice(0, 10)}.jsonl`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (err: any) {
+      setError(err?.message || 'Falha ao exportar logs.');
+    }
   };
 
   const formatDate = (value: string) => {

@@ -3,12 +3,10 @@ info:
   title: MapScrape REST API
   version: 1.0.0
   description: >-
-    API central de coleta e consulta de leads. Consumidores externos usam HTTP/HTTPS;
-    não devem clonar o scraper nem acessar o banco diretamente. A interface nativa do
-    MapScrape deve ser usada sem emitir ou colar uma chave de consumidor; essas chaves
-    são exclusivas para aplicações externas. A emissão administrativa exige autorização
-    administrativa real. Campos e respostas descrevem o contrato implementado atualmente,
-    não garantem que a fonte exponha todos os dados em cada coleta.
+    API central de coleta e consulta de leads. Consumidores usam HTTP/HTTPS;
+    não devem clonar o scraper nem acessar o banco diretamente. Campos e respostas
+    descrevem o contrato implementado atualmente, não garantem que a fonte exponha
+    todos os dados em cada coleta.
   contact:
     name: MapScrape API documentation
     url: https://mapscrape-v2.vercel.app/docs/
@@ -18,7 +16,6 @@ servers:
 security:
   - bearerAuth: []
 tags:
-  - name: Account
   - name: Health
   - name: Projects
   - name: Categories
@@ -26,63 +23,6 @@ tags:
   - name: Leads
   - name: Provisioning
 paths:
-  /api/auth/register:
-    post:
-      tags: [Account]
-      security: []
-      summary: Criar conta na plataforma
-      description: Cria uma conta de usuário; contas públicas nunca recebem papel administrativo. Senha mínima de 12 caracteres.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name, email, password]
-              properties:
-                name: { type: string, minLength: 2, maxLength: 100 }
-                email: { type: string, format: email, maxLength: 254 }
-                password: { type: string, minLength: 12, maxLength: 200 }
-      responses:
-        '201':
-          description: Conta criada e sessão iniciada
-        '409':
-          description: E-mail já cadastrado
-        '422':
-          description: Dados inválidos
-        '503':
-          description: Autenticação não configurada
-  /api/auth/login:
-    post:
-      tags: [Account]
-      security: []
-      summary: Entrar na plataforma
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [email, password]
-              properties:
-                email: { type: string, format: email }
-                password: { type: string }
-      responses:
-        '200':
-          description: Sessão JWT de 12 horas e perfil
-        '401':
-          description: Credenciais inválidas
-        '503':
-          description: Autenticação não configurada
-  /api/auth/me:
-    get:
-      tags: [Account]
-      summary: Validar sessão e consultar perfil
-      responses:
-        '200':
-          description: Perfil da conta autenticada
-        '401':
-          description: Sessão inválida ou expirada
   /api/v1/health:
     get:
       tags: [Health]
@@ -158,6 +98,49 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+  /api/v1/projects/{id}:
+    patch:
+      tags: [Projects]
+      summary: Atualizar nome do projeto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Projeto atualizado
+        '404':
+          description: Projeto não encontrado
+        '409':
+          description: Já existe projeto com este nome
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+    delete:
+      tags: [Projects]
+      summary: Excluir projeto
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Projeto excluído
+        '404':
+          description: Projeto não encontrado
   /api/v1/categories:
     get:
       tags: [Categories]
@@ -214,6 +197,49 @@ paths:
           $ref: '#/components/responses/InvalidRequest'
         '500':
           $ref: '#/components/responses/ServerError'
+  /api/v1/categories/{id}:
+    patch:
+      tags: [Categories]
+      summary: Atualizar nome da categoria de pesquisa
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+      responses:
+        '200':
+          description: Categoria atualizada
+        '404':
+          description: Categoria não encontrada
+        '409':
+          description: Já existe categoria com este nome
+        '422':
+          $ref: '#/components/responses/InvalidRequest'
+    delete:
+      tags: [Categories]
+      summary: Excluir categoria de pesquisa
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Categoria excluída
+        '404':
+          description: Categoria não encontrada
   /api/v1/leads:
     get:
       tags: [Leads]
@@ -416,7 +442,7 @@ paths:
       security:
         - provisioningToken: []
       summary: Emitir credencial individual de consumidor
-      description: Somente infraestrutura autorizada. A interface administrativa deve autenticar o operador antes de chamar este endpoint; não basta ocultar o token no cliente nem criar um proxy público que injete o segredo. apiKey é retornada uma única vez; não exponha a resposta em logs.
+      description: Somente infraestrutura autorizada. apiKey é retornada uma única vez; não exponha a resposta em logs.
       requestBody:
         required: true
         content:

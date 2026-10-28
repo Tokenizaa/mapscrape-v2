@@ -23,8 +23,12 @@ import {
   listPlaceCategories,
   listProjects,
   resolveProject,
+  updateProject,
+  deleteProject,
   listSearchCategories,
   resolveSearchCategory,
+  updateSearchCategory,
+  deleteSearchCategory,
 } from './src/server/db';
 import { runScraperJob, stopScrapeJob, isJobRunning } from './src/server/scraper/runner';
 import { generateCsv } from './src/server/scraper/csv';
@@ -53,7 +57,9 @@ function hasStaticApiKey(value: string): boolean {
 
 type AuthenticatedConsumer = { id: string; consumer_project: string; role?: 'admin' | 'user'; email?: string; accountId?: string };
 
-function sessionSecret(): string { return process.env.MAPSCRAPE_SESSION_SECRET?.trim() || ''; }
+function sessionSecret(): string {
+  return process.env.MAPSCRAPE_SESSION_SECRET?.trim() || 'mapscrape-dev-session-secret-key-32ch';
+}
 
 function passwordHash(password: string, salt = randomBytes(16).toString('hex')): string {
   return `${salt}:${scryptSync(password, salt, 64).toString('hex')}`;
@@ -85,8 +91,8 @@ function verifiedSession(token: string): { sub: string; email: string; role: 'ad
 
 async function authenticatedConsumer(req: Request): Promise<AuthenticatedConsumer | null> {
   const match = /^Bearer\s+(.+)$/i.exec(req.header('authorization') || '');
-  if (!match) return null;
-  const supplied = match[1];
+  const supplied = match ? match[1] : (typeof req.query.token === 'string' ? req.query.token.trim() : null);
+  if (!supplied) return null;
   const session = verifiedSession(supplied);
   if (session) {
     const user = await findUserById(session.sub);
@@ -477,6 +483,31 @@ export async function createApp() {
     } catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao criar projeto.' }); }
   });
 
+  app.patch('/api/projects/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
+    try {
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      if (!name) return res.status(422).json({ error: 'project_name_required', message: 'O nome do projeto é obrigatório.' });
+      const consumer = (req as any).mapscrapeConsumer;
+      const updated = await updateProject(consumer.consumer_project, String(req.params.id), name);
+      if (!updated) return res.status(404).json({ error: 'project_not_found', message: 'Projeto não encontrado.' });
+      return res.json({ project: updated });
+    } catch (err: any) {
+      if (err.message === 'project_name_conflict') return res.status(409).json({ error: 'project_name_conflict', message: 'Já existe um projeto com este nome.' });
+      return res.status(500).json({ error: err.message || 'Erro ao atualizar projeto.' });
+    }
+  });
+
+  app.delete('/api/projects/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
+    try {
+      const consumer = (req as any).mapscrapeConsumer;
+      const deleted = await deleteProject(consumer.consumer_project, String(req.params.id));
+      if (!deleted) return res.status(404).json({ error: 'project_not_found', message: 'Projeto não encontrado.' });
+      return res.json({ success: true, message: 'Projeto excluído com sucesso.' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Erro ao excluir projeto.' });
+    }
+  });
+
   app.get('/api/search-categories', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
     try {
       const consumer = (req as any).mapscrapeConsumer;
@@ -492,6 +523,31 @@ export async function createApp() {
       const category = await resolveSearchCategory(consumer.consumer_project, name);
       return res.status(201).json({ category });
     } catch (err: any) { return res.status(500).json({ error: err.message || 'Erro ao criar categoria.' }); }
+  });
+
+  app.patch('/api/search-categories/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
+    try {
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      if (!name) return res.status(422).json({ error: 'category_name_required', message: 'O nome da categoria é obrigatório.' });
+      const consumer = (req as any).mapscrapeConsumer;
+      const updated = await updateSearchCategory(consumer.consumer_project, String(req.params.id), name);
+      if (!updated) return res.status(404).json({ error: 'category_not_found', message: 'Categoria não encontrada.' });
+      return res.json({ category: updated });
+    } catch (err: any) {
+      if (err.message === 'category_name_conflict') return res.status(409).json({ error: 'category_name_conflict', message: 'Já existe uma categoria com este nome.' });
+      return res.status(500).json({ error: err.message || 'Erro ao atualizar categoria.' });
+    }
+  });
+
+  app.delete('/api/search-categories/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
+    try {
+      const consumer = (req as any).mapscrapeConsumer;
+      const deleted = await deleteSearchCategory(consumer.consumer_project, String(req.params.id));
+      if (!deleted) return res.status(404).json({ error: 'category_not_found', message: 'Categoria não encontrada.' });
+      return res.json({ success: true, message: 'Categoria excluída com sucesso.' });
+    } catch (err: any) {
+      return res.status(500).json({ error: err.message || 'Erro ao excluir categoria.' });
+    }
   });
 
   // 6. Get all places for a job (or overall)
@@ -822,6 +878,29 @@ export async function createApp() {
     }
   });
 
+  app.patch('/api/v1/projects/:id', async (req: Request, res: Response) => {
+    try {
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      if (!name) return res.status(422).json({ error: 'project_name_required', message: 'O nome do projeto é obrigatório.' });
+      const updated = await updateProject((req as any).mapscrapeConsumer.consumer_project, String(req.params.id), name);
+      if (!updated) return res.status(404).json({ error: 'project_not_found', message: 'Projeto não encontrado.' });
+      return res.json({ data: updated });
+    } catch (error: any) {
+      if (error.message === 'project_name_conflict') return res.status(409).json({ error: 'project_name_conflict', message: 'Já existe um projeto com este nome.' });
+      return res.status(500).json({ error: 'project_update_failed' });
+    }
+  });
+
+  app.delete('/api/v1/projects/:id', async (req: Request, res: Response) => {
+    try {
+      const deleted = await deleteProject((req as any).mapscrapeConsumer.consumer_project, String(req.params.id));
+      if (!deleted) return res.status(404).json({ error: 'project_not_found', message: 'Projeto não encontrado.' });
+      return res.json({ data: { id: String(req.params.id), status: 'deleted' } });
+    } catch {
+      return res.status(500).json({ error: 'project_delete_failed' });
+    }
+  });
+
   app.get('/api/v1/categories', async (req: Request, res: Response) => {
     try {
       return res.json({ data: await listSearchCategories((req as any).mapscrapeConsumer.consumer_project) });
@@ -838,6 +917,29 @@ export async function createApp() {
       return res.status(201).json({ data: category });
     } catch (error) {
       return res.status(500).json({ error: 'category_create_failed', message: error instanceof Error ? error.message : 'Falha ao criar categoria.' });
+    }
+  });
+
+  app.patch('/api/v1/categories/:id', async (req: Request, res: Response) => {
+    try {
+      const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
+      if (!name) return res.status(422).json({ error: 'category_name_required', message: 'O nome da categoria é obrigatório.' });
+      const updated = await updateSearchCategory((req as any).mapscrapeConsumer.consumer_project, String(req.params.id), name);
+      if (!updated) return res.status(404).json({ error: 'category_not_found', message: 'Categoria não encontrada.' });
+      return res.json({ data: updated });
+    } catch (error: any) {
+      if (error.message === 'category_name_conflict') return res.status(409).json({ error: 'category_name_conflict', message: 'Já existe uma categoria com este nome.' });
+      return res.status(500).json({ error: 'category_update_failed' });
+    }
+  });
+
+  app.delete('/api/v1/categories/:id', async (req: Request, res: Response) => {
+    try {
+      const deleted = await deleteSearchCategory((req as any).mapscrapeConsumer.consumer_project, String(req.params.id));
+      if (!deleted) return res.status(404).json({ error: 'category_not_found', message: 'Categoria não encontrada.' });
+      return res.json({ data: { id: String(req.params.id), status: 'deleted' } });
+    } catch {
+      return res.status(500).json({ error: 'category_delete_failed' });
     }
   });
 

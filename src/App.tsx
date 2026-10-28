@@ -107,6 +107,8 @@ export default function App() {
   // Active or most recent job
   const [currentJob, setCurrentJob] = useState<ScrapeJob | null>(null);
   const [isScraping, setIsScraping] = useState<boolean>(false);
+  const [preselectedProject, setPreselectedProject] = useState<string>('');
+  const [preselectedCategory, setPreselectedCategory] = useState<string>('');
 
   // History list
   const [jobs, setJobs] = useState<ScrapeJob[]>([]);
@@ -427,7 +429,22 @@ export default function App() {
           )}
           {currentTab === 'dashboard' && <DashboardScreen totalPlaces={totalPlaces} jobs={jobs} currentJob={currentJob} isScraping={isScraping} onNavigate={setCurrentTab} />}
 
-          {currentTab === 'projects' && <ProjectsScreen jobs={jobs} apiReady={hasApiKey} onNewScrape={() => setCurrentTab('search')} onOpenJob={(jobId) => { setSelectedJobId(jobId); setCurrentPage(1); setCurrentTab('results'); }} />}
+          {currentTab === 'projects' && (
+            <ProjectsScreen
+              jobs={jobs}
+              apiReady={hasApiKey}
+              onNewScrape={(projectName, categoryName) => {
+                if (projectName !== undefined) setPreselectedProject(projectName);
+                if (categoryName !== undefined) setPreselectedCategory(categoryName);
+                setCurrentTab('search');
+              }}
+              onOpenJob={(jobId) => {
+                setSelectedJobId(jobId);
+                setCurrentPage(1);
+                setCurrentTab('results');
+              }}
+            />
+          )}
 
           {currentTab === 'credentials' && <CredentialsScreen />}
 
@@ -439,6 +456,8 @@ export default function App() {
               onStartScrape={handleStartScrape}
               onStopScrape={handleStopScrape}
               onGoToResults={() => setCurrentTab('results')}
+              initialProjectName={preselectedProject}
+              initialCategoryName={preselectedCategory}
             />
           )}
 

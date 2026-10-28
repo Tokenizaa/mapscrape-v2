@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import { PlaceRecord, ScrapeJob } from '../shared/types';
 
 let dbClient: Client | null = null;
+let initPromise: Promise<void> | null = null;
 
 export function getDb(): Client {
   if (!dbClient) {
@@ -26,9 +27,17 @@ export function getDb(): Client {
   return dbClient;
 }
 
-export async function initDb(): Promise<void> {
-  const db = getDb();
-  await db.execute(`
+export function initDb(): Promise<void> {
+  if (!initPromise) {
+    initPromise = (async () => {
+      const db = getDb();
+      if (!process.env.TURSO_DATABASE_URL) {
+        try {
+          await db.execute('PRAGMA busy_timeout = 10000;');
+          await db.execute('PRAGMA synchronous = NORMAL;');
+        } catch {}
+      }
+      await db.execute(`
     CREATE TABLE IF NOT EXISTS searches (
       id TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -237,7 +246,9 @@ export async function initDb(): Promise<void> {
       });
     }
   }
-
+    })();
+  }
+  return initPromise;
 }
 
 export interface UserAccount {
@@ -736,4 +747,101 @@ export async function resolveSearchCategory(consumerProject: string, name: strin
     args: [consumerProject, normalized],
   });
   return resolved.rows[0] as unknown as SearchCategoryRecord;
+}
+
+export async function updateProject(consumerProject: string, id: string, name: string): Promise<ProjectRecord | null> {
+  const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
+  const normalized = normalizeCatalogName(canonicalName);
+  if (!normalized) throw new Error('project_name_required');
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM projects WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject],
+  });
+  if (!existing.rows.length) return null;
+
+  const conflict = await db.execute({
+    sql: `SELECT * FROM projects WHERE consumer_project = ? AND normalized_name = ? AND id != ? LIMIT 1`,
+    args: [consumerProject, normalized, id],
+  });
+  if (conflict.rows.length) throw new Error('project_name_conflict');
+
+  const now = new Date().toISOString();
+  await db.execute({
+    sql: `UPDATE projects SET name = ?, normalized_name = ?, updated_at = ? WHERE id = ? AND consumer_project = ?`,
+    args: [canonicalName, normalized, now, id, consumerProject],
+  });
+  const updated = await db.execute({
+    sql: `SELECT * FROM projects WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject],
+  });
+  return updated.rows[0] as unknown as ProjectRecord;
+}
+
+export async function deleteProject(consumerProject: string, id: string): Promise<boolean> {
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM projects WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject],
+  });
+  if (!existing.rows.length) return false;
+
+  await db.execute({
+    sql: `UPDATE searches SET project_id = NULL WHERE project_id = ? AND user_id = ?`,
+    args: [id, consumerProject],
+  });
+
+  const res = await db.execute({
+    sql: `DELETE FROM projects WHERE id = ? AND consumer_project = ?`,
+    args: [id, consumerProject],
+  });
+  return (res.rowsAffected ?? 0) > 0;
+}
+
+export async function updateSearchCategory(consumerProject: string, id: string, name: string): Promise<SearchCategoryRecord | null> {
+  const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
+  const normalized = normalizeCatalogName(canonicalName);
+  if (!normalized) throw new Error('category_name_required');
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject],
+  });
+  if (!existing.rows.length) return null;
+
+  const conflict = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE consumer_project = ? AND normalized_name = ? AND id != ? LIMIT 1`,
+    args: [consumerProject, normalized, id],
+  });
+  if (conflict.rows.length) throw new Error('category_name_conflict');
+
+  await db.execute({
+    sql: `UPDATE search_categories SET name = ?, normalized_name = ? WHERE id = ? AND consumer_project = ?`,
+    args: [canonicalName, normalized, id, consumerProject],
+  });
+  const updated = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject],
+  });
+  return updated.rows[0] as unknown as SearchCategoryRecord;
+}
+
+export async function deleteSearchCategory(consumerProject: string, id: string): Promise<boolean> {
+  const db = getDb();
+  const existing = await db.execute({
+    sql: `SELECT * FROM search_categories WHERE id = ? AND consumer_project = ? LIMIT 1`,
+    args: [id, consumerProject],
+  });
+  if (!existing.rows.length) return false;
+
+  await db.execute({
+    sql: `UPDATE searches SET category_id = NULL WHERE category_id = ? AND user_id = ?`,
+    args: [id, consumerProject],
+  });
+
+  const res = await db.execute({
+    sql: `DELETE FROM search_categories WHERE id = ? AND consumer_project = ?`,
+    args: [id, consumerProject],
+  });
+  return (res.rowsAffected ?? 0) > 0;
 }
