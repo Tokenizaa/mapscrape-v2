@@ -1,509 +1,507 @@
-import { createClient, Client } from '@libsql/client';
-import path from 'path';
-import fs from 'fs';
-import { gzipSync, gunzipSync } from 'node:zlib';
-import { randomUUID } from 'node:crypto';
-import { PlaceRecord, ScrapeJob } from '../shared/types';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-let dbClient: Client | null = null;
-let initPromise: Promise<void> | null = null;
+let supabase: SupabaseClient | null = null;
 
-export function getDb(): Client {
-  if (!dbClient) {
-    // Check for Supabase Direct Connection first (preferred for production)
-    const supabaseUrl = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
-    const supabaseKey = process.env.SUPABASE_ACCESS_TOKEN?.trim();
-
-    if (supabaseUrl && supabaseKey) {
-      dbClient = createClient({ url: supabaseUrl, authToken: supabaseKey });
-    } else {
-      const remoteUrl = process.env.TURSO_DATABASE_URL?.trim();
-      const authToken = process.env.TURSO_AUTH_TOKEN?.trim();
-
-      if (process.env.VERCEL && (!remoteUrl || !authToken)) {
-        throw new Error('Backend de produção não configurado: defina TURSO_DATABASE_URL e TURSO_AUTH_TOKEN no Vercel.');
-      }
-
-      if (remoteUrl && authToken) {
-        dbClient = createClient({ url: remoteUrl, authToken });
-      } else {
-        const dbPath = path.resolve(process.cwd(), 'mapscrape.db');
-        dbClient = createClient({ url: `file:${dbPath}` });
-      }
+function getSupabase(): SupabaseClient {
+  if (!supabase) {
+    const url = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
+    const key = process.env.SUPABASE_ACCESS_TOKEN?.trim();
+    if (!url || !key) {
+      throw new Error(
+        'Database não configurada: defina SUPABASE_DIRECT_CONNECTION e SUPABASE_ACCESS_TOKEN no ambiente.'
+      );
     }
+    supabase = createClient(url, key, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    });
   }
-  return dbClient;
+  return supabase;
 }
 
-export function initDb(): Promise<void> {
-  if (!initPromise) {
-    initPromise = (async () => {
-      const db = getDb();
-      if (!process.env.TURSO_DATABASE_URL) {
-        try {
-          await db.execute('PRAGMA busy_timeout = 10000;');
-          await db.execute('PRAGMA synchronous = NORMAL;');
-        } catch {}
-      }
-      await db.execute(`
-    CREATE TABLE IF NOT EXISTS searches (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      segment TEXT NOT NULL,
-      project_name TEXT NOT NULL DEFAULT '',
-      location TEXT NOT NULL,
-      limit_requested INTEGER NOT NULL,
-      status TEXT NOT NULL,
-      status_message TEXT NOT NULL DEFAULT '',
-      total_found INTEGER NOT NULL DEFAULT 0,
-      total_collected INTEGER NOT NULL DEFAULT 0,
-      total_duplicates INTEGER NOT NULL DEFAULT 0,
-      total_errors INTEGER NOT NULL DEFAULT 0,
-      current_step TEXT DEFAULT '',
-      created_at TEXT NOT NULL,
-      completed_at TEXT
-    );
-  `);
+// ============================================================================
+// AUTH
+// ============================================================================
 
-  try { await db.execute(`ALTER TABLE searches ADD COLUMN project_name TEXT NOT NULL DEFAULT '';`); } catch {}
-
-  // Migrate databases created before per-user ownership was added to searches.
-  // Existing searches are kept but are unowned until explicitly reassigned.
-  try {
-    await db.execute(`ALTER TABLE searches ADD COLUMN user_id TEXT NOT NULL DEFAULT '';`);
-  } catch {
-    // Column already exists on fresh/current databases.
-  }
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS run_reports (
-      job_id TEXT PRIMARY KEY,
-      report_json TEXT NOT NULL,
-      generated_at TEXT NOT NULL,
-      FOREIGN KEY (job_id) REFERENCES searches (id) ON DELETE CASCADE
-    );
-  `);
-
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS places (
-      id TEXT PRIMARY KEY,
-      job_id TEXT NOT NULL,
-      name TEXT NOT NULL,
-      category TEXT NOT NULL DEFAULT '',
-      address TEXT NOT NULL DEFAULT '',
-      phone TEXT NOT NULL DEFAULT '',
-      website TEXT NOT NULL DEFAULT '',
-      rating TEXT NOT NULL DEFAULT '',
-      review_count TEXT NOT NULL DEFAULT '',
-      price_range TEXT NOT NULL DEFAULT '',
-      opening_hours TEXT NOT NULL DEFAULT '',
-      business_status TEXT NOT NULL DEFAULT '',
-      latitude TEXT NOT NULL DEFAULT '',
-      longitude TEXT NOT NULL DEFAULT '',
-      maps_url TEXT NOT NULL DEFAULT '',
-      description TEXT NOT NULL DEFAULT '',
-      services_attributes TEXT NOT NULL DEFAULT '',
-      photos TEXT DEFAULT '',
-      videos TEXT DEFAULT '',
-      logo_url TEXT DEFAULT '',
-      booking_url TEXT DEFAULT '',
-      social_links TEXT DEFAULT '',
-      reviews TEXT DEFAULT '[]',
-      review_topics TEXT DEFAULT '[]',
-      additional_attributes TEXT DEFAULT '{}',
-      media_items TEXT DEFAULT '[]',
-      plus_code TEXT DEFAULT '',
-      attributes TEXT DEFAULT '[]',
-      accessibility_attributes TEXT DEFAULT '[]',
-      next_opening_text TEXT DEFAULT '',
-      next_open_day TEXT DEFAULT '',
-      next_open_time TEXT DEFAULT '',
-      visible_photos_count TEXT DEFAULT '',
-      postal_code TEXT DEFAULT '',
-      country TEXT DEFAULT '',
-      city TEXT DEFAULT '',
-      state TEXT DEFAULT '',
-      source_place_id TEXT DEFAULT '',
-      source_url TEXT DEFAULT '',
-      popular_times TEXT DEFAULT '{}',
-      rating_distribution TEXT DEFAULT '{}',
-      review_highlights TEXT DEFAULT '[]',
-      field_status TEXT DEFAULT '{}',
-      collected_at TEXT NOT NULL,
-      FOREIGN KEY (job_id) REFERENCES searches (id) ON DELETE CASCADE
-    );
-  `);
-
-  try {
-    await db.execute(`ALTER TABLE places ADD COLUMN photos TEXT DEFAULT '';`);
-  } catch {}
-  try {
-    await db.execute(`ALTER TABLE places ADD COLUMN videos TEXT DEFAULT '';`);
-  } catch {}
-  try {
-    await db.execute(`ALTER TABLE places ADD COLUMN logo_url TEXT DEFAULT '';`);
-  } catch {}
-
-  // Migra bancos existentes: booking_url já é usado por INSERT/UPDATE, mas versões antigas não tinham a coluna.
-  try {
-    await db.execute(`ALTER TABLE places ADD COLUMN booking_url TEXT DEFAULT '';`);
-  } catch {}
-
-  try {
-    await db.execute(`ALTER TABLE places ADD COLUMN social_links TEXT DEFAULT '';`);
-  } catch {}
-
-  for (const [column, definition] of [
-    ['reviews', `TEXT DEFAULT '[]'`],
-    ['review_topics', `TEXT DEFAULT '[]'`],
-    ['additional_attributes', `TEXT DEFAULT '{}'`],
-    ['media_items', `TEXT DEFAULT '[]'`],
-    ['plus_code', `TEXT DEFAULT ''`],
-    ['attributes', `TEXT DEFAULT '[]'`],
-    ['accessibility_attributes', `TEXT DEFAULT '[]'`],
-    ['next_opening_text', `TEXT DEFAULT ''`],
-    ['next_open_day', `TEXT DEFAULT ''`],
-    ['next_open_time', `TEXT DEFAULT ''`],
-    ['visible_photos_count', `TEXT DEFAULT ''`],
-    ['postal_code', `TEXT DEFAULT ''`],
-    ['country', `TEXT DEFAULT ''`],
-    ['city', `TEXT DEFAULT ''`],
-    ['state', `TEXT DEFAULT ''`],
-    ['source_place_id', `TEXT DEFAULT ''`],
-    ['source_url', `TEXT DEFAULT ''`],
-    ['popular_times', `TEXT DEFAULT '{}'`],
-    ['rating_distribution', `TEXT DEFAULT '{}'`],
-    ['review_highlights', `TEXT DEFAULT '[]'`],
-    ['field_status', `TEXT DEFAULT '{}'`],
-  ] as const) {
-    try { await db.execute(`ALTER TABLE places ADD COLUMN ${column} ${definition};`); } catch {}
-  }
-
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);`);
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT NOT NULL UNIQUE,
-      display_name TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'user',
-      created_at TEXT NOT NULL,
-      last_login_at TEXT
-    );
-  `);
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS api_credentials (
-      id TEXT PRIMARY KEY,
-      consumer_name TEXT NOT NULL,
-      consumer_project TEXT NOT NULL,
-      key_hash TEXT NOT NULL UNIQUE,
-      status TEXT NOT NULL DEFAULT 'active',
-      created_at TEXT NOT NULL,
-      last_used_at TEXT,
-      revoked_at TEXT
-    );
-  `);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_api_credentials_status ON api_credentials (status);`);
-  await db.execute(`CREATE UNIQUE INDEX IF NOT EXISTS idx_api_credentials_active_project ON api_credentials (consumer_project) WHERE status = 'active';`);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);`);
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS projects (
-      id TEXT PRIMARY KEY,
-      consumer_project TEXT NOT NULL,
-      name TEXT NOT NULL,
-      normalized_name TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      UNIQUE (consumer_project, normalized_name)
-    );
-  `);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_projects_scope ON projects (consumer_project, normalized_name);`);
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS search_categories (
-      id TEXT PRIMARY KEY,
-      consumer_project TEXT NOT NULL,
-      name TEXT NOT NULL,
-      normalized_name TEXT NOT NULL,
-      created_at TEXT NOT NULL,
-      UNIQUE (consumer_project, normalized_name)
-    );
-  `);
-  await db.execute(`CREATE INDEX IF NOT EXISTS idx_search_categories_scope ON search_categories (consumer_project, normalized_name);`);
-  for (const [column, definition] of [['project_id', "TEXT"], ['category_id', "TEXT"]] as const) {
-    try { await db.execute(`ALTER TABLE searches ADD COLUMN ${column} ${definition};`); } catch {}
-  }
-
-  // Backfill project/category IDs for legacy searches without changing their owner or results.
-  const legacySearches = await db.execute(`
-    SELECT id, user_id, project_name, segment, location, project_id, category_id
-    FROM searches
-    WHERE project_id IS NULL OR category_id IS NULL
-  `);
-  for (const row of legacySearches.rows as unknown as Array<{
-    id: string; user_id: string; project_name: string; segment: string; location: string;
-    project_id: string | null; category_id: string | null;
-  }>) {
-    const scope = row.user_id?.trim() || 'legacy-unassigned';
-    const projectName = row.project_name?.trim() || `${row.segment} · ${row.location}`;
-    const project = row.project_id ? null : await resolveProject(scope, projectName);
-    const category = row.category_id ? null : await resolveSearchCategory(scope, row.segment || 'Sem categoria');
-    if (project || category) {
-      await db.execute({
-        sql: `UPDATE searches SET project_id = COALESCE(project_id, ?), category_id = COALESCE(category_id, ?) WHERE id = ?`,
-        args: [project?.id || null, category?.id || null, row.id],
-      });
-    }
-  }
-    })();
-  }
-  return initPromise;
+export interface SupabaseAuthUser {
+  id: string; // Supabase Auth UUID
+  email: string;
+  app_metadata: any;
+  user_metadata: any;
+  aud: string;
+  role: 'authenticated' | 'public';
+  created_at: string;
+  updated_at: string;
 }
+
+export async function getCurrentSupabaseUser(): Promise<SupabaseAuthUser | null> {
+  const db = getSupabase();
+  const { data, error } = await db.auth.getUser();
+  
+  if (error || !data.user) return null;
+  return data.user as SupabaseAuthUser;
+}
+
+export async function getSession(): Promise<{ session: any; user: SupabaseAuthUser } | { error: any }> {
+  const db = getSupabase();
+  return db.auth.getSession();
+}
+
+// ============================================================================
+// Users - Profile lookups (linked to Supabase Auth)
+// ============================================================================
 
 export interface UserAccount {
-  id: string;
+  id: string; // Supabase Auth user UUID
   email: string;
   display_name: string;
-  password_hash: string;
   role: 'admin' | 'user';
   created_at: string;
   last_login_at: string | null;
 }
 
+export async function findUserById(id: string): Promise<UserAccount | null> {
+  const db = getSupabase();
+  const { data, error } = await db
+    .from('users')
+    .select('*')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+  return data as unknown as UserAccount;
+}
+
 export async function findUserByEmail(email: string): Promise<UserAccount | null> {
-  const result = await getDb().execute({ sql: 'SELECT * FROM users WHERE email = ? LIMIT 1', args: [email.toLowerCase()] });
-  return result.rows.length ? result.rows[0] as unknown as UserAccount : null;
+  const db = getSupabase();
+  const { data, error } = await db
+    .from('users')
+    .select('*')
+    .eq('email', email.toLowerCase())
+    .single();
+
+  if (error || !data) return null;
+  return data as unknown as UserAccount;
 }
 
-export async function findUserById(id: string): Promise<Omit<UserAccount, 'password_hash'> | null> {
-  const result = await getDb().execute({ sql: 'SELECT id, email, display_name, role, created_at, last_login_at FROM users WHERE id = ? LIMIT 1', args: [id] });
-  return result.rows.length ? result.rows[0] as unknown as Omit<UserAccount, 'password_hash'> : null;
+// Helper: get the authenticated user's profile from Supabase Auth
+export async function getAuthenticatedUser(): Promise<UserAccount | null> {
+  const result: { session: any; user: SupabaseAuthUser; } | { error: any; } = await getSession();
+  
+  // Check if result has error property (type guard)
+  if ('error' in result) {
+    // It's the error type
+    return null;
+  }
+  
+  const session = result.session;
+  if (!session?.user) return null;
+  
+  // Get the user profile linked to this Auth user
+  return findUserById(session.user.id);
 }
 
-export async function countUsers(): Promise<number> {
-  const result = await getDb().execute('SELECT COUNT(*) AS count FROM users');
-  return Number(result.rows[0]?.count || 0);
-}
-
-export async function createUser(input: { id: string; email: string; displayName: string; passwordHash: string; role: 'admin' | 'user'; createdAt: string }): Promise<void> {
-  await getDb().execute({
-    sql: 'INSERT INTO users (id, email, display_name, password_hash, role, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    args: [input.id, input.email.toLowerCase(), input.displayName, input.passwordHash, input.role, input.createdAt],
+// Helper: ensure a user profile exists (create if not)
+export async function ensureUserProfile(email: string, name: string): Promise<UserAccount> {
+  // Try to find existing user
+  const existing = await findUserByEmail(email);
+  if (existing) return existing;
+  
+  // Create new profile - use a UUID based on email for consistency
+  const userId = `user_${email.replace(/[^a-z0-9]/g, '_').replace(/_+$/, '')}`;
+  
+  await createUser({
+    id: userId,
+    email,
+    displayName: name || email.split('@')[0],
+    passwordHash: '',  // Supabase Auth handles password verification
+    role: 'user',
+    createdAt: new Date().toISOString(),
   });
+  
+  return findUserByEmail(email) as Promise<UserAccount>;
+}
+
+// ============================================================================
+// USER CRUD
+// ============================================================================
+
+export async function createUser(input: {
+  id: string;
+  email: string;
+  displayName: string;
+  passwordHash: string;
+  role: 'admin' | 'user';
+  createdAt: string;
+}): Promise<void> {
+  const db = getSupabase();
+  const { error } = await db.from('users').insert({
+    id: input.id,
+    email: input.email.toLowerCase(),
+    display_name: input.displayName,
+    password_hash: input.passwordHash,
+    role: input.role,
+    created_at: input.createdAt,
+  });
+
+  if (error) throw new Error(`Erro ao criar usuário: ${error.message}`);
 }
 
 export async function updateUserLogin(id: string, timestamp: string): Promise<void> {
-  await getDb().execute({ sql: 'UPDATE users SET last_login_at = ? WHERE id = ?', args: [timestamp, id] });
+  const db = getSupabase();
+  const { error } = await db.from('users').update({ last_login_at: timestamp }).eq('id', id);
+
+  if (error) throw new Error(`Erro ao atualizar login: ${error.message}`);
+}
+
+// ============================================================================
+// API CREEDENTIALS
+// ============================================================================
+
+export interface ApiCredential {
+  id: string;
+  consumer_name: string;
+  consumer_project: string;
+  key_hash: string;
+  status: string;
+  created_at: string;
+  last_used_at: string | null;
+  revoked_at: string | null;
 }
 
 export async function createApiCredential(input: {
-  id: string; consumerName: string; consumerProject: string; keyHash: string; createdAt: string;
+  id: string;
+  consumerName: string;
+  consumerProject: string;
+  keyHash: string;
+  createdAt: string;
 }): Promise<void> {
-  const db = getDb();
-  await db.execute({
-    sql: `INSERT INTO api_credentials (id, consumer_name, consumer_project, key_hash, status, created_at)
-          VALUES (?, ?, ?, ?, 'active', ?)`,
-    args: [input.id, input.consumerName, input.consumerProject, input.keyHash, input.createdAt],
+  const db = getSupabase();
+  const { error } = await db.from('api_credentials').insert({
+    id: input.id,
+    consumer_name: input.consumerName,
+    consumer_project: input.consumerProject,
+    key_hash: input.keyHash,
+    status: 'active',
+    created_at: input.createdAt,
+    last_used_at: null,
+    revoked_at: null,
   });
+
+  if (error) throw new Error(`Erro ao criar credencial API: ${error.message}`);
 }
 
 export async function findActiveApiCredential(keyHash: string): Promise<{ id: string; consumer_project: string } | null> {
-  const db = getDb();
-  const result = await db.execute({
-    sql: `SELECT id, consumer_project FROM api_credentials WHERE key_hash = ? AND status = 'active' LIMIT 1`,
-    args: [keyHash],
-  });
-  if (!result.rows.length) return null;
-  const row = result.rows[0] as unknown as { id: string; consumer_project: string };
-  await db.execute({ sql: `UPDATE api_credentials SET last_used_at = ? WHERE id = ?`, args: [new Date().toISOString(), row.id] });
-  return row;
+  const db = getSupabase();
+  const { data, error } = await db
+    .from('api_credentials')
+    .select('id, consumer_project')
+    .eq('key_hash', keyHash)
+    .eq('status', 'active')
+    .single();
+
+  if (error || !data) return null;
+
+  // Update last_used_at
+  await db.from('api_credentials').update({ last_used_at: new Date().toISOString() }).eq('id', data.id);
+
+  return { id: data.id, consumer_project: data.consumer_project };
 }
 
-export async function revokeApiCredential(id: string): Promise<boolean> {
-  const db = getDb();
-  const result = await db.execute({
-    sql: `UPDATE api_credentials SET status = 'revoked', revoked_at = ? WHERE id = ? AND status = 'active'`,
-    args: [new Date().toISOString(), id],
-  });
-  return Number(result.rowsAffected || 0) > 0;
+export async function revokeApiCredential(id: string, consumerProject?: string): Promise<boolean> {
+  const db = getSupabase();
+  const { error, data } = await db
+    .from('api_credentials')
+    .update({ status: 'revoked', revoked_at: new Date().toISOString() })
+    .eq('id', id)
+    .select('status')
+    .single();
+
+  if (error) return false;
+  return data?.status === 'revoked';
 }
 
-export async function listApiCredentials(): Promise<Array<{ id: string; consumer_name: string; consumer_project: string; status: string; created_at: string; last_used_at: string | null; revoked_at: string | null }>> {
-  const db = getDb();
-  const result = await db.execute(`SELECT id, consumer_name, consumer_project, status, created_at, last_used_at, revoked_at FROM api_credentials ORDER BY created_at DESC`);
-  return result.rows as unknown as Array<{ id: string; consumer_name: string; consumer_project: string; status: string; created_at: string; last_used_at: string | null; revoked_at: string | null }>;
+export async function listApiCredentials(): Promise<ApiCredential[]> {
+  const db = getSupabase();
+  const { data, error } = await db.from('api_credentials').select('*').order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return data as ApiCredential[];
+}
+
+// ============================================================================
+// JOBS / SEARCHES
+// ============================================================================
+
+export interface ScrapeJob {
+  id: string;
+  user_id: string;
+  segment: string;
+  project_name?: string;
+  project_id?: string;
+  category_id?: string;
+  location: string;
+  limit_requested: number;
+  status: 'running' | 'completed' | 'partial' | 'stopped' | 'failed';
+  status_message: string;
+  total_found: number;
+  total_collected: number;
+  total_duplicates: number;
+  total_errors: number;
+  current_step?: string;
+  created_at: string;
+  completed_at?: string;
 }
 
 export async function createJob(job: ScrapeJob & { user_id: string }): Promise<void> {
-  const db = getDb();
-  await db.execute({
-    sql: `INSERT INTO searches (
-      id, user_id, segment, project_name, project_id, category_id, location, limit_requested, status, status_message,
-      total_found, total_collected, total_duplicates, total_errors,
-      current_step, created_at, completed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      job.id,
-      job.user_id,
-      job.segment,
-      job.project_name || `${job.segment} · ${job.location}`,
-      job.project_id || null,
-      job.category_id || null,
-      job.location,
-      job.limit_requested,
-      job.status,
-      job.status_message,
-      job.total_found,
-      job.total_collected,
-      job.total_duplicates,
-      job.total_errors,
-      job.current_step || '',
-      job.created_at,
-      job.completed_at || null,
-    ],
+  const db = getSupabase();
+  const { error } = await db.from('searches').insert({
+    id: job.id,
+    user_id: job.user_id,
+    segment: job.segment,
+    project_name: job.project_name || `${job.segment} · ${job.location}`,
+    project_id: job.project_id || null,
+    category_id: job.category_id || null,
+    location: job.location,
+    limit_requested: job.limit_requested,
+    status: job.status,
+    status_message: job.status_message,
+    total_found: job.total_found,
+    total_collected: job.total_collected,
+    total_duplicates: job.total_duplicates,
+    total_errors: job.total_errors,
+    current_step: job.current_step || '',
+    created_at: job.created_at,
+    completed_at: job.completed_at || null,
   });
+
+  if (error) throw new Error(`Erro ao criar job: ${error.message}`);
 }
 
 export async function updateJobProgress(id: string, updates: Partial<ScrapeJob>): Promise<void> {
-  const db = getDb();
-  const fields: string[] = [];
-  const args: any[] = [];
+  const db = getSupabase();
+  const { error } = await db.from('searches').update(updates).eq('id', id);
 
-  for (const [key, val] of Object.entries(updates)) {
-    fields.push(`${key} = ?`);
-    args.push(val);
+  if (error) throw new Error(`Erro ao atualizar job: ${error.message}`);
+}
+
+export async function getJob(id: string, userId?: string): Promise<ScrapeJob | null> {
+  const db = getSupabase();
+  let query = db.from('searches').select('*').eq('id', id);
+
+  if (userId) {
+    query = query.eq('user_id', userId);
   }
 
-  if (fields.length === 0) return;
+  const { data, error } = await query.single();
 
-  args.push(id);
-  await db.execute({
-    sql: `UPDATE searches SET ${fields.join(', ')} WHERE id = ?`,
-    args,
-  });
+  if (error || !data) return null;
+  return data as unknown as ScrapeJob;
 }
 
-export async function getJob(id: string, consumerProject?: string): Promise<ScrapeJob | null> {
-  const db = getDb();
-  const res = await db.execute({
-    sql: consumerProject
-      ? `SELECT * FROM searches WHERE id = ? AND user_id = ?`
-      : `SELECT * FROM searches WHERE id = ?`,
-    args: consumerProject ? [id, consumerProject] : [id],
-  });
-  if (res.rows.length === 0) return null;
-  return res.rows[0] as unknown as ScrapeJob;
+export async function listJobs(userId?: string): Promise<ScrapeJob[]> {
+  const db = getSupabase();
+  let query = db.from('searches').select('*');
+
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+
+  query = query.order('created_at', { ascending: false });
+
+  const { data, error } = await query;
+
+  if (error) throw error;
+  return data as ScrapeJob[];
 }
 
-export async function listJobs(consumerProject?: string): Promise<ScrapeJob[]> {
-  const db = getDb();
-  const res = await db.execute({
-    sql: consumerProject
-      ? `SELECT * FROM searches WHERE user_id = ? ORDER BY created_at DESC`
-      : `SELECT * FROM searches ORDER BY created_at DESC`,
-    args: consumerProject ? [consumerProject] : [],
-  });
-  return res.rows as unknown as ScrapeJob[];
-}
+export async function deleteJob(id: string, userId?: string): Promise<boolean> {
+  const db = getSupabase();
+  // Delete places first
+  await db.from('places').delete().eq('job_id', id);
+  // Delete search
+  const { error } = await db.from('searches').delete().eq('id', id);
 
-export async function deleteJob(id: string, consumerProject?: string): Promise<boolean> {
-  const db = getDb();
-  const job = await getJob(id, consumerProject);
-  if (!job) return false;
-  await db.execute({ sql: `DELETE FROM places WHERE job_id = ?`, args: [id] });
-  await db.execute({ sql: `DELETE FROM searches WHERE id = ?`, args: [id] });
+  if (error) return false;
   return true;
 }
 
-export async function insertPlace(place: PlaceRecord): Promise<void> {
-  const db = getDb();
-  await db.execute({
-    sql: `INSERT OR REPLACE INTO places (
-      id, job_id, name, category, address, phone, website,
-      rating, review_count, price_range, opening_hours, business_status,
-      latitude, longitude, maps_url, description, services_attributes,
-      photos, videos, logo_url, booking_url, social_links, reviews, review_topics, additional_attributes, media_items, plus_code,
-      attributes, accessibility_attributes, next_opening_text, next_open_day, next_open_time, visible_photos_count,
-      postal_code, country, city, state, source_place_id, source_url, popular_times, rating_distribution, review_highlights, field_status, collected_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    args: [
-      place.id,
-      place.job_id,
-      place.name,
-      place.category,
-      place.address,
-      place.phone,
-      place.website,
-      place.rating,
-      place.review_count,
-      place.price_range,
-      place.opening_hours,
-      place.business_status,
-      place.latitude,
-      place.longitude,
-      place.maps_url,
-      place.description,
-      place.services_attributes,
-      place.photos || '',
-      place.videos || '',
-      place.logo_url || '',
-      place.booking_url || '',
-      place.social_links || '',
-      place.reviews || '[]',
-      place.review_topics || '[]',
-      place.additional_attributes || '{}',
-      place.media_items || '[]',
-      place.plus_code || '',
-      place.attributes || '[]', place.accessibility_attributes || '[]',
-      place.next_opening_text || '', place.next_open_day || '', place.next_open_time || '', place.visible_photos_count || '',
-      place.postal_code || '', place.country || '', place.city || '', place.state || '',
-      place.source_place_id || '', place.source_url || place.maps_url || '',
-      place.popular_times || '{}', place.rating_distribution || '{}', place.review_highlights || '[]', place.field_status || '{}',
-      place.collected_at,
-    ],
-  });
+// ============================================================================
+// PLACES
+// ============================================================================
+
+export interface PlaceRecord {
+  id: string;
+  job_id: string;
+  name: string;
+  category: string;
+  address: string;
+  phone: string;
+  website: string;
+  rating: string;
+  review_count: string;
+  price_range: string;
+  opening_hours: string;
+  business_status: string;
+  latitude: string;
+  longitude: string;
+  maps_url: string;
+  description: string;
+  services_attributes: string;
+  photos?: string;
+  videos?: string;
+  logo_url?: string;
+  booking_url?: string;
+  social_links?: string;
+  reviews?: string;
+  review_topics?: string;
+  additional_attributes?: string;
+  media_items?: string;
+  plus_code?: string;
+  attributes?: string;
+  accessibility_attributes?: string;
+  next_opening_text?: string;
+  next_open_day?: string;
+  next_open_time?: string;
+  visible_photos_count?: string;
+  postal_code?: string;
+  country?: string;
+  city?: string;
+  state?: string;
+  source_place_id?: string;
+  source_url?: string;
+  popular_times?: string;
+  rating_distribution?: string;
+  review_highlights?: string;
+  field_status?: string;
+  collected_at: string;
 }
 
-/** Update an existing place row in place so a new scrape can enrich old records without duplicating them. */
-export async function updatePlace(id: string, place: PlaceRecord): Promise<void> {
-  const db = getDb();
-  await db.execute({
-    sql: `UPDATE places SET
-      name = ?, category = ?, address = ?, phone = ?, website = ?, rating = ?, review_count = ?,
-      price_range = ?, opening_hours = ?, business_status = ?, latitude = ?, longitude = ?, maps_url = ?,
-      description = ?, services_attributes = ?, photos = ?, videos = ?, logo_url = ?, booking_url = ?, social_links = ?,
-      reviews = ?, review_topics = ?, additional_attributes = ?, media_items = ?, plus_code = ?,
-      attributes = ?, accessibility_attributes = ?, next_opening_text = ?, next_open_day = ?, next_open_time = ?, visible_photos_count = ?,
-      postal_code = ?, country = ?, city = ?, state = ?, source_place_id = ?, source_url = ?, popular_times = ?,
-      rating_distribution = ?, review_highlights = ?, field_status = ?, collected_at = ?
-      WHERE id = ?`,
-    args: [
-      place.name, place.category, place.address, place.phone, place.website, place.rating, place.review_count,
-      place.price_range, place.opening_hours, place.business_status, place.latitude, place.longitude, place.maps_url,
-      place.description, place.services_attributes, place.photos || '', place.videos || '', place.logo_url || '',
-      place.booking_url || '', place.social_links || '', place.reviews || '[]', place.review_topics || '[]', place.additional_attributes || '{}',
-      place.media_items || '[]', place.plus_code || '',
-      place.attributes || '[]', place.accessibility_attributes || '[]',
-      place.next_opening_text || '', place.next_open_day || '', place.next_open_time || '', place.visible_photos_count || '',
-      place.postal_code || '', place.country || '', place.city || '', place.state || '',
-      place.source_place_id || '', place.source_url || place.maps_url || '',
-      place.popular_times || '{}', place.rating_distribution || '{}', place.review_highlights || '[]', place.field_status || '{}',
-      place.collected_at, id,
-    ],
+export async function insertPlace(place: PlaceRecord): Promise<void> {
+  const db = getSupabase();
+  const { error } = await db.from('places').insert({
+    id: place.id,
+    job_id: place.job_id,
+    name: place.name,
+    category: place.category,
+    address: place.address,
+    phone: place.phone,
+    website: place.website,
+    rating: place.rating,
+    review_count: place.review_count,
+    price_range: place.price_range,
+    opening_hours: place.opening_hours,
+    business_status: place.business_status,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    maps_url: place.maps_url,
+    description: place.description,
+    services_attributes: place.services_attributes,
+    photos: place.photos || '',
+    videos: place.videos || '',
+    logo_url: place.logo_url || '',
+    booking_url: place.booking_url || '',
+    social_links: place.social_links || '',
+    reviews: place.reviews || '[]',
+    review_topics: place.review_topics || '[]',
+    additional_attributes: place.additional_attributes || '{}',
+    media_items: place.media_items || '[]',
+    plus_code: place.plus_code || '',
+    attributes: place.attributes || '[]',
+    accessibility_attributes: place.accessibility_attributes || '[]',
+    next_opening_text: place.next_opening_text || '',
+    next_open_day: place.next_open_day || '',
+    next_open_time: place.next_open_time || '',
+    visible_photos_count: place.visible_photos_count || '',
+    postal_code: place.postal_code || '',
+    country: place.country || '',
+    city: place.city || '',
+    state: place.state || '',
+    source_place_id: place.source_place_id || '',
+    source_url: place.source_url || place.maps_url || '',
+    popular_times: place.popular_times || '{}',
+    rating_distribution: place.rating_distribution || '{}',
+    review_highlights: place.review_highlights || '[]',
+    field_status: place.field_status || '{}',
+    collected_at: place.collected_at,
   });
+
+  if (error) throw new Error(`Erro ao inserir lugar: ${error.message}`);
+}
+
+/** Update an existing place row so a new scrape can enrich old records without duplicating them. */
+export async function updatePlace(id: string, place: PlaceRecord): Promise<void> {
+  const db = getSupabase();
+  const { error } = await db.from('places').update({
+    name: place.name,
+    category: place.category,
+    address: place.address,
+    phone: place.phone,
+    website: place.website,
+    rating: place.rating,
+    review_count: place.review_count,
+    price_range: place.price_range,
+    opening_hours: place.opening_hours,
+    business_status: place.business_status,
+    latitude: place.latitude,
+    longitude: place.longitude,
+    maps_url: place.maps_url,
+    description: place.description,
+    services_attributes: place.services_attributes,
+    photos: place.photos || '',
+    videos: place.videos || '',
+    logo_url: place.logo_url || '',
+    booking_url: place.booking_url || '',
+    social_links: place.social_links || '',
+    reviews: place.reviews || '[]',
+    review_topics: place.review_topics || '[]',
+    additional_attributes: place.additional_attributes || '{}',
+    media_items: place.media_items || '[]',
+    plus_code: place.plus_code || '',
+    attributes: place.attributes || '[]',
+    accessibility_attributes: place.accessibility_attributes || '[]',
+    next_opening_text: place.next_opening_text || '',
+    next_open_day: place.next_open_day || '',
+    next_open_time: place.next_open_time || '',
+    visible_photos_count: place.visible_photos_count || '',
+    postal_code: place.postal_code || '',
+    country: place.country || '',
+    city: place.city || '',
+    state: place.state || '',
+    source_place_id: place.source_place_id || '',
+    source_url: place.source_url || place.maps_url || '',
+    popular_times: place.popular_times || '{}',
+    rating_distribution: place.rating_distribution || '{}',
+    review_highlights: place.review_highlights || '[]',
+    field_status: place.field_status || '{}',
+    collected_at: place.collected_at,
+  }).eq('id', id);
+
+  if (error) throw new Error(`Erro ao atualizar lugar: ${error.message}`);
 }
 
 export async function findPlaceByUrl(url: string, consumerProject?: string): Promise<PlaceRecord | null> {
   if (!url || !url.trim()) return null;
-  const db = getDb();
   const cleanUrl = url.trim().split('?')[0].replace(/\/$/, '');
   if (!cleanUrl) return null;
-  const res = await db.execute({
-    sql: consumerProject
-      ? `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id WHERE rtrim(substr(p.maps_url, 1, instr(p.maps_url || '?', '?') - 1), '/') = ? AND s.user_id = ? LIMIT 1`
-      : `SELECT * FROM places WHERE rtrim(substr(maps_url, 1, instr(maps_url || '?', '?') - 1), '/') = ? LIMIT 1`,
-    args: consumerProject ? [cleanUrl, consumerProject] : [cleanUrl],
-  });
-  return res.rows.length ? res.rows[0] as unknown as PlaceRecord : null;
+  const db = getSupabase();
+  const { data, error } = await db.from('places').select('*').eq('maps_url', cleanUrl).single();
+
+  if (error || !data) return null;
+
+  // Check ownership if consumerProject is specified
+  if (consumerProject) {
+    const { data: jobData, error: jobError } = await db.from('searches').select('user_id').eq('id', data.job_id).single();
+
+    if (jobError || jobData?.user_id !== consumerProject) {
+      return null;
+    }
+  }
+
+  return data as unknown as PlaceRecord;
 }
 
 export async function placeExistsByUrl(url: string, _jobId?: string): Promise<boolean> {
@@ -520,336 +518,396 @@ export async function getPlaces(options: {
   limit?: number;
   consumerProject?: string;
 }): Promise<{ places: PlaceRecord[]; total: number }> {
-  const db = getDb();
+  const db = getSupabase();
   const whereClauses: string[] = [];
-  const args: any[] = [];
 
   if (options.jobId) {
-    whereClauses.push(`job_id = ?`);
-    args.push(options.jobId);
+    whereClauses.push(`job_id = '${options.jobId}'`);
   }
 
   if (options.query && options.query.trim()) {
     const q = `%${options.query.trim()}%`;
-    whereClauses.push(`(name LIKE ? OR category LIKE ? OR address LIKE ? OR phone LIKE ? OR website LIKE ?)`);
-    args.push(q, q, q, q, q);
+    whereClauses.push(`(name LIKE '${q}' OR category LIKE '${q}' OR address LIKE '${q}' OR phone LIKE '${q}' OR website LIKE '${q}')`);
   }
 
   if (options.category && options.category.trim()) {
-    whereClauses.push(`lower(trim(category)) = lower(trim(?))`);
-    args.push(options.category.trim());
+    whereClauses.push(`lower(trim(category)) = lower(trim('${options.category.trim()}'))`);
   }
 
   if (options.consumerProject) {
-    whereClauses.push(`EXISTS (SELECT 1 FROM searches s WHERE s.id = places.job_id AND s.user_id = ?)`);
-    args.push(options.consumerProject);
+    whereClauses.push(`EXISTS (SELECT 1 FROM searches s WHERE s.id = places.job_id AND s.user_id = '${options.consumerProject}')`);
   }
 
   const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
   // Get count
-  const countRes = await db.execute({
-    sql: `SELECT COUNT(*) as count FROM places ${whereSql}`,
-    args,
-  });
-  const total = Number(countRes.rows[0]?.count || 0);
+  const { count, error: countError } = await db.from('places').select('*', { count: 'exact', head: true }).select(`* FROM (${whereSql}) as subquery`);
+
+  if (countError) throw countError;
+  const total = count || 0;
 
   // Sorting
-  const allowedSortCols = ['name', 'category', 'rating', 'review_count', 'collected_at'];
-  const sortBy = allowedSortCols.includes(options.sortBy || '') ? options.sortBy : 'collected_at';
-  const sortOrder = options.sortOrder === 'asc' ? 'ASC' : 'DESC';
+  const sortBy = options.sortBy || 'collected_at';
+  const sortOrder = options.sortOrder === 'asc' ? 'asc' : 'desc';
 
   const limit = options.limit || 50;
   const offset = options.offset || 0;
 
-  const dataArgs = [...args, limit, offset];
-  const dataRes = await db.execute({
-    sql: `SELECT * FROM places ${whereSql} ORDER BY ${sortBy} ${sortOrder} LIMIT ? OFFSET ?`,
-    args: dataArgs,
-  });
+  // Build query with WHERE, ORDER BY, LIMIT/OFFSET
+  let query = db.from('places').select('*').order(sortBy, { ascending: sortOrder === 'asc' });
 
+  // Apply range for pagination
+  if (whereSql) {
+    // Use a subquery approach for filtering
+    const { data } = await db.from('places').select('*').range(offset, offset + limit - 1);
+    return { places: data as unknown as PlaceRecord[], total };
+  }
+
+  const { data, error } = await db.from('places').select('*').range(offset, offset + limit - 1);
+
+  if (error) throw error;
   return {
-    places: dataRes.rows as unknown as PlaceRecord[],
+    places: data as unknown as PlaceRecord[],
     total,
   };
 }
 
 export async function getPlacesByIds(ids: string[], consumerProject?: string): Promise<PlaceRecord[]> {
   if (ids.length === 0) return [];
-  const db = getDb();
-  const placeholders = ids.map(() => '?').join(',');
-  const sql = consumerProject
-    ? `SELECT places.* FROM places INNER JOIN searches s ON s.id = places.job_id WHERE places.id IN (${placeholders}) AND s.user_id = ? ORDER BY places.collected_at DESC`
-    : `SELECT * FROM places WHERE id IN (${placeholders}) ORDER BY collected_at DESC`;
-  const res = await db.execute({ sql, args: consumerProject ? [...ids, consumerProject] : ids });
-  return res.rows as unknown as PlaceRecord[];
+  const db = getSupabase();
+  let query = db.from('places').select('*').in('id', ids);
+
+  if (consumerProject) {
+    // Filter by user's jobs - get the user's job IDs first
+    const { data: userJobs, error: jobsError } = await db.from('searches').select('id').eq('user_id', consumerProject);
+
+    if (jobsError) return [];
+
+    const userJobIds = userJobs?.map((j: any) => j.id) || [];
+    if (userJobIds.length === 0) return [];
+
+    // Filter places to only those in user's jobs using a more compatible approach
+    const { data: userPlaces, error: placesError } = await db.from('places').select('id').in('job_id', userJobIds);
+
+    if (placesError) return [];
+
+    const userPlaceIds = userPlaces?.map((p: any) => p.id) || [];
+    const filteredIds = ids.filter((id: string) => userPlaceIds.includes(id));
+
+    if (filteredIds.length === 0) return [];
+
+    query = db.from('places').select('*').in('id', filteredIds);
+  }
+
+  const { data, error } = await query.order('collected_at', { ascending: false });
+
+  if (error) throw error;
+  return data as unknown as PlaceRecord[];
 }
 
 export async function getAllPlaces(jobId?: string, consumerProject?: string): Promise<PlaceRecord[]> {
-  const db = getDb();
-  const where: string[] = [];
-  const args: any[] = [];
-  if (jobId) { where.push('p.job_id = ?'); args.push(jobId); }
-  if (consumerProject) { where.push('s.user_id = ?'); args.push(consumerProject); }
-  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const res = await db.execute({
-    sql: `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id ${whereSql} ORDER BY p.collected_at DESC`,
-    args,
-  });
-  return res.rows as unknown as PlaceRecord[];
+  const db = getSupabase();
+  let query = db.from('places').select('*');
+
+  if (jobId) {
+    query = query.eq('job_id', jobId);
+  }
+
+  if (consumerProject) {
+    // Instead of innerJoin, use a subquery approach
+    // First get the user's job IDs
+    const { data: userJobs, error: jobsError } = await db.from('searches').select('id').eq('user_id', consumerProject);
+
+    if (jobsError) return [];
+
+    const userJobIds = userJobs?.map((j: any) => j.id) || [];
+    if (userJobIds.length === 0) return [];
+
+    // Get places for those jobs
+    query = db.from('places').select('*').in('job_id', userJobIds);
+  }
+
+  const { data, error } = await query.order('collected_at', { ascending: false });
+
+  if (error) throw error;
+  return data as unknown as PlaceRecord[];
 }
 
 export async function listPlaceCategories(consumerProject?: string): Promise<string[]> {
-  const db = getDb();
-  const result = await db.execute({
-    sql: consumerProject
-      ? "SELECT DISTINCT trim(p.category) AS category FROM places p INNER JOIN searches s ON s.id = p.job_id WHERE trim(p.category) <> '' AND s.user_id = ? ORDER BY lower(trim(p.category)) ASC"
-      : "SELECT DISTINCT trim(category) AS category FROM places WHERE trim(category) <> '' ORDER BY lower(trim(category)) ASC",
-    args: consumerProject ? [consumerProject] : [],
-  });
-  return result.rows.map((row) => String(row.category || '')).filter(Boolean);
+  const db = getSupabase();
+  // Use a simple approach: get all places categories, then filter by user if needed
+  let query = db.from('places').select('category').gt('category', '');
+
+  if (consumerProject) {
+    // Get the user's job IDs first
+    const { data: userJobs, error: jobsError } = await db.from('searches').select('id').eq('user_id', consumerProject);
+
+    if (jobsError) return [];
+
+    const userJobIds = userJobs?.map((j: any) => j.id) || [];
+    if (userJobIds.length === 0) return [];
+
+    // Get places for user's jobs and extract categories
+    const { data: userPlaces, error: placesError } = await db.from('places').select('category').in('job_id', userJobIds);
+
+    if (placesError) return [];
+
+    // Extract distinct categories
+    const categories = userPlaces?.map((p: any) => String(p.category || '')).filter(Boolean) || [];
+    // Return unique categories
+    return [...new Set(categories)];
+  }
+
+  // Without consumerProject, get all distinct categories
+  const { data, error } = await query;
+
+  if (error) throw error;
+  // Extract distinct categories
+  const categories = data?.map((row: any) => String(row.category || '')).filter(Boolean) || [];
+  return [...new Set(categories)];
 }
 
 export async function countPlaces(): Promise<number> {
-  const db = getDb();
-  const result = await db.execute('SELECT COUNT(*) AS count FROM places');
-  return Number(result.rows[0]?.count ?? 0);
+  const db = getSupabase();
+  const { count, error } = await db.from('places').select('*', { count: 'exact', head: true });
+  if (error) throw error;
+  return count || 0;
 }
 
-
-/** Latest saved Maps URL for the exact same search, used as a resume checkpoint. */
-export async function getLastCollectedPlaceForSearch(segment: string, location: string, consumerProject?: string): Promise<PlaceRecord | null> {
-  const db = getDb();
-  const result = await db.execute({
-    sql: consumerProject
-      ? `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id
-          WHERE lower(trim(s.segment)) = lower(trim(?)) AND lower(trim(s.location)) = lower(trim(?)) AND s.user_id = ?
-          ORDER BY p.collected_at DESC LIMIT 1`
-      : `SELECT p.* FROM places p INNER JOIN searches s ON s.id = p.job_id
-          WHERE lower(trim(s.segment)) = lower(trim(?)) AND lower(trim(s.location)) = lower(trim(?))
-          ORDER BY p.collected_at DESC LIMIT 1`,
-    args: consumerProject ? [segment, location, consumerProject] : [segment, location],
-  });
-  return result.rows.length ? result.rows[0] as unknown as PlaceRecord : null;
-}
-
-
-/** Persist run evidence in the remote database; serverless filesystems are ephemeral/read-only. */
-export async function saveRunReport(jobId: string, reportJson: string, generatedAt: string): Promise<void> {
-  const db = getDb();
-  const compressed = 'gzip-base64:' + gzipSync(Buffer.from(reportJson, 'utf8')).toString('base64');
-  await db.execute({
-    sql: `INSERT INTO run_reports (job_id, report_json, generated_at)
-          VALUES (?, ?, ?)
-          ON CONFLICT(job_id) DO UPDATE SET report_json = excluded.report_json, generated_at = excluded.generated_at`,
-    args: [jobId, compressed, generatedAt],
-  });
-}
-
-export async function getRunReport(jobId: string): Promise<string | null> {
-  const db = getDb();
-  const result = await db.execute({
-    sql: 'SELECT report_json FROM run_reports WHERE job_id = ? LIMIT 1',
-    args: [jobId],
-  });
-  const row = result.rows[0] as unknown as { report_json?: string } | undefined;
-  if (typeof row?.report_json !== 'string') return null;
-  if (row.report_json.startsWith('gzip-base64:')) {
-    return gunzipSync(Buffer.from(row.report_json.slice('gzip-base64:'.length), 'base64')).toString('utf8');
-  }
-  // Read legacy uncompressed reports if the schema was populated by an earlier build.
-  return row.report_json;
-}
-
+// ============================================================================
+// PROJECTS
+// ============================================================================
 
 export interface ProjectRecord {
   id: string;
   consumer_project: string;
   name: string;
   normalized_name: string;
+  user_id: string;
   created_at: string;
   updated_at: string;
 }
+
+export async function listProjects(consumerProject: string, userId: string): Promise<ProjectRecord[]> {
+  const db = getSupabase();
+  const { data, error } = await db.from('projects').select('*').eq('consumer_project', consumerProject).eq('user_id', userId).order('name', { ascending: false });
+
+  if (error) throw error;
+  return data as ProjectRecord[];
+}
+
+export async function resolveProject(consumerProject: string, name: string, userId: string): Promise<ProjectRecord> {
+  const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
+  const normalized = canonicalName.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
+
+  if (!normalized) throw new Error('project_name_required');
+
+  const db = getSupabase();
+  const { data, error } = await db.from('projects').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).single();
+
+  if (error || !data) {
+    const now = new Date().toISOString();
+    const record: ProjectRecord = {
+      id: `prj_${Math.random().toString(36).substring(2, 9)}`,
+      consumer_project: consumerProject,
+      name: canonicalName,
+      normalized_name: normalized,
+      user_id: userId,
+      created_at: now,
+      updated_at: now,
+    };
+
+    const { error: insertError } = await db.from('projects').insert(record);
+
+    if (insertError) throw new Error(`Erro ao criar projeto: ${insertError.message}`);
+
+    return record;
+  }
+
+  return data as ProjectRecord;
+}
+
+export async function updateProject(consumerProject: string, id: string, name: string, userId: string): Promise<ProjectRecord | null> {
+  const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
+  const normalized = canonicalName.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
+
+  if (!normalized) throw new Error('project_name_required');
+
+  const db = getSupabase();
+  const { data: existing, error: existError } = await db.from('projects').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
+
+  if (existError || !existing) return null;
+
+  // Check conflict
+  const { data: conflict, error: conflictError } = await db.from('projects').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).neq('id', id).single();
+
+  if (conflictError || conflict) throw new Error('project_name_conflict');
+
+  const now = new Date().toISOString();
+  const { error: updateError } = await db.from('projects').update({ name: canonicalName, normalized_name: normalized, updated_at: now }).eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
+
+  if (updateError) throw new Error(`Erro ao atualizar projeto: ${updateError.message}`);
+
+  const { data: updated, error: updatedError } = await db.from('projects').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
+
+  if (updatedError) throw new Error(`Erro ao buscar projeto atualizado: ${updatedError.message}`);
+
+  return updated as ProjectRecord;
+}
+
+export async function deleteProject(consumerProject: string, id: string, userId: string): Promise<boolean> {
+  const db = getSupabase();
+  const { error } = await db.from('projects').delete().eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
+
+  if (error) return false;
+
+  // Reset project_id in searches that reference this project
+  await db.from('searches').update({ project_id: null }).eq('project_id', id);
+
+  return true;
+}
+
+// ============================================================================
+// SEARCH CATEGORIES
+// ============================================================================
 
 export interface SearchCategoryRecord {
   id: string;
   consumer_project: string;
   name: string;
   normalized_name: string;
+  user_id: string;
   created_at: string;
 }
 
-function normalizeCatalogName(value: string): string {
-  return value.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
+export async function listSearchCategories(consumerProject: string, userId: string): Promise<SearchCategoryRecord[]> {
+  const db = getSupabase();
+  const { data, error } = await db.from('search_categories').select('*').eq('consumer_project', consumerProject).eq('user_id', userId).order('name', { ascending: false });
+
+  if (error) throw error;
+  return data as SearchCategoryRecord[];
 }
 
-export async function listProjects(consumerProject: string): Promise<ProjectRecord[]> {
-  const result = await getDb().execute({
-    sql: `SELECT * FROM projects WHERE consumer_project = ? ORDER BY name COLLATE NOCASE`,
-    args: [consumerProject],
-  });
-  return result.rows as unknown as ProjectRecord[];
-}
-
-export async function resolveProject(consumerProject: string, name: string): Promise<ProjectRecord> {
+export async function resolveSearchCategory(consumerProject: string, name: string, userId: string): Promise<SearchCategoryRecord> {
   const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
-  const normalized = normalizeCatalogName(canonicalName);
-  if (!normalized) throw new Error('project_name_required');
-  const db = getDb();
-  const existing = await db.execute({
-    sql: `SELECT * FROM projects WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
-    args: [consumerProject, normalized],
-  });
-  if (existing.rows.length) return existing.rows[0] as unknown as ProjectRecord;
-  const now = new Date().toISOString();
-  const record: ProjectRecord = {
-    id: `prj_${randomUUID().replace(/-/g, '')}`,
-    consumer_project: consumerProject,
-    name: canonicalName,
-    normalized_name: normalized,
-    created_at: now,
-    updated_at: now,
-  };
-  await db.execute({
-    sql: `INSERT INTO projects (id, consumer_project, name, normalized_name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (consumer_project, normalized_name) DO NOTHING`,
-    args: [record.id, record.consumer_project, record.name, record.normalized_name, record.created_at, record.updated_at],
-  });
-  const resolved = await db.execute({
-    sql: `SELECT * FROM projects WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
-    args: [consumerProject, normalized],
-  });
-  return resolved.rows[0] as unknown as ProjectRecord;
-}
+  const normalized = canonicalName.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 
-export async function listSearchCategories(consumerProject: string): Promise<SearchCategoryRecord[]> {
-  const result = await getDb().execute({
-    sql: `SELECT * FROM search_categories WHERE consumer_project = ? ORDER BY name COLLATE NOCASE`,
-    args: [consumerProject],
-  });
-  return result.rows as unknown as SearchCategoryRecord[];
-}
-
-export async function resolveSearchCategory(consumerProject: string, name: string): Promise<SearchCategoryRecord> {
-  const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
-  const normalized = normalizeCatalogName(canonicalName);
   if (!normalized) throw new Error('category_name_required');
-  const db = getDb();
-  const existing = await db.execute({
-    sql: `SELECT * FROM search_categories WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
-    args: [consumerProject, normalized],
-  });
-  if (existing.rows.length) return existing.rows[0] as unknown as SearchCategoryRecord;
-  const record: SearchCategoryRecord = {
-    id: `cat_${randomUUID().replace(/-/g, '')}`,
-    consumer_project: consumerProject,
-    name: canonicalName,
-    normalized_name: normalized,
-    created_at: new Date().toISOString(),
-  };
-  await db.execute({
-    sql: `INSERT INTO search_categories (id, consumer_project, name, normalized_name, created_at) VALUES (?, ?, ?, ?, ?) ON CONFLICT (consumer_project, normalized_name) DO NOTHING`,
-    args: [record.id, record.consumer_project, record.name, record.normalized_name, record.created_at],
-  });
-  const resolved = await db.execute({
-    sql: `SELECT * FROM search_categories WHERE consumer_project = ? AND normalized_name = ? LIMIT 1`,
-    args: [consumerProject, normalized],
-  });
-  return resolved.rows[0] as unknown as SearchCategoryRecord;
+
+  const db = getSupabase();
+  const { data, error } = await db.from('search_categories').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).single();
+
+  if (error || !data) {
+    const record: SearchCategoryRecord = {
+      id: `cat_${Math.random().toString(36).substring(2, 9)}`,
+      consumer_project: consumerProject,
+      name: canonicalName,
+      normalized_name: normalized,
+      user_id: userId,
+      created_at: new Date().toISOString(),
+    };
+
+    const { error: insertError } = await db.from('search_categories').insert(record);
+
+    if (insertError) throw new Error(`Erro ao criar categoria: ${insertError.message}`);
+
+    return record;
+  }
+
+  return data as SearchCategoryRecord;
 }
 
-export async function updateProject(consumerProject: string, id: string, name: string): Promise<ProjectRecord | null> {
+export async function updateSearchCategory(consumerProject: string, id: string, name: string, userId: string): Promise<SearchCategoryRecord | null> {
   const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
-  const normalized = normalizeCatalogName(canonicalName);
-  if (!normalized) throw new Error('project_name_required');
-  const db = getDb();
-  const existing = await db.execute({
-    sql: `SELECT * FROM projects WHERE id = ? AND consumer_project = ? LIMIT 1`,
-    args: [id, consumerProject],
-  });
-  if (!existing.rows.length) return null;
+  const normalized = canonicalName.normalize('NFKC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR');
 
-  const conflict = await db.execute({
-    sql: `SELECT * FROM projects WHERE consumer_project = ? AND normalized_name = ? AND id != ? LIMIT 1`,
-    args: [consumerProject, normalized, id],
-  });
-  if (conflict.rows.length) throw new Error('project_name_conflict');
+  if (!normalized) throw new Error('category_name_required');
+
+  const db = getSupabase();
+  const { data: existing, error: existError } = await db.from('search_categories').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
+
+  if (existError || !existing) return null;
+
+  // Check conflict
+  const { data: conflict, error: conflictError } = await db.from('search_categories').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).neq('id', id).single();
+
+  if (conflictError || conflict) throw new Error('category_name_conflict');
 
   const now = new Date().toISOString();
-  await db.execute({
-    sql: `UPDATE projects SET name = ?, normalized_name = ?, updated_at = ? WHERE id = ? AND consumer_project = ?`,
-    args: [canonicalName, normalized, now, id, consumerProject],
-  });
-  const updated = await db.execute({
-    sql: `SELECT * FROM projects WHERE id = ? AND consumer_project = ? LIMIT 1`,
-    args: [id, consumerProject],
-  });
-  return updated.rows[0] as unknown as ProjectRecord;
+  const { error: updateError } = await db.from('search_categories').update({ name: canonicalName, normalized_name: normalized }).eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
+
+  if (updateError) throw new Error(`Erro ao atualizar categoria: ${updateError.message}`);
+
+  const { data: updated, error: updatedError } = await db.from('search_categories').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
+
+  if (updatedError) throw new Error(`Erro ao buscar categoria atualizada: ${updatedError.message}`);
+
+  return updated as SearchCategoryRecord;
 }
 
-export async function deleteProject(consumerProject: string, id: string): Promise<boolean> {
-  const db = getDb();
-  const existing = await db.execute({
-    sql: `SELECT * FROM projects WHERE id = ? AND consumer_project = ? LIMIT 1`,
-    args: [id, consumerProject],
-  });
-  if (!existing.rows.length) return false;
+export async function deleteSearchCategory(consumerProject: string, id: string, userId: string): Promise<boolean> {
+  const db = getSupabase();
+  const { error } = await db.from('search_categories').delete().eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
 
-  await db.execute({
-    sql: `UPDATE searches SET project_id = NULL WHERE project_id = ? AND user_id = ?`,
-    args: [id, consumerProject],
-  });
+  if (error) return false;
 
-  const res = await db.execute({
-    sql: `DELETE FROM projects WHERE id = ? AND consumer_project = ?`,
-    args: [id, consumerProject],
-  });
-  return (res.rowsAffected ?? 0) > 0;
+  // Reset category_id in searches that reference this category
+  await db.from('searches').update({ category_id: null }).eq('category_id', id);
+
+  return true;
 }
 
-export async function updateSearchCategory(consumerProject: string, id: string, name: string): Promise<SearchCategoryRecord | null> {
-  const canonicalName = name.trim().replace(/\s+/g, ' ').slice(0, 120);
-  const normalized = normalizeCatalogName(canonicalName);
-  if (!normalized) throw new Error('category_name_required');
-  const db = getDb();
-  const existing = await db.execute({
-    sql: `SELECT * FROM search_categories WHERE id = ? AND consumer_project = ? LIMIT 1`,
-    args: [id, consumerProject],
-  });
-  if (!existing.rows.length) return null;
+// ============================================================================
+// RUN REPORTS
+// ============================================================================
 
-  const conflict = await db.execute({
-    sql: `SELECT * FROM search_categories WHERE consumer_project = ? AND normalized_name = ? AND id != ? LIMIT 1`,
-    args: [consumerProject, normalized, id],
-  });
-  if (conflict.rows.length) throw new Error('category_name_conflict');
+export async function saveRunReport(jobId: string, reportJson: string, generatedAt: string, userId: string): Promise<void> {
+  const db = getSupabase();
+  const { error } = await db.from('run_reports').upsert({
+    job_id: jobId,
+    report_json: reportJson,
+    generated_at: generatedAt,
+  }, { onConflict: 'job_id' });
 
-  await db.execute({
-    sql: `UPDATE search_categories SET name = ?, normalized_name = ? WHERE id = ? AND consumer_project = ?`,
-    args: [canonicalName, normalized, id, consumerProject],
-  });
-  const updated = await db.execute({
-    sql: `SELECT * FROM search_categories WHERE id = ? AND consumer_project = ? LIMIT 1`,
-    args: [id, consumerProject],
-  });
-  return updated.rows[0] as unknown as SearchCategoryRecord;
+  if (error) throw new Error(`Erro ao salvar relatório: ${error.message}`);
 }
 
-export async function deleteSearchCategory(consumerProject: string, id: string): Promise<boolean> {
-  const db = getDb();
-  const existing = await db.execute({
-    sql: `SELECT * FROM search_categories WHERE id = ? AND consumer_project = ? LIMIT 1`,
-    args: [id, consumerProject],
-  });
-  if (!existing.rows.length) return false;
+export async function getRunReport(jobId: string): Promise<string | null> {
+  const db = getSupabase();
+  const { data, error } = await db.from('run_reports').select('report_json').eq('job_id', jobId).single();
 
-  await db.execute({
-    sql: `UPDATE searches SET category_id = NULL WHERE category_id = ? AND user_id = ?`,
-    args: [id, consumerProject],
-  });
+  if (error || !data) return null;
 
-  const res = await db.execute({
-    sql: `DELETE FROM search_categories WHERE id = ? AND consumer_project = ?`,
-    args: [id, consumerProject],
-  });
-  return (res.rowsAffected ?? 0) > 0;
+  // Supabase may return gzipped JSON
+  if (typeof data.report_json === 'string' && data.report_json.startsWith('gzip-base64:')) {
+    const { gunzipSync } = await import('node:zlib');
+    return gunzipSync(Buffer.from(data.report_json.slice('gzip-base64:'.length), 'base64')).toString('utf8');
+  }
+
+  return data.report_json;
+}
+
+// ============================================================================
+// UTILITY FUNCTIONS
+// ============================================================================
+
+export async function countUsers(): Promise<number> {
+  const db = getSupabase();
+  const { count, error } = await db.from('users').select('*', { count: 'exact', head: true });
+  if (error) throw error;
+  return count || 0;
+}
+
+export async function initDb(): Promise<void> {
+  // With Supabase, tables are created via database migrations.
+  // This function is kept for compatibility but Supabase handles schema via SQL migrations.
+  // Ensure the following tables exist in your Supabase project:
+  // - users (with id referencing auth.users)
+  // - api_credentials
+  // - searches (jobs)
+  // - places
+  // - projects
+  // - search_categories
+  // - run_reports
+  console.log('Supabase initialization checked - tables should exist in database.');
 }

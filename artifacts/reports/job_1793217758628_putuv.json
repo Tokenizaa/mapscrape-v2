@@ -1,0 +1,581 @@
+{
+  "schema_version": 1,
+  "report_type": "mapscrape-run-audit",
+  "generated_at": "2026-10-28T20:06:35.653Z",
+  "application": "Tokenizaa/mapscrape-v2",
+  "run": {
+    "id": "job_1793217758628_putuv",
+    "user_id": "account:usr_19a2e9d1cb4122d1667f0cf89118a600",
+    "segment": "Barbearias",
+    "project_name": "Beleza Digital",
+    "location": "São Paulo, SP",
+    "limit_requested": 20,
+    "status": "completed",
+    "status_message": "Nenhum resultado visível na página pública do Google Maps.",
+    "total_found": 0,
+    "total_collected": 0,
+    "total_duplicates": 0,
+    "total_errors": 0,
+    "current_step": "Nenhum resultado visível na página pública do Google Maps.",
+    "created_at": "2026-10-28T20:02:38.628Z",
+    "completed_at": "2026-10-28T20:06:33.723Z",
+    "project_id": "prj_6b9f2ee19e624e53b96da9147cb6fbe0",
+    "category_id": "cat_1b8b091420014da8904f66f1764af660"
+  },
+  "database": {
+    "total_before": 31,
+    "total_after": 31,
+    "net_growth": 0,
+    "records_saved_by_run": 0,
+    "records_enriched_by_run": 0,
+    "records_processed_by_run": 0,
+    "records_saved_by_run_matches_job_counter": true
+  },
+  "collection": {
+    "requested_limit": 20,
+    "status": "completed",
+    "total_found": 0,
+    "total_collected": 0,
+    "total_duplicates": 0,
+    "total_errors": 0,
+    "duplicate_only_run": false,
+    "reached_successful_new_record_target": false,
+    "scroll_attempts": 47,
+    "reached_end_of_list": false,
+    "new_candidates_found": 0
+  },
+  "data_quality": {
+    "records_with_missing_fields": 0,
+    "missing_field_frequency": {},
+    "saved_records": [],
+    "processed_records": []
+  },
+  "duplicates": [],
+  "artifacts": {
+    "json_file": "job_1793217758628_putuv.json",
+    "pdf_file": "job_1793217758628_putuv.pdf",
+    "pdf_generated": true
+  },
+  "audit": {
+    "returned_count": 51,
+    "total_matching_events": 51,
+    "events": [
+      {
+        "id": "log_1793218200313_o3gw94f",
+        "created_at": "2026-10-28T20:10:00.313Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "job.browser_start",
+        "message": "Inicializando Chromium.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"segment\":\"[REDACIONADO]\",\"location\":\"[REDACIONADO]\",\"limitRequested\":20,\"databaseCountBefore\":31}"
+      },
+      {
+        "id": "log_1793217993073_9kbjtff",
+        "created_at": "2026-10-28T20:06:33.073Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "job.finished",
+        "message": "Nenhum resultado visível na página pública do Google Maps.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"status\":\"completed\",\"totalFound\":0,\"totalCollected\":0,\"totalDuplicates\":0,\"totalErrors\":0,\"scrollAttempts\":47,\"reachedEndOfList\":false,\"databaseCountBefore\":31}"
+      },
+      {
+        "id": "log_1793217992217_resyuxh",
+        "created_at": "2026-10-28T20:06:32.217Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":47,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217987530_393ojlo",
+        "created_at": "2026-10-28T20:06:27.530Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":46,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217982974_sxs9en5",
+        "created_at": "2026-10-28T20:06:22.974Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":45,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217976537_138qbn4",
+        "created_at": "2026-10-28T20:06:16.537Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":44,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217971642_7l6uqqg",
+        "created_at": "2026-10-28T20:06:11.642Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":43,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217967156_zitmojp",
+        "created_at": "2026-10-28T20:06:07.155Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":42,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217962656_rx9snut",
+        "created_at": "2026-10-28T20:06:02.656Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":41,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217958446_s9ouroc",
+        "created_at": "2026-10-28T20:05:58.446Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":40,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217953955_67vs2nn",
+        "created_at": "2026-10-28T20:05:53.955Z",
+        "level": "warn",
+        "category": "scraper",
+        "event": "results.resume_checkpoint_missing",
+        "message": "O checkpoint salvo não reapareceu após 40 rolagens; continuando com deduplicação no banco sem consumir limite com fichas já existentes.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"checkpointUrl\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"scrollAttempts\":40}"
+      },
+      {
+        "id": "log_1793217953598_1wg3q5k",
+        "created_at": "2026-10-28T20:05:53.598Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":39,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217944176_7p2r6x0",
+        "created_at": "2026-10-28T20:05:44.176Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":38,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217938764_ct698ww",
+        "created_at": "2026-10-28T20:05:38.764Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":37,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217933948_iu4iz4y",
+        "created_at": "2026-10-28T20:05:33.947Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":36,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217929613_g10x5mn",
+        "created_at": "2026-10-28T20:05:29.613Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":35,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217924396_a32qzn5",
+        "created_at": "2026-10-28T20:05:24.396Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":34,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217915591_pd8kvn3",
+        "created_at": "2026-10-28T20:05:15.591Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":33,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217909424_nsnqk5r",
+        "created_at": "2026-10-28T20:05:09.424Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":32,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217904447_r7p5d22",
+        "created_at": "2026-10-28T20:05:04.447Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":31,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217900116_miz961c",
+        "created_at": "2026-10-28T20:05:00.115Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":30,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217895026_xergze0",
+        "created_at": "2026-10-28T20:04:55.026Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":29,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217888076_w10rzen",
+        "created_at": "2026-10-28T20:04:48.076Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":28,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217883539_cdef0zq",
+        "created_at": "2026-10-28T20:04:43.539Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":27,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217878932_bgaw3vi",
+        "created_at": "2026-10-28T20:04:38.932Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":26,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217874007_uxg46zi",
+        "created_at": "2026-10-28T20:04:34.007Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":25,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217869251_mimwnw9",
+        "created_at": "2026-10-28T20:04:29.250Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":24,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217863886_c2lwhd4",
+        "created_at": "2026-10-28T20:04:23.886Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":23,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217857152_dckypzd",
+        "created_at": "2026-10-28T20:04:17.152Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":22,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217850480_1794bip",
+        "created_at": "2026-10-28T20:04:10.480Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":21,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217845365_dt5sm6v",
+        "created_at": "2026-10-28T20:04:05.365Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":20,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217840840_2cf7avf",
+        "created_at": "2026-10-28T20:04:00.840Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":19,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217836553_xrtsjdi",
+        "created_at": "2026-10-28T20:03:56.553Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":18,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217831178_mhlj4zv",
+        "created_at": "2026-10-28T20:03:51.178Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":17,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217826680_snfoopp",
+        "created_at": "2026-10-28T20:03:46.680Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":16,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217821802_ykcywvl",
+        "created_at": "2026-10-28T20:03:41.802Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":15,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217816797_7u0pmip",
+        "created_at": "2026-10-28T20:03:36.797Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":14,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217812326_85co53q",
+        "created_at": "2026-10-28T20:03:32.326Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":13,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217807530_zi9eay8",
+        "created_at": "2026-10-28T20:03:27.530Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":12,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217802877_g0cp0ul",
+        "created_at": "2026-10-28T20:03:22.877Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":11,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":8668,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217796899_nfdh5mf",
+        "created_at": "2026-10-28T20:03:16.899Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":10,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":7650,\"maxTop\":8668,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":54},\"evidence\":{\"scrollTop\":8668,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217792439_2taixa9",
+        "created_at": "2026-10-28T20:03:12.439Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":9,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6444,\"maxTop\":7702,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":48},\"evidence\":{\"scrollTop\":7650,\"scrollHeight\":9311,\"clientHeight\":643,\"visibleUniqueLinks\":49,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Dom+Fratello+Barbearia+Moema/data=!4m7!3m6!1s0x94ce5b5986bb069d:0x289989a9f3212f55!8m2!3d-23.5999007!4d-46.6622264!16s%2Fg%2F11rq98b2wr!19sChIJnQa7hllbzpQRVS8h86mJmSg\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217788127_fjmwjlw",
+        "created_at": "2026-10-28T20:03:08.127Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":8,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":5892,\"maxTop\":6564,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6392,\"scrollHeight\":8293,\"clientHeight\":643,\"visibleUniqueLinks\":44,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Hermanos+-+Mooca/data=!4m7!3m6!1s0x94ce5f7ed21631f9:0xc86f9d0f52e21a0e!8m2!3d-23.5551818!4d-46.6024048!16s%2Fg%2F11swfn3qw8!19sChIJ-TEW0n5fzpQRDhriUg-db8g\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217784863_5zwauqs",
+        "created_at": "2026-10-28T20:03:04.863Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":7,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":4936,\"maxTop\":5892,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":38},\"evidence\":{\"scrollTop\":5892,\"scrollHeight\":7207,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217783455_t2rapmf",
+        "created_at": "2026-10-28T20:03:03.455Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":6,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":4050,\"maxTop\":4936,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":32},\"evidence\":{\"scrollTop\":4936,\"scrollHeight\":6535,\"clientHeight\":643,\"visibleUniqueLinks\":37,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Suprema/data=!4m7!3m6!1s0x94ce59c807f9d0cd:0x839b64b7ad48b79f!8m2!3d-23.5442163!4d-46.6414268!16s%2Fg%2F11fnpvk7r7!19sChIJzdD5B8hZzpQRn7dIrbdkm4M\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217781817_qtx10ta",
+        "created_at": "2026-10-28T20:03:01.817Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":5,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":2960,\"maxTop\":4050,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":26},\"evidence\":{\"scrollTop\":4050,\"scrollHeight\":5579,\"clientHeight\":643,\"visibleUniqueLinks\":31,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Carv%C3%A3o/data=!4m7!3m6!1s0x94ce59e68cf1402d:0x5e8e2ef4f8ff0b43!8m2!3d-23.5653749!4d-46.666008!16s%2Fg%2F11rwq7lt3p!19sChIJLUDxjOZZzpQRQwv_-PQujl4\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217780050_d4zag73",
+        "created_at": "2026-10-28T20:03:00.050Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":4,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":2628,\"maxTop\":2960,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":20},\"evidence\":{\"scrollTop\":2960,\"scrollHeight\":4693,\"clientHeight\":643,\"visibleUniqueLinks\":26,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Heisenberg+Barbearia+%EF%B8%8F/data=!4m7!3m6!1s0x94ce57edfdc57b85:0x4c9bdde137313338!8m2!3d-23.6052409!4d-46.6958561!16s%2Fg%2F11gxtmf0wx!19sChIJhXvF_e1XzpQRODMxN-Hdm0w\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217776501_g57xcx4",
+        "created_at": "2026-10-28T20:02:56.501Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":3,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":1582,\"maxTop\":2628,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":18},\"evidence\":{\"scrollTop\":2628,\"scrollHeight\":3603,\"clientHeight\":643,\"visibleUniqueLinks\":20,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/data=!4m7!3m6!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9!19sChIJJ-iudiZXzpQRUrWkyD1fP9c\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217774270_a68fje1",
+        "created_at": "2026-10-28T20:02:54.270Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":2,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":570,\"maxTop\":1582,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":12},\"evidence\":{\"scrollTop\":1582,\"scrollHeight\":3271,\"clientHeight\":643,\"visibleUniqueLinks\":18,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+9+De+Julho+-+Vila+Mariana/data=!4m7!3m6!1s0x94ce5980cce2895f:0x212e7cb0f7a07beb!8m2!3d-23.5854663!4d-46.6366263!16s%2Fg%2F1ptx_hwjl!19sChIJX4nizIBZzpQR63ug97B8LiE\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217772484_wko50g7",
+        "created_at": "2026-10-28T20:02:52.484Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"scrollAttempt\":1,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":0,\"maxTop\":570,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd\",\"feedLinks\":6},\"evidence\":{\"scrollTop\":570,\"scrollHeight\":2225,\"clientHeight\":643,\"visibleUniqueLinks\":12,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Smart+Cut%27s+-+Vila+Nova+Concei%C3%A7%C3%A3o+-+S%C3%A3o+Paulo/data=!4m7!3m6!1s0x94ce57f87809a113:0x832392436118bd71!8m2!3d-23.5895853!4d-46.6765025!16s%2Fg%2F11kk4cvfl4!19sChIJE6EJePhXzpQRcb0YYUOSI4M\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barbearia+Bar+Vila+Madalena/@-23.5474874,-46.691905,17z/data=!3m1!4b1!4m6!3m5!1s0x94ce572676aee827:0xd73f5f3dc8a4b552!8m2!3d-23.5474874!4d-46.691905!16s%2Fg%2F11yy31f5b9\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217758798_4seqxok",
+        "created_at": "2026-10-28T20:02:38.798Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "job.started",
+        "message": "Coleta iniciada.",
+        "job_id": "job_1793217758628_putuv",
+        "metadata": "{\"segment\":\"[REDACIONADO]\",\"location\":\"[REDACIONADO]\",\"limit\":20}"
+      }
+    ],
+    "truncated": false
+  },
+  "interpretation": {
+    "database_growth_is_measured_by_before_after_count": true,
+    "zero_growth_is_not_reported_as_new_data": true,
+    "note": "O relatório descreve evidências locais observadas. Crescimento líquido e contagem por job são métricas distintas; não comprovam que o Google Maps tenha retornado todos os resultados possíveis."
+  }
+}

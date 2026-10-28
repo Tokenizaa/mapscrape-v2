@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import puppeteer from 'puppeteer';
-import { countPlaces, getAllPlaces, getJob, getPlacesByIds, getRunReport, saveRunReport } from './db';
+import { countPlaces, getAllPlaces, getJob, getPlacesByIds, getRunReport, saveRunReport, getAuthenticatedUser } from './db';
 import { listAuditLogs } from './audit-log';
 import { PlaceRecord } from '../shared/types';
 
@@ -176,7 +176,8 @@ export async function writeRunReport(jobId: string, baselineCount: number, optio
   }
   const json = JSON.stringify(report, null, 2) + '\n';
   // Durable source of truth: Vercel's function filesystem is read-only and ephemeral.
-  await saveRunReport(jobId, json, report.generated_at);
+  const userId = await getAuthenticatedUser().then(user => user?.id || 'anonymous');
+  await saveRunReport(jobId, json, report.generated_at, userId);
   // Keep local artifacts for developer workflows only.
   if (!process.env.VERCEL) {
     await fs.mkdir(reportDirectory, { recursive: true });

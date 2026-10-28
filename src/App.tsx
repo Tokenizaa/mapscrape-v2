@@ -17,8 +17,30 @@ import { AuthScreen } from './components/AuthScreen';
 import { PlaceRecord, ScrapeJob } from './shared/types';
 import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-react';
 
+// Supabase Auth initialization
+let supabase: any = null;
+
+try {
+  const supabaseUrl = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
+  const supabaseAnonKey = process.env.SUPABASE_ACCESS_TOKEN?.trim();
+  
+  if (supabaseUrl && supabaseAnonKey) {
+    supabase = require('@supabase/supabase-js').createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: true,
+        detectSessionInUrl: false,
+      },
+    });
+  }
+} catch (e) {
+  console.error('Supabase client initialization error:', e);
+}
+
 // Todas as chamadas internas usam a sessão da conta. Chaves de API são apenas para consumidores externos.
 async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  // Get the Supabase session token from sessionStorage
+  // This is set by the AuthScreen when user logs in via Supabase
   const token = window.sessionStorage.getItem('mapscrape_session_token');
   const headers = new Headers(init.headers || {});
   if (token) headers.set('Authorization', `Bearer ${token}`);
@@ -30,32 +52,105 @@ export default function App() {
   const [apiKeyInput, setApiKeyInput] = useState('');
   const [hasApiKey, setHasApiKey] = useState(() => Boolean(window.sessionStorage.getItem('mapscrape_session_token')));
   const [authUser, setAuthUser] = useState<{ id: string; email: string; name: string; role: 'admin' | 'user' } | null>(() => {
-    try { return JSON.parse(window.sessionStorage.getItem('mapscrape_user') || 'null'); } catch { return null; }
+    try { 
+      const userJson = window.sessionStorage.getItem('mapscrape_user'); 
+      return userJson ? JSON.parse(userJson) : null; 
+    } catch { return null; }
   });
   const [apiKeyError, setApiKeyError] = useState('');
 
   useEffect(() => {
-    const token = window.sessionStorage.getItem('mapscrape_session_token');
-    if (!token) return;
+    // Initialize Supabase Auth session if client available
+    if (!supabase) return;
+    
     let active = true;
-    apiFetch('/api/auth/me', { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' })
-      .then(async response => {
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(data.error || 'session_expired');
-        if (active && data.user) {
-          setAuthUser(data.user);
-          window.sessionStorage.setItem('mapscrape_user', JSON.stringify(data.user));
+    
+    // Restore session from Supabase
+    supabase.auth.getSession().then(async ({ data, error }) => {
+      if (!active) return;
+      
+      if (data?.session?.user?.id) {
+        const userId = data.session.user.id;
+        window.sessionStorage.setItem('mapscrape_user_id', userId);
+        
+        // Look up the user profile in our database
+        try {
+          const profileResponse = await apiFetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${data.session.access_token}` },
+            cache: 'no-store',
+          });
+          
+          if (!profileResponse.ok) {
+            // Fall back to reading from sessionStorage if API call fails
+            const userJson = window.sessionStorage.getItem('mapscrape_user');
+            if (userJson) {
+              setAuthUser(JSON.parse(userJson));
+            }
+          } else {
+            const profile = await profileResponse.json();
+            if (profile.user) {
+              setAuthUser(profile.user);
+              window.sessionStorage.setItem('mapscrape_user', JSON.stringify(profile.user));
+            }
+          }
+        } catch (err) {
+          // Fall back to sessionStorage
+          const userJson = window.sessionStorage.getItem('mapscrape_user');
+          if (userJson) {
+            setAuthUser(JSON.parse(userJson));
+          }
         }
-      })
-      .catch(() => {
-        if (!active) return;
+      } else {
+        // No session - clear any stored auth state
+        window.sessionStorage.removeItem('mapscrape_session_token');
+        window.sessionStorage.removeItem('mapscrape_user');
+        setAuthUser(null);
+      }
+    });
+    
+    // Listen for auth state changes
+    const unsubscribe = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
+      if (!active) return;
+      
+      if (session?.user?.id) {
+        const userId = session.user.id;
+        window.sessionStorage.setItem('mapscrape_user_id', userId);
+        
+        // Fetch user profile
+        try {
+          const profileResponse = await apiFetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            cache: 'no-store',
+          });
+          
+          if (!profileResponse.ok) {
+            // Fall back
+          } else {
+            const profile = await profileResponse.json();
+            if (profile.user) {
+              setAuthUser(profile.user);
+              window.sessionStorage.setItem('mapscrape_user', JSON.stringify(profile.user));
+              window.sessionStorage.setItem('mapscrape_session_token', session.access_token);
+            }
+          }
+        } catch (err) {
+          // Fall back
+        }
+      } else {
+        // User signed out
         window.sessionStorage.removeItem('mapscrape_session_token');
         window.sessionStorage.removeItem('mapscrape_user');
         setAuthUser(null);
         setHasApiKey(false);
-      });
-    return () => { active = false; };
-  }, []);
+      }
+    });
+    
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [supabase]);
+
   const [isConnectingApi, setIsConnectingApi] = useState(false);
 
   const handleConnectApiKey = async (event: React.FormEvent) => {
@@ -70,8 +165,8 @@ export default function App() {
       if (!response.ok) throw new Error(response.status === 401 ? 'Chave de API inválida ou revogada.' : `Falha de autenticação (HTTP ${response.status}).`);
       setHasApiKey(true);
       setApiKeyInput('');
-      await loadHistory();
-      await loadPlaces();
+      // Load history and places after connecting
+      // These will be loaded below
     } catch (error) {
       window.sessionStorage.removeItem('mapscrape_api_key');
       setHasApiKey(false);
@@ -85,6 +180,7 @@ export default function App() {
     window.sessionStorage.removeItem('mapscrape_api_key');
     window.sessionStorage.removeItem('mapscrape_session_token');
     window.sessionStorage.removeItem('mapscrape_user');
+    window.sessionStorage.removeItem('mapscrape_user_id');
     setAuthUser(null);
     setHasApiKey(false);
     setJobs([]);
@@ -170,9 +266,12 @@ export default function App() {
     }
   }, [currentPage, pageSize, sortBy, sortOrder, selectedJobId, searchQuery, categoryFilter]);
 
-  // Initial load
+  // Initial load - only load data if user is authenticated
   useEffect(() => {
-    if (!hasApiKey) return;
+    if (!hasApiKey) {
+      // User not authenticated - show auth screen will be handled by parent
+      return;
+    }
     loadHistory();
     loadPlaces();
   }, [hasApiKey, loadHistory, loadPlaces]);
@@ -336,6 +435,7 @@ export default function App() {
     logs: 'Auditoria & Logs',
   };
 
+  // If user is not authenticated, show AuthScreen
   if (!hasApiKey) return <AuthScreen onAuthenticated={handleAuthenticated} />;
 
   return (
@@ -409,22 +509,15 @@ export default function App() {
           </div>
         </header>
 
-        {/* Screen Content Viewport */}
+        {/* Main Content Area */}
         <main className="flex-1 p-4 sm:p-6 lg:p-10">
-          {!hasApiKey ? (
-            <section className="mx-auto mb-8 max-w-3xl rounded-xl border border-amber-500/30 bg-amber-500/5 p-5">
-              <h2 className="text-lg font-semibold text-zinc-100">Conectar à API do MapScrape</h2>
-              <p className="mt-1 text-sm text-zinc-400">Insira uma chave de consumidor emitida em Credenciais de API. A chave fica apenas nesta aba e não é incorporada ao código.</p>
-              <form onSubmit={handleConnectApiKey} className="mt-4 flex flex-col gap-3 sm:flex-row">
-                <input aria-label="Chave de API" type="password" autoComplete="off" value={apiKeyInput} onChange={(event) => setApiKeyInput(event.target.value)} placeholder="Chave de API (Bearer)" className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100" />
-                <button disabled={!apiKeyInput.trim() || isConnectingApi} className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{isConnectingApi ? 'Validando…' : 'Conectar'}</button>
-              </form>
-              {apiKeyError && <p role="alert" className="mt-3 text-sm text-rose-300">{apiKeyError}</p>}
-              <button type="button" onClick={() => setCurrentTab('credentials')} className="mt-3 text-sm font-medium text-emerald-400 hover:text-emerald-300">Abrir Credenciais de API</button>
-            </section>
-          ) : (
+          {hasApiKey ? (
             <div className="mb-4 flex justify-end">
               <span className="mr-3 text-xs text-zinc-400">{authUser?.name || authUser?.email || 'Sessão de API'}</span><button type="button" onClick={handleDisconnectApiKey} className="text-xs text-zinc-400 hover:text-zinc-100">Sair da conta</button>
+            </div>
+          ) : (
+            <div className="mb-4 flex justify-end">
+              <span className="mr-3 text-xs text-zinc-400">Não autenticado</span>
             </div>
           )}
           {currentTab === 'dashboard' && <DashboardScreen totalPlaces={totalPlaces} jobs={jobs} currentJob={currentJob} isScraping={isScraping} onNavigate={setCurrentTab} />}
@@ -524,4 +617,3 @@ export default function App() {
     </div>
   );
 }
-

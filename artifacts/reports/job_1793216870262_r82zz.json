@@ -1,0 +1,581 @@
+{
+  "schema_version": 1,
+  "report_type": "mapscrape-run-audit",
+  "generated_at": "2026-10-28T19:51:59.111Z",
+  "application": "Tokenizaa/mapscrape-v2",
+  "run": {
+    "id": "job_1793216870262_r82zz",
+    "user_id": "account:usr_19a2e9d1cb4122d1667f0cf89118a600",
+    "segment": "Barbearias",
+    "project_name": "Beleza Digital",
+    "location": "São Paulo, SP",
+    "limit_requested": 20,
+    "status": "completed",
+    "status_message": "Nenhum resultado visível na página pública do Google Maps.",
+    "total_found": 0,
+    "total_collected": 0,
+    "total_duplicates": 0,
+    "total_errors": 0,
+    "current_step": "Nenhum resultado visível na página pública do Google Maps.",
+    "created_at": "2026-10-28T19:47:50.262Z",
+    "completed_at": "2026-10-28T19:51:56.658Z",
+    "project_id": "prj_6b9f2ee19e624e53b96da9147cb6fbe0",
+    "category_id": "cat_1b8b091420014da8904f66f1764af660"
+  },
+  "database": {
+    "total_before": 11,
+    "total_after": 11,
+    "net_growth": 0,
+    "records_saved_by_run": 0,
+    "records_enriched_by_run": 0,
+    "records_processed_by_run": 0,
+    "records_saved_by_run_matches_job_counter": true
+  },
+  "collection": {
+    "requested_limit": 20,
+    "status": "completed",
+    "total_found": 0,
+    "total_collected": 0,
+    "total_duplicates": 0,
+    "total_errors": 0,
+    "duplicate_only_run": false,
+    "reached_successful_new_record_target": false,
+    "scroll_attempts": 47,
+    "reached_end_of_list": false,
+    "new_candidates_found": 0
+  },
+  "data_quality": {
+    "records_with_missing_fields": 0,
+    "missing_field_frequency": {},
+    "saved_records": [],
+    "processed_records": []
+  },
+  "duplicates": [],
+  "artifacts": {
+    "json_file": "job_1793216870262_r82zz.json",
+    "pdf_file": "job_1793216870262_r82zz.pdf",
+    "pdf_generated": true
+  },
+  "audit": {
+    "returned_count": 51,
+    "total_matching_events": 51,
+    "events": [
+      {
+        "id": "log_1793217431073_qdmeqhc",
+        "created_at": "2026-10-28T19:57:11.073Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":20,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217385770_nyll5y3",
+        "created_at": "2026-10-28T19:56:25.770Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":11,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217374391_qnuym20",
+        "created_at": "2026-10-28T19:56:14.391Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":9,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217116290_ntes8hh",
+        "created_at": "2026-10-28T19:51:56.290Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "job.finished",
+        "message": "Nenhum resultado visível na página pública do Google Maps.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"status\":\"completed\",\"totalFound\":0,\"totalCollected\":0,\"totalDuplicates\":0,\"totalErrors\":0,\"scrollAttempts\":47,\"reachedEndOfList\":false,\"databaseCountBefore\":11}"
+      },
+      {
+        "id": "log_1793217114409_slh9ser",
+        "created_at": "2026-10-28T19:51:54.409Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":47,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217108738_sdgf3wu",
+        "created_at": "2026-10-28T19:51:48.738Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":46,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217103834_upey0v1",
+        "created_at": "2026-10-28T19:51:43.834Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":45,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217098935_0t3ty55",
+        "created_at": "2026-10-28T19:51:38.934Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":44,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217094617_u6jlh6m",
+        "created_at": "2026-10-28T19:51:34.617Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":43,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217090004_tb0pccr",
+        "created_at": "2026-10-28T19:51:30.004Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":42,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217085449_8zcehs9",
+        "created_at": "2026-10-28T19:51:25.449Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":41,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217080585_3t1t7lk",
+        "created_at": "2026-10-28T19:51:20.585Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":40,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":true,\"resumeFallbackUsed\":true}"
+      },
+      {
+        "id": "log_1793217076401_eckq7iu",
+        "created_at": "2026-10-28T19:51:16.401Z",
+        "level": "warn",
+        "category": "scraper",
+        "event": "results.resume_checkpoint_missing",
+        "message": "O checkpoint salvo não reapareceu após 40 rolagens; continuando com deduplicação no banco sem consumir limite com fichas já existentes.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"checkpointUrl\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"scrollAttempts\":40}"
+      },
+      {
+        "id": "log_1793217076193_3ozteln",
+        "created_at": "2026-10-28T19:51:16.193Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":39,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217071634_xov639y",
+        "created_at": "2026-10-28T19:51:11.634Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":38,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217067173_y0b0k3i",
+        "created_at": "2026-10-28T19:51:07.173Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":37,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217062737_2sdrkwy",
+        "created_at": "2026-10-28T19:51:02.737Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":36,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217058265_575fxjt",
+        "created_at": "2026-10-28T19:50:58.265Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":35,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217054021_1ds6j6b",
+        "created_at": "2026-10-28T19:50:54.020Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":34,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217049138_zdrq8ry",
+        "created_at": "2026-10-28T19:50:49.138Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":33,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217044161_516yyh4",
+        "created_at": "2026-10-28T19:50:44.161Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":32,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217039536_ep03ppf",
+        "created_at": "2026-10-28T19:50:39.536Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":31,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217034977_seei82s",
+        "created_at": "2026-10-28T19:50:34.975Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":30,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217030343_wfdldfa",
+        "created_at": "2026-10-28T19:50:30.343Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":29,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217025618_khygv8q",
+        "created_at": "2026-10-28T19:50:25.618Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":28,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217020943_lyvqyx0",
+        "created_at": "2026-10-28T19:50:20.943Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":27,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217016350_tmgrifm",
+        "created_at": "2026-10-28T19:50:16.350Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":26,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217011782_v3weo7x",
+        "created_at": "2026-10-28T19:50:11.782Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":25,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217007410_63mzelv",
+        "created_at": "2026-10-28T19:50:07.410Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":24,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793217003034_lzjvbn4",
+        "created_at": "2026-10-28T19:50:03.034Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":23,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216998292_g1h9l2k",
+        "created_at": "2026-10-28T19:49:58.292Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":22,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216993963_lyqwlt5",
+        "created_at": "2026-10-28T19:49:53.963Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":21,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216985138_lsm4e6l",
+        "created_at": "2026-10-28T19:49:45.138Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":19,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216979869_3u2wncj",
+        "created_at": "2026-10-28T19:49:39.869Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":18,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216975456_07455hc",
+        "created_at": "2026-10-28T19:49:35.456Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":17,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216970614_2zl3sgv",
+        "created_at": "2026-10-28T19:49:30.614Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":16,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216964651_u55fqyp",
+        "created_at": "2026-10-28T19:49:24.651Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":15,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216959893_ecw3nh0",
+        "created_at": "2026-10-28T19:49:19.893Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":14,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216955120_gb3fbf0",
+        "created_at": "2026-10-28T19:49:15.120Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":13,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216949692_fhuj5yv",
+        "created_at": "2026-10-28T19:49:09.692Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":12,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216938250_g72drek",
+        "created_at": "2026-10-28T19:48:58.249Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":10,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":6590,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":false,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216928433_oazw6gq",
+        "created_at": "2026-10-28T19:48:48.432Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":8,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":5878,\"maxTop\":6590,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":42},\"evidence\":{\"scrollTop\":6590,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216923986_uv4xiu3",
+        "created_at": "2026-10-28T19:48:43.986Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":7,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":4922,\"maxTop\":5878,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":38},\"evidence\":{\"scrollTop\":5878,\"scrollHeight\":7233,\"clientHeight\":643,\"visibleUniqueLinks\":40,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Campo+Belo/data=!4m7!3m6!1s0x94ce5bfcfdb2680b:0x8ecde22a116d85d2!8m2!3d-23.6190258!4d-46.667156!16s%2Fg%2F11fsn7ngbt!19sChIJC2iy_fxbzpQR0oVtESrizY4\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216918362_o7zj1va",
+        "created_at": "2026-10-28T19:48:38.362Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":6,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":4036,\"maxTop\":4922,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":32},\"evidence\":{\"scrollTop\":4922,\"scrollHeight\":6521,\"clientHeight\":643,\"visibleUniqueLinks\":36,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Veracruz/data=!4m7!3m6!1s0x94cef6361ea169d9:0x538b8c0e5698c145!8m2!3d-23.4883793!4d-46.6261764!16s%2Fg%2F11b8_qywkx!19sChIJ2WmhHjb2zpQRRcGYVg6Mi1M\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216913054_ra1x9yy",
+        "created_at": "2026-10-28T19:48:33.054Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":5,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":2960,\"maxTop\":4036,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":26},\"evidence\":{\"scrollTop\":4036,\"scrollHeight\":5565,\"clientHeight\":643,\"visibleUniqueLinks\":31,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Carv%C3%A3o/data=!4m7!3m6!1s0x94ce59e68cf1402d:0x5e8e2ef4f8ff0b43!8m2!3d-23.5653749!4d-46.666008!16s%2Fg%2F11rwq7lt3p!19sChIJLUDxjOZZzpQRQwv_-PQujl4\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216911689_c2xphtx",
+        "created_at": "2026-10-28T19:48:31.689Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":4,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":2628,\"maxTop\":2960,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":20},\"evidence\":{\"scrollTop\":2960,\"scrollHeight\":4679,\"clientHeight\":643,\"visibleUniqueLinks\":25,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Heisenberg+Barbearia+%EF%B8%8F/data=!4m7!3m6!1s0x94ce57edfdc57b85:0x4c9bdde137313338!8m2!3d-23.6052409!4d-46.6958561!16s%2Fg%2F11gxtmf0wx!19sChIJhXvF_e1XzpQRODMxN-Hdm0w\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216908385_hhzj8fw",
+        "created_at": "2026-10-28T19:48:28.385Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":3,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":1582,\"maxTop\":2628,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":18},\"evidence\":{\"scrollTop\":2628,\"scrollHeight\":3603,\"clientHeight\":643,\"visibleUniqueLinks\":20,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Napoles+%7C+Pamplona/data=!4m7!3m6!1s0x94ce595f0bf8b82d:0x461171a608f8ee3c!8m2!3d-23.5648401!4d-46.6549865!16s%2Fg%2F11h15bb317!19sChIJLbj4C19ZzpQRPO74CKZxEUY\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216906567_j170q2l",
+        "created_at": "2026-10-28T19:48:26.567Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":2,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":570,\"maxTop\":1582,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd QjC7t\",\"feedLinks\":12},\"evidence\":{\"scrollTop\":1582,\"scrollHeight\":3271,\"clientHeight\":643,\"visibleUniqueLinks\":18,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+9+De+Julho+-+Vila+Mariana/data=!4m7!3m6!1s0x94ce5980cce2895f:0x212e7cb0f7a07beb!8m2!3d-23.5854663!4d-46.6366263!16s%2Fg%2F1ptx_hwjl!19sChIJX4nizIBZzpQR63ug97B8LiE\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216904215_5v9p1c8",
+        "created_at": "2026-10-28T19:48:24.215Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "results.scroll",
+        "message": "Rolagem da lista de resultados executada e medida.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"scrollAttempt\":1,\"target\":{\"x\":276,\"y\":380,\"beforeTop\":0,\"maxTop\":570,\"tag\":\"DIV\",\"className\":\"m6QErb DxyBCb kA9KIf dS8AEf XiKgde ecceSd\",\"feedLinks\":6},\"evidence\":{\"scrollTop\":570,\"scrollHeight\":2225,\"clientHeight\":643,\"visibleUniqueLinks\":12,\"firstUrl\":\"https://www.google.com/maps/place/S%C3%A3o+Paulo+Barbearia/data=!4m7!3m6!1s0x94ce57be30ae4773:0x7b6f0b8bb03f22c9!8m2!3d-23.5513389!4d-46.6911536!16s%2Fg%2F11c708rbc7!19sChIJc0euML5XzpQRySI_sIsLb3s\",\"lastUrl\":\"https://www.google.com/maps/place/Barbearia+Smart+Cut%27s+-+Vila+Nova+Concei%C3%A7%C3%A3o+-+S%C3%A3o+Paulo/data=!4m7!3m6!1s0x94ce57f87809a113:0x832392436118bd71!8m2!3d-23.5895853!4d-46.6765025!16s%2Fg%2F11kk4cvfl4!19sChIJE6EJePhXzpQRcb0YYUOSI4M\"},\"moved\":true,\"resumeCheckpoint\":\"https://www.google.com/maps/place/Barber+do+Neto/@-23.5527328,-46.6553689,17z/data=!4m7!3m6!1s0x94ce59d6a099b2ff:0x6f516e31e11bd821!8m2!3d-23.5527328!4d-46.6553689!10e1!16s%2Fg%2F11bwqpvrdr\",\"resumeReached\":false,\"resumeFallbackUsed\":false}"
+      },
+      {
+        "id": "log_1793216870898_eo4lkeu",
+        "created_at": "2026-10-28T19:47:50.898Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "job.browser_start",
+        "message": "Inicializando Chromium.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"segment\":\"[REDACIONADO]\",\"location\":\"[REDACIONADO]\",\"limitRequested\":20,\"databaseCountBefore\":11}"
+      },
+      {
+        "id": "log_1793216870732_cng0dgn",
+        "created_at": "2026-10-28T19:47:50.731Z",
+        "level": "info",
+        "category": "scraper",
+        "event": "job.started",
+        "message": "Coleta iniciada.",
+        "job_id": "job_1793216870262_r82zz",
+        "metadata": "{\"segment\":\"[REDACIONADO]\",\"location\":\"[REDACIONADO]\",\"limit\":20}"
+      }
+    ],
+    "truncated": false
+  },
+  "interpretation": {
+    "database_growth_is_measured_by_before_after_count": true,
+    "zero_growth_is_not_reported_as_new_data": true,
+    "note": "O relatório descreve evidências locais observadas. Crescimento líquido e contagem por job são métricas distintas; não comprovam que o Google Maps tenha retornado todos os resultados possíveis."
+  }
+}

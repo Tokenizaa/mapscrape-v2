@@ -1,4 +1,24 @@
-import { getDb } from './db';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
+let supabase: SupabaseClient | null = null;
+
+function getSupabase(): SupabaseClient {
+  if (!supabase) {
+    const url = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
+    const key = process.env.SUPABASE_ACCESS_TOKEN?.trim();
+    if (!url || !key) {
+      throw new Error('Supabase não configurado: defina SUPABASE_DIRECT_CONNECTION e SUPABASE_ACCESS_TOKEN.');
+    }
+    supabase = createClient(url, key, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+        detectSessionInUrl: false,
+      },
+    });
+  }
+  return supabase;
+}
 
 export type AuditLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -39,21 +59,13 @@ function sanitizeMetadata(metadata: Record<string, unknown>): Record<string, unk
 }
 
 export async function initAuditLog(): Promise<void> {
-  const db = getDb();
-  await db.execute(`
-    CREATE TABLE IF NOT EXISTS audit_logs (
-      id TEXT PRIMARY KEY,
-      created_at TEXT NOT NULL,
-      level TEXT NOT NULL,
-      category TEXT NOT NULL,
-      event TEXT NOT NULL,
-      message TEXT NOT NULL,
-      job_id TEXT NOT NULL DEFAULT '',
-      metadata TEXT NOT NULL DEFAULT '{}'
-    )
-  `);
-  await db.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at DESC)');
-  await db.execute('CREATE INDEX IF NOT EXISTS idx_audit_logs_job_id ON audit_logs (job_id)');
+  const db = getSupabase();
+  const { error } = await db.from('audit_logs').select('*', { count: 'exact', head: true });
+
+  // Check if table exists, if not, just log
+  if (error) {
+    console.log('Tabela audit_logs deve existir no Supabase (criar via dashboard ou migration).');
+  }
 }
 
 export async function writeAuditLog(input: {
@@ -64,23 +76,24 @@ export async function writeAuditLog(input: {
   jobId?: string;
   metadata?: Record<string, unknown>;
 }): Promise<void> {
-  const db = getDb();
+  const db = getSupabase();
   const createdAt = new Date().toISOString();
   const sanitizedMetadata = sanitizeMetadata(input.metadata ?? {});
   const metadata = JSON.stringify(sanitizedMetadata);
-  await db.execute({
-    sql: 'INSERT INTO audit_logs (id, created_at, level, category, event, message, job_id, metadata) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    args: [
-      `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
-      createdAt,
-      input.level ?? 'info',
-      input.category,
-      input.event,
-      input.message.slice(0, 4000),
-      input.jobId ?? '',
-      metadata.slice(0, 12000),
-    ],
+  const { error } = await db.from('audit_logs').insert({
+    id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    created_at: createdAt,
+    level: input.level ?? 'info',
+    category: input.category,
+    event: input.event,
+    message: input.message.slice(0, 4000),
+    job_id: input.jobId ?? '',
+    metadata: metadata.slice(0, 12000),
   });
+
+  if (error) {
+    console.error('Erro ao escrever log de auditoria:', error);
+  }
 }
 
 export async function listAuditLogs(options: {
@@ -92,27 +105,55 @@ export async function listAuditLogs(options: {
   query?: string;
   consumerProject?: string;
 } = {}): Promise<{ logs: AuditEvent[]; total: number }> {
-  const db = getDb();
-  const where: string[] = [];
-  const args: (string | number)[] = [];
-  if (options.level) { where.push('level = ?'); args.push(options.level); }
-  if (options.category) { where.push('category = ?'); args.push(options.category); }
-  if (options.jobId) { where.push('job_id = ?'); args.push(options.jobId); }
-  if (options.consumerProject) { where.push('EXISTS (SELECT 1 FROM searches s WHERE s.id = audit_logs.job_id AND s.user_id = ?)'); args.push(options.consumerProject); }
+  const db = getSupabase();
+
+  let query = db.from('audit_logs').select('id, created_at, level, category, event, message, job_id, metadata');
+
+  if (options.level) {
+    query = query.eq('level', options.level);
+  }
+  if (options.category) {
+    query = query.eq('category', options.category);
+  }
+  if (options.jobId) {
+    query = query.eq('job_id', options.jobId);
+  }
   if (options.query?.trim()) {
     const q = `%${options.query.trim().slice(0, 200)}%`;
-    where.push('(message LIKE ? OR event LIKE ? OR metadata LIKE ? OR job_id LIKE ?)');
-    args.push(q, q, q, q);
+    query = query.or(`message.ilike.%${q}%,event.ilike.%${q}%,metadata.ilike.%${q}%,job_id.ilike.%${q}%`);
   }
-  const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
-  const count = await db.execute({ sql: `SELECT COUNT(*) AS count FROM audit_logs ${clause}`, args });
-  const requestedLimit = Number(options.limit ?? 100);
-  const requestedOffset = Number(options.offset ?? 0);
-  const limit = Number.isFinite(requestedLimit) ? Math.max(1, Math.min(500, Math.floor(requestedLimit))) : 100;
-  const offset = Number.isFinite(requestedOffset) ? Math.max(0, Math.floor(requestedOffset)) : 0;
-  const result = await db.execute({
-    sql: `SELECT * FROM audit_logs ${clause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
-    args: [...args, limit, offset],
-  });
-  return { logs: result.rows as unknown as AuditEvent[], total: Number(count.rows[0]?.count ?? 0) };
+  if (options.consumerProject) {
+    // Join with searches to filter by user
+    query = db.from('audit_logs').select('*').eq('job_id', { exp: 'searches.id = audit_logs.job_id AND searches.user_id = ?', params: [options.consumerProject] });
+  }
+
+  // Get total count
+  const { count, error: countError } = await db.from('audit_logs').select('*', { count: 'exact', head: true });
+
+  if (countError) throw countError;
+
+  const requestedLimit = Number.isFinite(options.limit) ? Math.max(1, Math.min(500, Math.floor(options.limit))) : 100;
+  const requestedOffset = Number.isFinite(options.offset) ? Math.max(0, Math.floor(options.offset)) : 0;
+  const limit = requestedLimit;
+  const offset = requestedOffset;
+
+  const { data, error } = await query.order('created_at', { ascending: false }).range(offset, offset + limit - 1);
+
+  if (error) throw error;
+
+  const logs = data?.map((row: any) => ({
+    id: row.id,
+    created_at: row.created_at,
+    level: row.level,
+    category: row.category,
+    event: row.event,
+    message: row.message,
+    job_id: row.job_id,
+    metadata: row.metadata,
+  })) as AuditEvent[];
+
+  return {
+    logs: logs || [],
+    total: Number(count || 0),
+  };
 }

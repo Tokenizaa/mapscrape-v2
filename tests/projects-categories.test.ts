@@ -23,42 +23,42 @@ describe('Projects and Categories CRUD & Isolation', () => {
   });
 
   it('creates and lists projects scoped by consumer project', async () => {
-    const projA = await resolveProject(userA, 'Prospecção SP');
+    const projA = await resolveProject(userA, 'Prospecção SP', userA);
     expect(projA.id).toBeDefined();
     expect(projA.name).toBe('Prospecção SP');
     expect(projA.consumer_project).toBe(userA);
 
     // Idempotent creation
-    const sameProjA = await resolveProject(userA, '  prospecção sp  ');
+    const sameProjA = await resolveProject(userA, '  prospecção sp  ', userA);
     expect(sameProjA.id).toBe(projA.id);
 
     // Isolation: User B creates project with same name
-    const projB = await resolveProject(userB, 'Prospecção SP');
+    const projB = await resolveProject(userB, 'Prospecção SP', userB);
     expect(projB.id).not.toBe(projA.id);
     expect(projB.consumer_project).toBe(userB);
 
-    const listA = await listProjects(userA);
+    const listA = await listProjects(userA, userA);
     expect(listA.some((p) => p.id === projA.id)).toBe(true);
     expect(listA.some((p) => p.id === projB.id)).toBe(false);
   });
 
   it('updates project name with validation and conflict prevention', async () => {
-    const proj = await resolveProject(userA, 'Clínicas Odonto');
-    const updated = await updateProject(userA, proj.id, 'Clínicas Odonto Premium');
+    const proj = await resolveProject(userA, 'Clínicas Odonto', userA);
+    const updated = await updateProject(userA, proj.id, 'Clínicas Odonto Premium', userA);
     expect(updated).not.toBeNull();
     expect(updated?.name).toBe('Clínicas Odonto Premium');
 
     // Attempting to rename to an existing project name in same scope throws conflict
-    await resolveProject(userA, 'Outro Projeto');
-    await expect(updateProject(userA, proj.id, 'Outro Projeto')).rejects.toThrow('project_name_conflict');
+    await resolveProject(userA, 'Outro Projeto', userA);
+    await expect(updateProject(userA, proj.id, 'Outro Projeto', userA)).rejects.toThrow('project_name_conflict');
 
     // Non-existent or other user's project returns null
-    const notFound = await updateProject(userB, proj.id, 'Tentativa Inválida');
+    const notFound = await updateProject(userB, proj.id, 'Tentativa Inválida', userB);
     expect(notFound).toBeNull();
   });
 
   it('deletes project and safely unlinks associated searches without losing jobs', async () => {
-    const proj = await resolveProject(userA, 'Projeto Para Excluir');
+    const proj = await resolveProject(userA, 'Projeto Para Excluir', userA);
     const jobId = `job_del_test_${Date.now()}`;
     const job: ScrapeJob = {
       id: jobId,
@@ -78,10 +78,10 @@ describe('Projects and Categories CRUD & Isolation', () => {
     };
     await createJob(job);
 
-    const deleted = await deleteProject(userA, proj.id);
+    const deleted = await deleteProject(userA, proj.id, userA);
     expect(deleted).toBe(true);
 
-    const list = await listProjects(userA);
+    const list = await listProjects(userA, userA);
     expect(list.some((p) => p.id === proj.id)).toBe(false);
 
     // Job still exists in history, with project_id safely unlinked (null)
@@ -92,24 +92,24 @@ describe('Projects and Categories CRUD & Isolation', () => {
   });
 
   it('creates, lists, updates and deletes search categories with isolation', async () => {
-    const catA = await resolveSearchCategory(userA, 'Cafeterias Artesanais');
+    const catA = await resolveSearchCategory(userA, 'Cafeterias Artesanais', userA);
     expect(catA.id).toBeDefined();
     expect(catA.name).toBe('Cafeterias Artesanais');
 
-    const catB = await resolveSearchCategory(userB, 'Cafeterias Artesanais');
+    const catB = await resolveSearchCategory(userB, 'Cafeterias Artesanais', userB);
     expect(catB.id).not.toBe(catA.id);
 
-    const updated = await updateSearchCategory(userA, catA.id, 'Cafés Especiais & Bistro');
+    const updated = await updateSearchCategory(userA, catA.id, 'Cafés Especiais & Bistro', userA);
     expect(updated?.name).toBe('Cafés Especiais & Bistro');
 
-    const listA = await listSearchCategories(userA);
+    const listA = await listSearchCategories(userA, userA);
     expect(listA.some((c) => c.name === 'Cafés Especiais & Bistro')).toBe(true);
     expect(listA.some((c) => c.consumer_project === userB)).toBe(false);
 
-    const deleted = await deleteSearchCategory(userA, catA.id);
+    const deleted = await deleteSearchCategory(userA, catA.id, userA);
     expect(deleted).toBe(true);
 
-    const listAAfter = await listSearchCategories(userA);
+    const listAAfter = await listSearchCategories(userA, userA);
     expect(listAAfter.some((c) => c.id === catA.id)).toBe(false);
   });
 });
