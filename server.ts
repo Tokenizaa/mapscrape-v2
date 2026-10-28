@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import rateLimit from 'express-rate-limit';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import {
