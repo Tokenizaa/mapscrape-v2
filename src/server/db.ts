@@ -10,18 +10,26 @@ let initPromise: Promise<void> | null = null;
 
 export function getDb(): Client {
   if (!dbClient) {
-    const remoteUrl = process.env.TURSO_DATABASE_URL?.trim();
-    const authToken = process.env.TURSO_AUTH_TOKEN?.trim();
+    // Check for Supabase Direct Connection first (preferred for production)
+    const supabaseUrl = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
+    const supabaseKey = process.env.SUPABASE_ACCESS_TOKEN?.trim();
 
-    if (process.env.VERCEL && (!remoteUrl || !authToken)) {
-      throw new Error('Backend de produção não configurado: defina TURSO_DATABASE_URL e TURSO_AUTH_TOKEN no Vercel.');
-    }
-
-    if (remoteUrl && authToken) {
-      dbClient = createClient({ url: remoteUrl, authToken });
+    if (supabaseUrl && supabaseKey) {
+      dbClient = createClient({ url: supabaseUrl, authToken: supabaseKey });
     } else {
-      const dbPath = path.resolve(process.cwd(), 'mapscrape.db');
-      dbClient = createClient({ url: `file:${dbPath}` });
+      const remoteUrl = process.env.TURSO_DATABASE_URL?.trim();
+      const authToken = process.env.TURSO_AUTH_TOKEN?.trim();
+
+      if (process.env.VERCEL && (!remoteUrl || !authToken)) {
+        throw new Error('Backend de produção não configurado: defina TURSO_DATABASE_URL e TURSO_AUTH_TOKEN no Vercel.');
+      }
+
+      if (remoteUrl && authToken) {
+        dbClient = createClient({ url: remoteUrl, authToken });
+      } else {
+        const dbPath = path.resolve(process.cwd(), 'mapscrape.db');
+        dbClient = createClient({ url: `file:${dbPath}` });
+      }
     }
   }
   return dbClient;

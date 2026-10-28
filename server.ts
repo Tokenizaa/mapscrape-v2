@@ -55,6 +55,40 @@ function hasStaticApiKey(value: string): boolean {
   return configured.some((candidate) => safeEqual(candidate, value));
 }
 
+/**
+ * Tenta encontrar uma porta livre começando da porta configurada.
+ * Se a porta estiver ocupada, incrementa até encontrar uma livre ou atingir o limite.
+ */
+async function findFreePort(startPort: number, maxAttempts: number = 50): Promise<number> {
+  const { createServer } = await import('net');
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const port = startPort + attempt;
+    try {
+      const testServer = createServer();
+      await new Promise<void>((resolve, reject) => {
+        testServer.listen(port, () => {
+          testServer.close();
+          resolve();
+        });
+        testServer.on('error', (err: NodeJS.ErrnoException) => {
+          testServer.close();
+          if (err.code === 'EADDRINUSE') {
+            reject(err);
+          } else {
+            reject(err);
+          }
+        });
+      });
+      return port;
+    } catch {
+      // Porta ocupada, tentar a próxima
+      continue;
+    }
+  }
+  // Se não encontrou nenhuma porta livre, usa a porta original como último recurso
+  return startPort;
+}
+
 type AuthenticatedConsumer = { id: string; consumer_project: string; role?: 'admin' | 'user'; email?: string; accountId?: string };
 
 function sessionSecret(): string {
@@ -1072,8 +1106,9 @@ export async function createApp() {
 }
 
 if (!process.env.VERCEL) {
-  createApp().then((app) => {
-    const PORT = Number(process.env.PORT) || 3000;
+  createApp().then(async (app) => {
+    const startPort = Number(process.env.PORT) || 3000;
+    const PORT = await findFreePort(startPort);
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`MapScrape server running on http://0.0.0.0:${PORT}`);
     });
