@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createApp } from '../../../../server.bundle.mjs';
+import { createApp } from '../../../server.bundle.mjs';
 
 let appPromise: ReturnType<typeof createApp> | undefined;
 
 /**
  * Explicit Vercel function for the provisioning credentials endpoint.
- * Keep the authorization and response contract in the shared Express app;
+ * Keep authorization and the response contract in the shared Express app;
  * this file only ensures the exact route is deployed as a concrete function.
  */
 export default async function handler(req: VercelRequest, res: VercelResponse): Promise<void> {
