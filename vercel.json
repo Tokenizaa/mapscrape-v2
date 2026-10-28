@@ -21,6 +21,12 @@
     },
     "api/auth/me.ts": {
       "maxDuration": 30
+    },
+    "api/v1/provisioning/credentials.ts": {
+      "maxDuration": 60
+    },
+    "api/v1/provisioning/credentials/[...path].ts": {
+      "maxDuration": 60
     }
   },
   "ignoreCommand": "node scripts/vercel-ignore-build.mjs"
