@@ -637,18 +637,22 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
   const addressComponents = parseAddressComponents(address);
   const sourcePlaceId = extractSourcePlaceId(finalUrl);
   const sourceUrl = targetUrl || finalUrl;
+  const collectedAt = new Date().toISOString();
   const fieldValues: Record<string, unknown> = {
     name: raw.name, category: raw.category, address, phone: raw.phone, website: raw.website,
     rating: raw.rating, review_count: raw.review_count, price_range: raw.price_range,
-    opening_hours: raw.opening_hours, business_status: raw.business_status, booking_url: raw.bookingUrl,
-    photos: raw.photos, videos: raw.videos, logo_url: raw.logo_url, social_links: raw.social_links,
-    reviews: raw.reviews, review_topics: raw.review_topics, additional_attributes: raw.additional_attributes,
-    media_items: raw.media_items, plus_code: raw.plus_code, attributes: raw.attributes, accessibility_attributes: raw.accessibility_attributes,
+    opening_hours: raw.opening_hours, business_status: raw.business_status,
+    latitude: coords.latitude, longitude: coords.longitude, maps_url: finalUrl,
+    description: raw.description, services_attributes: raw.services_attributes,
+    booking_url: raw.bookingUrl, photos: raw.photos, videos: raw.videos, logo_url: raw.logo_url,
+    social_links: raw.social_links, reviews: raw.reviews, review_topics: raw.review_topics,
+    additional_attributes: raw.additional_attributes, media_items: raw.media_items, plus_code: raw.plus_code,
+    attributes: raw.attributes, accessibility_attributes: raw.accessibility_attributes,
     next_opening_text: raw.nextOpeningText, next_open_day: raw.nextOpeningDay, next_open_time: raw.nextOpeningTime,
     visible_photos_count: raw.visiblePhotosCount, popular_times: raw.popular_times,
     rating_distribution: raw.rating_distribution, review_highlights: raw.review_highlights,
     postal_code: addressComponents.postal_code, country: addressComponents.country, city: addressComponents.city, state: addressComponents.state,
-    source_place_id: sourcePlaceId, source_url: sourceUrl,
+    source_place_id: sourcePlaceId, source_url: sourceUrl, collected_at: collectedAt,
   };
   const fieldStatus = Object.fromEntries(Object.entries(fieldValues).map(([field, value]) => {
     const present = Array.isArray(value) ? value.length > 0 : value && typeof value === 'object'
@@ -698,7 +702,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     rating_distribution: JSON.stringify(raw.rating_distribution || {}),
     review_highlights: JSON.stringify(Array.isArray(raw.review_highlights) ? raw.review_highlights : []),
     field_status: JSON.stringify(fieldStatus),
-    collected_at: new Date().toISOString(),
+    collected_at: collectedAt,
     booking_url: cleanText(raw.bookingUrl),
   };
 }
