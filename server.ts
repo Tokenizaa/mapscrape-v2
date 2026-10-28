@@ -397,16 +397,38 @@ export async function createApp() {
 
   // 3. Get job status
   app.get('/api/scrape/status/:id', requireAuthenticatedConsumer, async (req: Request, res: Response) => {
-    const { id } = req.params;
-    const consumer = (req as any).mapscrapeConsumer;
-    const job = await getJob(id, consumer.consumer_project);
-    if (!job) {
-      return res.status(404).json({ error: 'Pesquisa não encontrada.' });
+    const id = String(req.params.id || '');
+    const consumer = (req as any).mapscrapeConsumer as AuthenticatedConsumer | undefined;
+
+    try {
+      if (!consumer) {
+        return res.status(401).json({ error: 'unauthorized' });
+      }
+
+      const job = await getJob(id, consumer.consumer_project);
+      if (!job) {
+        return res.status(404).json({ error: 'Pesquisa não encontrada.' });
+      }
+
+      return res.json({
+        ...job,
+        isRunning: isJobRunning(id),
+      });
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      console.error('Scrape status lookup failed:', {
+        jobId: id,
+        consumerProject: consumer?.consumer_project,
+        message: err.message,
+        stack: err.stack,
+      });
+
+      // Do not expose database details or credentials to the client.
+      return res.status(500).json({
+        error: 'status_lookup_failed',
+        message: 'Não foi possível consultar o status da coleta. Consulte os logs do backend.',
+      });
     }
-    return res.json({
-      ...job,
-      isRunning: isJobRunning(id),
-    });
   });
 
   // 4. SSE Stream for real-time progress
