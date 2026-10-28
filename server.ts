@@ -214,13 +214,11 @@ export async function createApp() {
 
   app.use(express.json());
 
-  const accountAuthLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, skipSuccessfulRequests: true, standardHeaders: true, legacyHeaders: false, message: { error: 'too_many_attempts', message: 'Muitas tentativas inválidas. Aguarde 15 minutos e tente novamente.' } });
 
-  app.post('/api/auth/register', accountAuthLimiter, async (req: Request, res: Response) => {
+  app.post('/api/auth/register', async (req: Request, res: Response) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const displayName = typeof req.body?.name === 'string' ? req.body.name.trim().replace(/\s+/g, ' ') : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
-    if (!sessionSecret()) return res.status(503).json({ error: 'auth_not_configured', message: 'A autenticação ainda não foi configurada pelo administrador.' });
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || displayName.length < 2 || displayName.length > 100 || password.length < 12 || password.length > 200) {
       return res.status(422).json({ error: 'invalid_registration', message: 'Informe nome, e-mail válido e senha com pelo menos 12 caracteres.' });
     }
@@ -248,10 +246,9 @@ export async function createApp() {
     }
   });
 
-  app.post('/api/auth/login', accountAuthLimiter, async (req: Request, res: Response) => {
+  app.post('/api/auth/login', async (req: Request, res: Response) => {
     const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
     const password = typeof req.body?.password === 'string' ? req.body.password : '';
-    if (!sessionSecret()) return res.status(503).json({ error: 'auth_not_configured', message: 'A autenticação ainda não foi configurada pelo administrador.' });
     try {
       const user = await findUserByEmail(email);
       if (!user || !passwordMatches(password, user.password_hash)) return res.status(401).json({ error: 'invalid_credentials', message: 'E-mail ou senha incorretos.' });
