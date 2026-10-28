@@ -2486,7 +2486,6 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
       if (!resumeReached && scrollAttempts >= Math.min(maxScrollAttempts, 40)) {
         resumeReached = true;
         resumeFallbackUsed = true;
-        seenUrlsInRun.clear();
         stagnantRounds = 0;
         await safeAudit({
           level: "warn",
@@ -2591,8 +2590,12 @@ async function runScraperJob(jobId, segment, location, limitRequested, onProgres
         }
         return false;
       }, SELECTORS.feed);
-      if (newUniqueLinksInBatch === 0 && resumeReached) stagnantRounds++;
-      else if (newUniqueLinksInBatch > 0) stagnantRounds = 0;
+      if (resumeReached) {
+        if (newUniqueLinksInBatch === 0) stagnantRounds++;
+        else stagnantRounds = 0;
+      } else if (newUniqueLinksInBatch > 0) {
+        stagnantRounds = 0;
+      }
       if (isEndOfList && newUniqueLinksInBatch === 0) {
         if (!resumeReached) {
           resumeReached = true;

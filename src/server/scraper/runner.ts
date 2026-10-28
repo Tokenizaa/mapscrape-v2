@@ -435,7 +435,7 @@ export async function runScraperJob(
       if (!resumeReached && scrollAttempts >= Math.min(maxScrollAttempts, 40)) {
         resumeReached = true;
         resumeFallbackUsed = true;
-        seenUrlsInRun.clear();
+        // DONT clear seenUrlsInRun - preserve for global deduplication
         stagnantRounds = 0;
         await safeAudit({
           level: 'warn', category: 'scraper', event: 'results.resume_checkpoint_missing',
@@ -557,8 +557,14 @@ export async function runScraperJob(
         return false;
       }, SELECTORS.feed);
 
-      if (newUniqueLinksInBatch === 0 && resumeReached) stagnantRounds++;
-      else if (newUniqueLinksInBatch > 0) stagnantRounds = 0;
+      if (resumeReached) {
+        if (newUniqueLinksInBatch === 0) stagnantRounds++;
+        else stagnantRounds = 0;
+      } else if (newUniqueLinksInBatch > 0) {
+        // Even before checkpoint, if we find new links, reset stagnation
+        // (these are links before the checkpoint that we haven't seen).
+        stagnantRounds = 0;
+      }
 
       if (isEndOfList && newUniqueLinksInBatch === 0) {
         if (!resumeReached) {
