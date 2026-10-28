@@ -1,8 +1,25 @@
 import { describe, it, expect } from 'vitest';
 import { sanitizeCsvCell, generateCsv } from '../src/server/scraper/csv';
-import { PlaceRecord } from '../src/shared/types';
+import { EXPORTABLE_FIELDS, PlaceRecord } from '../src/shared/types';
 
 describe('CSV Module and Formula Sanitization', () => {
+  it('exports each public PlaceRecord field exactly once and excludes internal identifiers', () => {
+    const keys = EXPORTABLE_FIELDS.map((field) => field.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys).not.toContain('id');
+    expect(keys).not.toContain('job_id');
+    expect(keys).toEqual(expect.arrayContaining([
+      'name', 'category', 'address', 'phone', 'website', 'rating', 'review_count',
+      'price_range', 'opening_hours', 'business_status', 'latitude', 'longitude',
+      'maps_url', 'description', 'services_attributes', 'photos', 'videos', 'logo_url',
+      'booking_url', 'social_links', 'reviews', 'review_topics', 'additional_attributes',
+      'media_items', 'plus_code', 'postal_code', 'country', 'city', 'state',
+      'source_place_id', 'source_url', 'attributes', 'accessibility_attributes',
+      'next_opening_text', 'next_open_day', 'next_open_time', 'visible_photos_count',
+      'popular_times', 'rating_distribution', 'review_highlights', 'field_status', 'collected_at',
+    ]));
+  });
+
   it('protects against malicious Excel formula injection starting with =, +, -, @', () => {
     expect(sanitizeCsvCell('=SUM(A1:A10)')).toBe("'=SUM(A1:A10)");
     expect(sanitizeCsvCell('+cmd|/c calc')).toBe("'+cmd|/c calc");
