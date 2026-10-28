@@ -6,7 +6,6 @@ import {
   Calendar,
   MapPin,
   Clock,
-  ArrowRight,
   Database,
 } from 'lucide-react';
 import { ScrapeJob } from '../shared/types';
@@ -39,11 +38,11 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
   return (
     <div className="max-w-6xl mx-auto py-2 sm:py-6 space-y-8">
       {/* Header */}
-      <div className="border-b border-zinc-850 pb-5">
-        <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+      <div className="border-b border-zinc-800 pb-5">
+        <span className="text-xs font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400">
           Auditoria de Execuções
         </span>
-        <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-100 tracking-tight">
+        <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-extrabold text-zinc-100 tracking-tight">
           Histórico de Pesquisas
         </h1>
         <p className="mt-3 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-3xl">
@@ -76,7 +75,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                       </h2>
                       <span className="text-zinc-600">·</span>
                       <span className="text-sm sm:text-base font-semibold text-zinc-300 flex items-center gap-1.5 bg-zinc-950 px-3 py-1 rounded-lg border border-zinc-800">
-                        <MapPin className="w-4 h-4 text-emerald-400" />
+                        <MapPin className="w-4 h-4 text-blue-400" />
                         {job.location}
                       </span>
                     </div>
@@ -90,8 +89,8 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                       <span className="bg-zinc-950 px-3 py-1 rounded-md border border-zinc-800 font-mono tabular-nums">
                         Meta solicitada: <strong className="text-zinc-200 font-bold">{job.limit_requested}</strong>
                       </span>
-                      <span className="bg-emerald-500/10 text-emerald-300 px-3 py-1 rounded-md border border-emerald-500/30 font-semibold font-mono tabular-nums">
-                        Salvos no SQLite: <strong className="text-emerald-300 font-extrabold">{job.total_collected}</strong>
+                      <span className="bg-blue-500/10 text-blue-300 px-3 py-1 rounded-md border border-blue-500/30 font-semibold font-mono tabular-nums">
+                        Salvos no SQLite: <strong className="text-blue-300 font-extrabold">{job.total_collected}</strong>
                       </span>
                       {job.total_duplicates > 0 && (
                         <span className="bg-zinc-950 px-3 py-1 rounded-md border border-zinc-800 font-mono tabular-nums text-zinc-400">
@@ -117,7 +116,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                     <span
                       className={`text-xs sm:text-sm px-3.5 py-1.5 rounded-full font-bold uppercase tracking-wider border ${
                         job.status === 'completed'
-                          ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'
+                          ? 'bg-blue-500/10 text-blue-300 border-blue-500/30'
                           : job.status === 'running'
                           ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 animate-pulse'
                           : job.status === 'partial'
@@ -141,7 +140,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                       className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-100 text-sm font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer border border-zinc-700"
                       title="Ver estabelecimentos desta coleta"
                     >
-                      <Table2 className="w-4 h-4 text-emerald-400" />
+                      <Table2 className="w-4 h-4 text-blue-400" />
                       <span>Ver Resultados</span>
                     </button>
 
@@ -149,7 +148,7 @@ export const HistoryScreen: React.FC<HistoryScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => onGoToExportWithJob(job.id)}
-                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-sm shadow-emerald-950/40"
+                      className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold rounded-xl transition-colors flex items-center gap-2 cursor-pointer shadow-sm shadow-blue-950/40"
                       title="Exportar esta pesquisa para CSV"
                     >
                       <FileDown className="w-4 h-4" />

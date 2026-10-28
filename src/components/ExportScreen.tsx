@@ -100,61 +100,58 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
         throw new Error('Falha ao gerar arquivo CSV.');
       }
 
+      // Download trigger
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = downloadUrl;
+      a.href = url;
       a.download = `${filename.trim() || defaultFilename}.csv`;
       document.body.appendChild(a);
       a.click();
-      a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
       setExportSuccess(true);
-      setTimeout(() => setExportSuccess(false), 5000);
-    } catch (err: any) {
-      alert(`Erro ao exportar CSV: ${err.message}`);
+    } catch (err) {
+      console.error(err);
+      alert('Erro ao exportar o arquivo CSV.');
     } finally {
       setIsExporting(false);
     }
   };
 
-  // Preview records (first 3 places)
+  // Preview data
   const previewRecords = places.slice(0, 3);
 
   return (
     <div className="max-w-5xl mx-auto py-2 sm:py-6 space-y-8">
-      {/* Header with Larger Typography */}
+      {/* Intro Header */}
       <div>
-        <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-          Exportação Profissional
-        </span>
-        <h1 className="mt-3 text-3xl sm:text-4xl lg:text-5xl font-bold text-zinc-100 tracking-tight">
-          Exportar Estabelecimentos para CSV
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400 text-xs font-semibold uppercase tracking-wider mb-3">
+          <FileDown className="w-4 h-4" />
+          <span>Exportação de Dados Tabulares</span>
+        </div>
+        <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-zinc-100 tracking-tight leading-tight">
+          Exportar para CSV
         </h1>
-        <p className="mt-3 text-base sm:text-lg text-zinc-400 leading-relaxed max-w-3xl">
-          Gere uma planilha compatível com Microsoft Excel, Google Planilhas e LibreOffice Calc com codificação UTF-8 BOM, preservação total de caracteres acentuados, URLs de fotos/vídeos e proteção automática contra injeção de fórmulas.
+        <p className="mt-3 text-base sm:text-lg text-zinc-400 max-w-3xl leading-relaxed">
+          Gere um arquivo CSV profissional com codificação UTF-8 com BOM, delimitador por vírgula e proteção contra fórmulas (CSV Injection). 100% compatível com Excel, LibreOffice Calc e Google Sheets.
         </p>
       </div>
 
-      <div className="space-y-8">
-        {/* Step 1: Escopo dos registros */}
-        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/30 space-y-4 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg sm:text-xl font-bold text-zinc-100">
-              1. Selecionar Escopo dos Registros
-            </h2>
-            <span className="text-xs sm:text-sm font-semibold text-zinc-400 font-mono tabular-nums">
-              {totalPlaces.toLocaleString('pt-BR')} registros no total
-            </span>
-          </div>
+      <div className="space-y-6">
+        {/* Step 1: Escopo da Exportação */}
+        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/30 space-y-5 backdrop-blur-sm">
+          <h2 className="text-lg sm:text-xl font-bold text-zinc-100">
+            1. Escopo da Exportação
+          </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Option A: Selected */}
+            {/* Option A: Selected places */}
             <label
               className={`flex items-start gap-3.5 p-5 border rounded-2xl cursor-pointer transition-all ${
                 scope === 'selected'
-                  ? 'border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20'
+                  ? 'border-blue-500/60 bg-blue-500/10 ring-2 ring-blue-500/20'
                   : selectedPlaceIds.size === 0
                   ? 'border-zinc-800 opacity-40 cursor-not-allowed bg-zinc-950/40'
                   : 'border-zinc-800 hover:border-zinc-700 bg-zinc-950'
@@ -167,14 +164,14 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 checked={scope === 'selected'}
                 disabled={selectedPlaceIds.size === 0}
                 onChange={() => setScope('selected')}
-                className="mt-1 text-emerald-500 focus:ring-emerald-500/30 h-4 w-4 bg-zinc-900 border-zinc-700"
+                className="mt-1 text-blue-500 focus:ring-blue-500/30 h-4 w-4 bg-zinc-900 border-zinc-700"
               />
               <div>
                 <span className="block text-base font-bold text-zinc-100">
-                  Registros Selecionados
+                  Selecionados Manualmente
                 </span>
                 <span className="block text-xs sm:text-sm font-medium text-zinc-400 mt-1">
-                  {selectedPlaceIds.size} estabelecimentos marcados na tabela
+                  {selectedPlaceIds.size} de {totalPlaces} selecionados na tabela
                 </span>
               </div>
             </label>
@@ -183,7 +180,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
             <label
               className={`flex items-start gap-3.5 p-5 border rounded-2xl cursor-pointer transition-all ${
                 scope === 'current_job'
-                  ? 'border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20'
+                  ? 'border-blue-500/60 bg-blue-500/10 ring-2 ring-blue-500/20'
                   : !selectedJobId
                   ? 'border-zinc-800 opacity-40 cursor-not-allowed bg-zinc-950/40'
                   : 'border-zinc-800 hover:border-zinc-700 bg-zinc-950'
@@ -196,7 +193,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 checked={scope === 'current_job'}
                 disabled={!selectedJobId}
                 onChange={() => setScope('current_job')}
-                className="mt-1 text-emerald-500 focus:ring-emerald-500/30 h-4 w-4 bg-zinc-900 border-zinc-700"
+                className="mt-1 text-blue-500 focus:ring-blue-500/30 h-4 w-4 bg-zinc-900 border-zinc-700"
               />
               <div>
                 <span className="block text-base font-bold text-zinc-100">
@@ -214,7 +211,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
             <label
               className={`flex items-start gap-3.5 p-5 border rounded-2xl cursor-pointer transition-all ${
                 scope === 'all'
-                  ? 'border-emerald-500/50 bg-emerald-500/10 ring-2 ring-emerald-500/20'
+                  ? 'border-blue-500/60 bg-blue-500/10 ring-2 ring-blue-500/20'
                   : 'border-zinc-800 hover:border-zinc-700 bg-zinc-950'
               }`}
             >
@@ -224,7 +221,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 value="all"
                 checked={scope === 'all'}
                 onChange={() => setScope('all')}
-                className="mt-1 text-emerald-500 focus:ring-emerald-500/30 h-4 w-4 bg-zinc-900 border-zinc-700"
+                className="mt-1 text-blue-500 focus:ring-blue-500/30 h-4 w-4 bg-zinc-900 border-zinc-700"
               />
               <div>
                 <span className="block text-base font-bold text-zinc-100">
@@ -276,7 +273,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                   key={field.key}
                   className={`flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer transition-all ${
                     isChecked
-                      ? 'border-emerald-500/40 bg-zinc-950 shadow-xs'
+                      ? 'border-blue-500/40 bg-zinc-950 shadow-xs'
                       : 'border-zinc-800/80 bg-zinc-950/40 opacity-60 hover:opacity-100'
                   }`}
                 >
@@ -284,7 +281,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                     type="checkbox"
                     checked={isChecked}
                     onChange={() => toggleField(field.key)}
-                    className="mt-1 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-emerald-500 focus:ring-emerald-500/30 cursor-pointer"
+                    className="mt-1 h-4 w-4 rounded border-zinc-700 bg-zinc-900 text-blue-500 focus:ring-blue-500/30 cursor-pointer"
                   />
                   <div className="min-w-0">
                     <span className="block text-sm font-bold text-zinc-100 leading-snug">
@@ -317,7 +314,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
                 placeholder="Ex: mapscrape_leads_2026"
-                className="flex-1 py-3.5 px-4 bg-zinc-950 border border-zinc-750 rounded-xl text-zinc-100 text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
+                className="flex-1 py-3.5 px-4 bg-zinc-950 border border-zinc-750 rounded-xl text-zinc-100 text-base font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500"
               />
               <span className="text-base font-bold text-zinc-400 font-mono shrink-0">.csv</span>
             </div>
@@ -325,18 +322,18 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
 
           {/* Compliance & Security Callout */}
           <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-xl flex items-start gap-3 text-xs sm:text-sm text-zinc-300">
-            <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+            <ShieldCheck className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
             <div className="space-y-1">
               <span className="font-bold text-zinc-100 block">Padrão Corporativo & Proteção contra Fórmulas</span>
               <p className="text-zinc-400 leading-relaxed">
-                O arquivo é gerado com cabeçalho UTF-8 BOM para abertura perfeita no Excel sem desconfigurar acentuação. Células que iniciam com caracteres perigosos (<code className="text-emerald-400 font-mono">=</code>, <code className="text-emerald-400 font-mono">+</code>, <code className="text-emerald-400 font-mono">-</code>, <code className="text-emerald-400 font-mono">@</code>) são automaticamente neutralizadas com aspas simples para segurança contra CSV Injection.
+                O arquivo é gerado com cabeçalho UTF-8 BOM para abertura perfeita no Excel sem desconfigurar acentuação. Células que iniciam com caracteres perigosos (<code className="text-blue-400 font-mono">=</code>, <code className="text-blue-400 font-mono">+</code>, <code className="text-blue-400 font-mono">-</code>, <code className="text-blue-400 font-mono">@</code>) são automaticamente neutralizadas com aspas simples para segurança contra CSV Injection.
               </p>
             </div>
           </div>
 
           {exportSuccess && (
-            <div className="p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl flex items-center gap-3 text-sm font-semibold text-emerald-300">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl flex items-center gap-3 text-sm font-semibold text-blue-300">
+              <CheckCircle2 className="w-5 h-5 text-blue-400 shrink-0" />
               <span>Download concluído com sucesso! Verifique a pasta de downloads do seu computador.</span>
             </div>
           )}
@@ -345,7 +342,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
             type="button"
             onClick={handleExport}
             disabled={isExporting || totalPlaces === 0}
-            className="w-full py-4 sm:py-5 px-8 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-lg sm:text-xl rounded-2xl shadow-lg shadow-emerald-950/50 hover:shadow-emerald-900/60 transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:outline-none"
+            className="w-full py-4 sm:py-5 px-8 bg-blue-600 hover:bg-blue-500 text-white font-bold text-lg sm:text-xl rounded-2xl shadow-lg shadow-blue-950/50 hover:shadow-blue-900/60 transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:outline-none"
           >
             {isExporting ? (
               <>
@@ -366,7 +363,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
           <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 sm:p-8 shadow-xl shadow-black/30 space-y-4 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <h2 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
-                <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                <FileSpreadsheet className="w-5 h-5 text-blue-400" />
                 <span>Prévia das Primeiras Linhas da Planilha</span>
               </h2>
               <span className="text-xs text-zinc-400 font-mono">3 amostras</span>

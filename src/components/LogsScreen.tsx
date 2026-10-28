@@ -15,7 +15,7 @@ type AuditLog = {
 const levelLabels: Record<string, string> = { debug: 'Debug', info: 'Info', warn: 'Aviso', error: 'Erro' };
 const levelClasses: Record<string, string> = {
   debug: 'bg-zinc-800 text-zinc-300 border border-zinc-700',
-  info: 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30',
+  info: 'bg-blue-500/10 text-blue-300 border border-blue-500/30',
   warn: 'bg-amber-500/10 text-amber-300 border border-amber-500/30',
   error: 'bg-rose-500/10 text-rose-300 border border-rose-500/30',
 };
@@ -79,10 +79,10 @@ export const LogsScreen: React.FC = () => {
     <div className="max-w-6xl mx-auto py-2 sm:py-6 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-zinc-850 pb-5">
         <div>
-          <span className="text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+          <span className="text-xs font-bold uppercase tracking-wider px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/25 text-blue-400">
             Diagnóstico do Sistema
           </span>
-          <h1 className="mt-3 text-3xl sm:text-4xl font-bold tracking-tight text-zinc-100">Logs e Auditoria</h1>
+          <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-zinc-100">Logs e Auditoria</h1>
           <p className="mt-2 text-base text-zinc-400 max-w-2xl">Eventos persistidos no SQLite para auditar detalhadamente cada ciclo de coleta do Google Maps.</p>
         </div>
         <div className="flex gap-2.5">
@@ -91,11 +91,11 @@ export const LogsScreen: React.FC = () => {
             disabled={loading}
             className="inline-flex items-center gap-2 rounded-xl border border-zinc-750 bg-zinc-900 px-3.5 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-800 disabled:opacity-50 transition-colors cursor-pointer"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-emerald-400' : 'text-zinc-400'}`} /> Atualizar
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-400' : 'text-zinc-400'}`} /> Atualizar
           </button>
           <button
             onClick={downloadLogs}
-            className="inline-flex items-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors cursor-pointer shadow-sm shadow-emerald-950/40"
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 hover:bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors cursor-pointer shadow-sm shadow-blue-950/40"
           >
             <Download className="w-4 h-4" /> Baixar JSONL
           </button>
@@ -109,13 +109,13 @@ export const LogsScreen: React.FC = () => {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar mensagem, evento, ID da pesquisa..."
-            className="w-full rounded-xl border border-zinc-750 bg-zinc-950 py-2.5 pl-10 pr-3 text-sm text-zinc-100 outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20"
+            className="w-full rounded-xl border border-zinc-750 bg-zinc-950 py-2.5 pl-10 pr-3 text-sm text-zinc-100 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
           />
         </div>
         <select
           value={level}
           onChange={(e) => setLevel(e.target.value)}
-          className="rounded-xl border border-zinc-750 bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-200 outline-none focus:border-emerald-500"
+          className="rounded-xl border border-zinc-750 bg-zinc-950 px-3.5 py-2.5 text-sm text-zinc-200 outline-none focus:border-blue-500"
         >
           <option value="" className="bg-zinc-900 text-zinc-100">Todos os níveis</option>
           <option value="error" className="bg-zinc-900 text-zinc-100">Erros</option>

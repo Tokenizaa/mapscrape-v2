@@ -1,8 +1,28 @@
+# Dependencies
 node_modules/
-build/
+
+# Build artifacts
 dist/
+build/
 coverage/
+
+# SQLite databases
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+mapscrape.db*
+
+# Vercel
+.vercel/
+
+# OS and logs
 .DS_Store
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
 .env*
 !.env.example
