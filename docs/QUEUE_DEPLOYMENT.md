@@ -39,3 +39,8 @@ O `BROWSER_WS_ENDPOINT` deve apontar para o Chromium remoto já utilizado pelo p
 ## Limite desta preparação
 
 A criação das filas e a configuração dos três secrets são recursos da conta Cloudflare e precisam existir antes do primeiro deploy do consumidor. Este PR prepara o código e a configuração versionada, mas não cria filas, não altera secrets e não aplica mudanças no Supabase.
+## Testes
+
+- `npm run test:unit`: testes sem dependência de banco, executados no CI de PR.
+- `npm run test:integration`: suíte que grava no Supabase e exige variáveis de ambiente e um projeto de teste isolado. Não apontar essa suíte para produção; ela não faz limpeza automática de todos os registros criados.
+- `npm run lint` e `npm run build`: typecheck e build de produção.
