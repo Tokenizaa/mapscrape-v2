@@ -1,12 +1,10 @@
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { PlaceRecord, ScrapeJob } from '../../shared/types';
-import { writeRunReport } from '../run-report';
 import { extractPlaceDetails } from './extractor';
 import { writeAuditLog } from '../audit-log';
 import { SELECTORS } from './selectors';
 import {
   insertPlace as dbInsertPlace,
-  updateJobProgress,
   getJob,
   placeExistsByUrl,
   pagesRuntimeEnv,
@@ -124,6 +122,7 @@ async function runScraperJob(
   const GLOBAL_TIMEOUT_MS = 5 * 60 * 1000;
 
   let browser: Browser | null = null;
+  let timedOut = false;
 
   async function run(): Promise<void> {
     browser = await connectScraperBrowser(browserWsEndpoint);
@@ -320,7 +319,7 @@ async function runScraperJob(
       });
     } catch (error) {
       totalErrors += 1;
-      await reportProgress({
+      if (!timedOut) await reportProgress({
         status: 'failed' as const,
         status_message: 'Falha durante a execução da coleta.',
         total_errors: totalErrors,
@@ -341,6 +340,7 @@ async function runScraperJob(
     timeoutHandle = setTimeout(() => reject(new Error('global_job_timeout')), GLOBAL_TIMEOUT_MS);
   })]).catch(async (error) => {
     const isTimeout = error instanceof Error && error.message === 'global_job_timeout';
+    timedOut = isTimeout;
     await browser?.close().catch(() => {});
     await onProgress({
       status: 'failed',
