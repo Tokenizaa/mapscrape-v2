@@ -4,11 +4,10 @@ A aplicação web continua no Cloudflare Pages (`mapscrape`). O consumidor é um
 
 ## Pré-requisitos no Cloudflare
 
-Criar as duas filas uma única vez:
+Criar a fila principal uma única vez (a DLQ declarada na configuração do consumidor é criada automaticamente se ainda não existir):
 
 ```bash
 npx wrangler queues create scrape-queue
-npx wrangler queues create scrape-queue-dlq
 ```
 
 Configurar os segredos no Worker consumidor (não adicionar valores ao Git):
@@ -23,9 +22,9 @@ O `BROWSER_WS_ENDPOINT` deve apontar para o Chromium remoto já utilizado pelo p
 
 ## Ordem de implantação
 
-1. Fazer deploy do Pages com o binding produtor definido em `wrangler.toml`: `npm run build && npx wrangler pages deploy dist --project-name=mapscrape`.
+1. Fazer deploy do Pages com o binding produtor definido em `wrangler.toml`: `npm run deploy` (o script publica Pages, não um Worker independente).
 2. Fazer deploy do consumidor: `npx wrangler deploy --config wrangler.queue-consumer.toml`.
-3. Conferir no painel Cloudflare se o Worker `mapscrape-queue-consumer` está inscrito em `scrape-queue` e se a DLQ está associada.
+3. Conferir no painel Cloudflare se o Worker `mapscrape-queue-consumer` está inscrito em `scrape-queue` e se a DLQ `scrape-queue-dlq` foi criada/associada. O consumidor inicia com concorrência 1 para reduzir risco de saturar o Chromium remoto.
 4. Executar uma coleta pequena (limite 1 ou 2) pela interface e acompanhar o job até estado terminal.
 
 ## Verificações
@@ -44,3 +43,4 @@ A criação das filas e a configuração dos três secrets são recursos da cont
 - `npm run test:unit`: testes sem dependência de banco, executados no CI de PR.
 - `npm run test:integration`: suíte que grava no Supabase e exige variáveis de ambiente e um projeto de teste isolado. Não apontar essa suíte para produção; ela não faz limpeza automática de todos os registros criados.
 - `npm run lint` e `npm run build`: typecheck e build de produção.
+
