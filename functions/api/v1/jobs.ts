@@ -71,27 +71,30 @@ export const onRequestPost = async (context: any): Promise<Response> => {
 
     // Despacha a execução real da coleta em background (não bloqueia a resposta HTTP).
     // O job segue como 'running' até que runScraperJob defina um estado terminal.
-    void runScraperJob(
-      job.id,
-      job.segment,
-      job.location,
-      job.limit_requested,
-      async (progress: { status?: ScrapeJob['status']; status_message?: string; total_found?: number; total_collected?: number; total_duplicates?: number; total_errors?: number; current_step?: string }) => {
-        try {
-          await updateJobProgress(job.id, {
-            ...(progress.status !== undefined && { status: progress.status }),
-            ...(progress.status_message !== undefined && { status_message: progress.status_message }),
-            ...(progress.total_found !== undefined && { total_found: progress.total_found }),
-            ...(progress.total_collected !== undefined && { total_collected: progress.total_collected }),
-            ...(progress.total_duplicates !== undefined && { total_duplicates: progress.total_duplicates }),
-            ...(progress.total_errors !== undefined && { total_errors: progress.total_errors }),
-            ...(progress.current_step !== undefined && { current_step: progress.current_step }),
-          });
-        } catch {
-          // Falha ao gravar progresso não deve quebrar a coleta em andamento.
-        }
-      },
-      String(context.env?.BROWSER_WS_ENDPOINT ?? ''),
+    // context.waitUntil mantém a função Cloudflare Pages viva enquanto o scraper executa.
+    void context.waitUntil(
+      runScraperJob(
+        job.id,
+        job.segment,
+        job.location,
+        job.limit_requested,
+        async (progress: { status?: ScrapeJob['status']; status_message?: string; total_found?: number; total_collected?: number; total_duplicates?: number; total_errors?: number; current_step?: string }) => {
+          try {
+            await updateJobProgress(job.id, {
+              ...(progress.status !== undefined && { status: progress.status }),
+              ...(progress.status_message !== undefined && { status_message: progress.status_message }),
+              ...(progress.total_found !== undefined && { total_found: progress.total_found }),
+              ...(progress.total_collected !== undefined && { total_collected: progress.total_collected }),
+              ...(progress.total_duplicates !== undefined && { total_duplicates: progress.total_duplicates }),
+              ...(progress.total_errors !== undefined && { total_errors: progress.total_errors }),
+              ...(progress.current_step !== undefined && { current_step: progress.current_step }),
+            });
+          } catch {
+            // Falha ao gravar progresso não deve quebrar a coleta em andamento.
+          }
+        },
+        String(context.env?.BROWSER_WS_ENDPOINT ?? '')
+      )
     ).catch((error) => {
       console.error(`runScraperJob failed for job ${job.id}:`, error);
       void updateJobProgress(job.id, {

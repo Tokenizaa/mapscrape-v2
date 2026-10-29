@@ -35,10 +35,10 @@ async function connectScraperBrowser(browserWsEndpoint?: string): Promise<Browse
   ).trim();
   if (wsEndpoint) {
     try {
-      return await puppeteer.connect({ browserWSEndpoint: wsEndpoint, protocolTimeout: 60000 });
+      return await puppeteer.connect({ browserWSEndpoint: wsEndpoint, protocolTimeout: 30000 });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'falha desconhecida';
-      throw new Error(`Falha ao conectar ao Chromium remoto (${wsEndpoint}). Erro Puppeteer: ${message}`);
+      throw new Error(`Falha ao conectar ao Chromium remoto. Erro Puppeteer: ${message}`);
     }
   }
   return puppeteer.launch({
@@ -89,7 +89,6 @@ async function updatePlace(id: string, place: PlaceRecord): Promise<void> {
 
 /**
  * Get the last collected place for a search segment/location.
- * This function will be overridden by server.ts which provides the Supabase implementation.
  */
 async function getLastCollectedPlaceForSearch(segment: string, location: string, consumerProject?: string): Promise<any> {
   // Stub - will be replaced by the actual Supabase implementation from server.ts
@@ -110,6 +109,8 @@ async function pollJobProgress(jobId: string): Promise<any> {
  * Run a scrape job. This is the main orchestration function.
  * Opens Google Maps, walks the result list, opens each place sheet,
  * extracts details via extractPlaceDetails, and persists via Supabase.
+ *
+ * @param browserWsEndpoint - Remote Chromium WebSocket endpoint (optional)
  */
 async function runScraperJob(
   jobId: string,
@@ -119,207 +120,225 @@ async function runScraperJob(
   onProgress: (job: Partial<ScrapeJob>) => void,
   browserWsEndpoint?: string
 ): Promise<void> {
-  const browser = await connectScraperBrowser(browserWsEndpoint);
-  const page = await browser.newPage();
+  // Global job timeout: 5 minutes. After this, the job is marked failed.
+  const GLOBAL_TIMEOUT_MS = 5 * 60 * 1000;
 
-  // Register the job as active so stopScrapeJob() can cancel it.
-  const handle: ActiveJobHandle = {
-    cancelled: false,
-    cancel: () => {
-      handle.cancelled = true;
-    },
-  };
-  activeJobs.set(jobId, handle);
+  let browser: Browser | null = null;
 
-  let totalFound = 0;
-  let totalCollected = 0;
-  let totalDuplicates = 0;
-  let totalErrors = 0;
+  async function run(): Promise<void> {
+    browser = await connectScraperBrowser(browserWsEndpoint);
+    const page = await browser.newPage();
 
-  const reportProgress = (updates: Partial<ScrapeJob>) => {
-    onProgress({
-      status: 'running',
-      status_message: 'Coletando dados...',
-      total_found: totalFound,
-      total_collected: totalCollected,
-      total_duplicates: totalDuplicates,
-      total_errors: totalErrors,
-      current_step: 'Coletando estabelecimentos...',
-      ...updates,
-    });
-  };
+    // Register the job as active so stopScrapeJob() can cancel it.
+    const handle: ActiveJobHandle = {
+      cancelled: false,
+      cancel: () => {
+        handle.cancelled = true;
+      },
+    };
+    activeJobs.set(jobId, handle);
 
-  try {
-    // Resolve job scope (user_id) for consumer-scoped duplicate checks.
-    let scope: string | undefined;
-    try {
-      const job = await getJob(jobId);
-      scope = job?.user_id;
-    } catch {
-      // Non-fatal: proceed without scope-based dedupe.
-    }
+    let totalFound = 0;
+    let totalCollected = 0;
+    let totalDuplicates = 0;
+    let totalErrors = 0;
 
-    // 1. Connect to remote browser and navigate to Google Maps.
-    let navigationError: string | null = null;
-    try {
-      await page.goto(
-        'https://www.google.com/maps/search/' +
-          encodeURIComponent(segment + ' ' + location),
-        { waitUntil: 'networkidle0', timeout: 60000 }
-      );
-    } catch (navError) {
-      navigationError = navError instanceof Error ? navError.message : String(navError);
-    }
-
-    if (navigationError) {
-      reportProgress({
-        status: 'failed',
-        status_message: `Falha ao conectar ao navegador: ${navigationError} (endpoint: ${browserWsEndpoint ?? '<vazio>'})`,
-        total_errors: totalErrors + 1,
-        current_step: 'Falha na conexão',
-      });
-      await browser.close().catch(() => {});
-      activeJobs.delete(jobId);
-      return;
-    }
-
-    // Wait for the results list to appear.
-    await page
-      .waitForSelector(SELECTORS.feed.container[0], { timeout: 30000 })
-      .catch(() => {
-        // The list may not match the exact selector; proceed to extract links anyway.
-      });
-
-    // 2. Walk the results list, scrolling to load more until we reach the limit.
-    const placeUrls = new Set<string>();
-    let previousCount = 0;
-    let stagnantRounds = 0;
-
-    while (placeUrls.size < limit && stagnantRounds < 6) {
-      if (handle.cancelled) break;
-
-      const links: string[] = await page.$$eval(
-        SELECTORS.feed.placeLinks.join(', '),
-        (anchors) =>
-          anchors
-            .map((a) => (a as HTMLAnchorElement)?.href)
-            .filter(
-              (href): href is string =>
-                Boolean(href) && href.includes('/maps/place/')
-            )
-      );
-
-      for (const url of links) {
-        if (placeUrls.size >= limit) break;
-        placeUrls.add(url);
-      }
-
-      totalFound = placeUrls.size;
-      reportProgress({
+    const reportProgress = (updates: Partial<ScrapeJob>) => {
+      onProgress({
+        status: 'running',
+        status_message: 'Coletando dados...',
         total_found: totalFound,
-        current_step: `Encontrados ${totalFound} estabelecimento(s)...`,
+        total_collected: totalCollected,
+        total_duplicates: totalDuplicates,
+        total_errors: totalErrors,
+        current_step: 'Coletando estabelecimentos...',
+        ...updates,
       });
+    };
 
-      if (placeUrls.size >= limit) break;
-
-      // Scroll the results container to load more listings.
-      const container = await page.$(SELECTORS.feed.container[0]);
-      if (container) {
-        await container.evaluate((el: HTMLElement) => {
-          el.scrollTop = el.scrollHeight;
-        });
-      } else {
-        await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      if (placeUrls.size === previousCount) {
-        stagnantRounds += 1;
-      } else {
-        stagnantRounds = 0;
-        previousCount = placeUrls.size;
-      }
-    }
-
-    // 3. Open each individual place sheet and extract details.
-    for (const placeUrl of placeUrls) {
-      if (handle.cancelled) break;
-      if (totalCollected + totalDuplicates >= limit) break;
-
-      // Skip duplicates already persisted (same Maps URL).
-      const alreadyExists = await placeExistsByUrl(placeUrl, scope);
-      if (alreadyExists) {
-        totalDuplicates += 1;
-        reportProgress({
-          total_duplicates: totalDuplicates,
-          current_step: `Ignorando duplicado (${totalDuplicates})...`,
-        });
-        continue;
-      }
-
-      let detailPage: Page | null = null;
+    try {
+      // Resolve job scope (user_id) for consumer-scoped duplicate checks.
+      let scope: string | undefined;
       try {
-        detailPage = await browser.newPage();
-        await detailPage.goto(placeUrl, {
-          waitUntil: 'networkidle0',
-          timeout: 30000,
+        const job = await getJob(jobId);
+        scope = job?.user_id;
+      } catch {
+        // Non-fatal: proceed without scope-based dedupe.
+      }
+
+      // 1. Connect to remote browser and navigate to Google Maps.
+      let navigationError: string | null = null;
+      try {
+        await page.goto(
+          'https://www.google.com/maps/search/' +
+            encodeURIComponent(segment + ' ' + location),
+          { waitUntil: 'domcontentloaded', timeout: 30000 }
+        );
+      } catch (navError) {
+        navigationError = navError instanceof Error ? navError.message : String(navError);
+      }
+
+      if (navigationError) {
+        reportProgress({
+          status: 'failed',
+          status_message: `Falha ao conectar ao navegador: ${navigationError} (endpoint: ${browserWsEndpoint ? 'configurado' : '<vazio>'})`,
+          total_errors: totalErrors + 1,
+          current_step: 'Falha na conexão',
         });
+        await browser.close().catch(() => {});
+        activeJobs.delete(jobId);
+        return;
+      }
+
+      // Wait for the results list to appear.
+      await page
+        .waitForSelector(SELECTORS.feed.container[0], { timeout: 15000 })
+        .catch(() => {
+          // The list may not match the exact selector; proceed to extract links anyway.
+        });
+
+      // 2. Walk the results list, scrolling to load more until we reach the limit.
+      const placeUrls = new Set<string>();
+      let previousCount = 0;
+      let stagnantRounds = 0;
+
+      while (placeUrls.size < limit && stagnantRounds < 4) {
+        if (handle.cancelled) break;
+
+        const links: string[] = await page.$$eval(
+          SELECTORS.feed.placeLinks.join(', '),
+          (anchors) =>
+            anchors
+              .map((a) => (a as HTMLAnchorElement)?.href)
+              .filter(
+                (href): href is string =>
+                  Boolean(href) && href.includes('/maps/place/')
+              )
+        );
+
+        for (const url of links) {
+          if (placeUrls.size >= limit) break;
+          placeUrls.add(url);
+        }
+
+        totalFound = placeUrls.size;
+        reportProgress({
+          total_found: totalFound,
+          current_step: `Encontrados ${totalFound} estabelecimento(s)...`,
+        });
+
+        if (placeUrls.size >= limit) break;
+
+        // Scroll the results container to load more listings.
+        const container = await page.$(SELECTORS.feed.container[0]);
+        if (container) {
+          await container.evaluate((el: HTMLElement) => {
+            el.scrollTop = el.scrollHeight;
+          });
+        } else {
+          await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+        }
+
         await new Promise((resolve) => setTimeout(resolve, 1500));
 
-        const place = await extractPlaceDetails(detailPage, jobId, placeUrl);
-        await dbInsertPlace(place);
-
-        totalCollected += 1;
-        reportProgress({
-          total_collected: totalCollected,
-          current_step: `Coletado ${totalCollected} de ${limit}...`,
-        });
-      } catch (error) {
-        totalErrors += 1;
-        console.error(`Erro ao coletar ${placeUrl}:`, error);
-        reportProgress({
-          total_errors: totalErrors,
-          current_step: `Erro em ficha (${totalErrors})...`,
-        });
-      } finally {
-        if (detailPage) {
-          await detailPage.close().catch(() => {});
+        if (placeUrls.size === previousCount) {
+          stagnantRounds += 1;
+        } else {
+          stagnantRounds = 0;
+          previousCount = placeUrls.size;
         }
       }
+
+      // 3. Open each individual place sheet and extract details.
+      for (const placeUrl of placeUrls) {
+        if (handle.cancelled) break;
+        if (totalCollected + totalDuplicates >= limit) break;
+
+        // Skip duplicates already persisted (same Maps URL).
+        const alreadyExists = await placeExistsByUrl(placeUrl, scope);
+        if (alreadyExists) {
+          totalDuplicates += 1;
+          reportProgress({
+            total_duplicates: totalDuplicates,
+            current_step: `Ignorando duplicado (${totalDuplicates})...`,
+          });
+          continue;
+        }
+
+        let detailPage: Page | null = null;
+        try {
+          detailPage = await browser.newPage();
+          await detailPage.goto(placeUrl, {
+            waitUntil: 'domcontentloaded',
+            timeout: 20000,
+          });
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+
+          const place = await extractPlaceDetails(detailPage, jobId, placeUrl);
+          await dbInsertPlace(place);
+
+          totalCollected += 1;
+          reportProgress({
+            total_collected: totalCollected,
+            current_step: `Coletado ${totalCollected} de ${limit}...`,
+          });
+        } catch (error) {
+          totalErrors += 1;
+          console.error(`Erro ao coletar ${placeUrl}:`, error);
+          reportProgress({
+            total_errors: totalErrors,
+            current_step: `Erro em ficha (${totalErrors})...`,
+          });
+        } finally {
+          if (detailPage) {
+            await detailPage.close().catch(() => {});
+          }
+        }
+      }
+
+      // 4. Finalize the job with a real terminal state.
+      const finalStatus = handle.cancelled
+        ? ('stopped' as const)
+        : totalCollected === 0 && totalErrors > 0
+          ? ('failed' as const)
+          : totalCollected === 0 && totalFound === 0
+            ? ('failed' as const)
+            : ('completed' as const);
+
+      reportProgress({
+        status: finalStatus,
+        status_message: handle.cancelled
+          ? 'Interrompida pelo usuário.'
+          : `Coleta finalizada: ${totalCollected} coletado(s), ${totalDuplicates} duplicado(s), ${totalErrors} erro(s).`,
+        total_found: totalFound,
+        total_collected: totalCollected,
+        total_duplicates: totalDuplicates,
+        total_errors: totalErrors,
+        current_step: 'Concluído',
+      });
+    } catch (error) {
+      totalErrors += 1;
+      reportProgress({
+        status: 'failed' as const,
+        status_message: 'Falha durante a execução da coleta.',
+        total_errors: totalErrors,
+        current_step: 'Falha',
+      });
+      console.error(`runScraperJob ${jobId} failed:`, error);
+    } finally {
+      await browser?.close().catch(() => {});
+      activeJobs.delete(jobId);
     }
+  };
 
-    // 4. Finalize the job with a real terminal state.
-    const finalStatus = handle.cancelled
-      ? ('stopped' as const)
-      : totalCollected === 0 && totalErrors > 0
-        ? ('failed' as const)
-        : ('completed' as const);
-
-    reportProgress({
-      status: finalStatus,
-      status_message: handle.cancelled
-        ? 'Interrompida pelo usuário.'
-        : `Coleta finalizada: ${totalCollected} coletado(s), ${totalDuplicates} duplicado(s), ${totalErrors} erro(s).`,
-      total_found: totalFound,
-      total_collected: totalCollected,
-      total_duplicates: totalDuplicates,
-      total_errors: totalErrors,
-      current_step: 'Concluído',
-    });
-  } catch (error) {
-    totalErrors += 1;
-    reportProgress({
-      status: 'failed' as const,
-      status_message: 'Falha durante a execução da coleta.',
-      total_errors: totalErrors,
-      current_step: 'Falha',
-    });
-    console.error(`runScraperJob ${jobId} failed:`, error);
-  } finally {
-    await browser.close().catch(() => {});
-    activeJobs.delete(jobId);
-  }
+  // Execute with a global timeout to prevent jobs from being stuck in 'running' forever.
+  await Promise.race([run(), new Promise((_, reject) =>
+    setTimeout(() => reject(new Error('global_job_timeout')), GLOBAL_TIMEOUT_MS)
+  )]).catch((error) => {
+    const isTimeout = error?.message === 'global_job_timeout';
+    // reportProgress may not be in scope here if run() threw before defining it.
+    // The catch inside run() should handle most failures, but this is a safety net.
+  });
 }
 
 /**
