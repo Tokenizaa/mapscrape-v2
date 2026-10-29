@@ -147,6 +147,12 @@ create index if not exists idx_projects_user_id on public.projects(user_id);
 create index if not exists idx_search_categories_user_id on public.search_categories(user_id);
 create index if not exists idx_audit_logs_created_at on public.audit_logs(created_at desc);
 
+-- Backfill profiles for existing Auth users without deleting or changing their identity.
+insert into public.users (id, email, display_name, role, created_at)
+select u.id::text, coalesce(u.email, ''), coalesce(u.raw_user_meta_data->>'name', split_part(coalesce(u.email,''),'@',1)), 'user', coalesce(u.created_at, now())
+from auth.users u
+on conflict (id) do nothing;
+
 -- Ensure new Supabase Auth accounts get the profile row required by legacy foreign keys.
 create or replace function public.mapscrape_sync_auth_profile()
 returns trigger language plpgsql security definer set search_path = public
