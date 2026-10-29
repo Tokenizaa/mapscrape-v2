@@ -10,8 +10,9 @@ export function configureDatabaseEnv(env: Record<string, unknown> | undefined): 
 
 function getSupabase(): SupabaseClient {
   if (!supabase) {
-    const url = String(pagesRuntimeEnv.SUPABASE_URL ?? process.env.SUPABASE_URL ?? '').trim();
-    const key = String(pagesRuntimeEnv.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
+    const processEnv = typeof process !== 'undefined' ? process.env : {};
+    const url = String(pagesRuntimeEnv.SUPABASE_URL ?? processEnv.SUPABASE_URL ?? '').trim();
+    const key = String(pagesRuntimeEnv.SUPABASE_SERVICE_ROLE_KEY ?? processEnv.SUPABASE_SERVICE_ROLE_KEY ?? '').trim();
     if (!url || !key) {
       throw new Error(
         'Database não configurada: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente (chave de serviço, apenas servidor).'
