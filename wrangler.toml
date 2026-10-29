@@ -8,3 +8,7 @@ pages_build_output_dir = "dist"
 
 [vars]
 MAPSCRAPE_API_VERSION = "v1"
+
+[[queues.producers]]
+binding = "SCRAPE_QUEUE"
+queue = "scrape-queue"
