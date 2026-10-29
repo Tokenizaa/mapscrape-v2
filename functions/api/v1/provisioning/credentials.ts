@@ -42,7 +42,7 @@ export const onRequestPost = async (context: any): Promise<Response> => {
   if (existing) return json({ error: 'credential_already_exists', message: 'Projeto já possui credencial ativa.' }, 409);
 
   const apiKey = randomBytes(32).toString('hex');
-  const keyHash = hashApiKey(apiKey);
+  const keyHash = await hashApiKey(apiKey);
   const credentialId = `cred_${randomUUID().replace(/-/g, '')}`;
   const now = new Date().toISOString();
 
