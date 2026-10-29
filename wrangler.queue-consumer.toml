@@ -1,0 +1,15 @@
+name = "mapscrape-queue-consumer"
+main = "src/server/queue-consumer.ts"
+compatibility_date = "2026-10-29"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+
+[[queues.consumers]]
+queue = "scrape-queue"
+max_batch_size = 1
+max_batch_timeout = 5
+max_concurrency = 1
+max_retries = 3
+dead_letter_queue = "scrape-queue-dlq"
