@@ -48,12 +48,22 @@ export default async function handler(req: any, res: any): Promise<void> {
       .eq('id', data.user.id)
       .single());
 
+    const emailLower = (data.user.email || email).toLowerCase();
+
+    if (userError || !userData) {
+      // Fallback: buscar por email (cobre caso de mismatch de ID entre Supabase Auth
+      // e a tabela users, ex: usuário cadastrado diretamente no banco com outro ID)
+      ({ data: userData, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('email', emailLower)
+        .single());
+    }
+
     if (userError || !userData) {
       // Usuário autenticado no Supabase Auth mas sem perfil na tabela users.
-      // Auto-provisiona o perfil para evitar usuários órfãos (ex: cadastro onde
-      // o Auth foi criado mas a inserção na tabela users falhou).
+      // Auto-provisiona o perfil para evitar usuários órfãos.
       const displayName = data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Usuário';
-      const emailLower = (data.user.email || email).toLowerCase();
 
       const { error: insertError } = await supabaseAdmin.from('users').insert({
         id: data.user.id,
