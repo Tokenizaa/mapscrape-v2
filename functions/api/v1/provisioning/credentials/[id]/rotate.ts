@@ -1,14 +1,11 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import { hashApiKey } from '@/functions/_auth';
+import { authenticateProvisioning, hashApiKey } from '@/functions/_auth';
 import { createApiCredential, revokeApiCredential, listApiCredentials } from '@/src/server/db';
-import { json, getRequest, getParams, getProvisioningToken } from '@/functions/_util';
+import { json, getParams } from '@/functions/_util';
 
 export const onRequestPost = async (context: any): Promise<Response> => {
-  const req = getRequest(context);
-  const expected = context.env?.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
-  if (!expected) return json({ error: 'provisioning_unavailable' }, 503);
-  const token = getProvisioningToken(req);
-  if (!token || String(token).trim() !== expected) return json({ error: 'provisioning_unauthorized' }, 401);
+  const auth = await authenticateProvisioning(context);
+  if (auth.ok === false) return json({ error: auth.error }, auth.status);
 
   const params = getParams(context);
   const id = params.id;
@@ -23,7 +20,7 @@ export const onRequestPost = async (context: any): Promise<Response> => {
     if (!revoked) return json({ error: 'credential_rotation_conflict', message: 'Conflito ao revogar a credencial.' }, 409);
 
     const apiKey = randomBytes(32).toString('hex');
-    const keyHash = hashApiKey(apiKey);
+    const keyHash = await hashApiKey(apiKey);
     const credentialId = `cred_${randomUUID().replace(/-/g, '')}`;
     const now = new Date().toISOString();
 

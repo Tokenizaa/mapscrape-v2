@@ -18,7 +18,8 @@ export const onRequestGet = async (context: any): Promise<Response> => {
         created_at: p.created_at, updated_at: p.updated_at,
       })),
     });
-  } catch {
+  } catch (error) {
+    console.error('[api/v1/projects] list failed:', error instanceof Error ? error.message : 'unknown error');
     return json({ error: 'lead_query_failed', message: 'Erro ao listar projetos.' }, 500);
   }
 };
@@ -45,7 +46,8 @@ export const onRequestPost = async (context: any): Promise<Response> => {
         created_at: project.created_at, updated_at: project.updated_at,
       },
     }, 201);
-  } catch {
+  } catch (error) {
+    console.error('[api/v1/projects] create failed:', error instanceof Error ? error.message : 'unknown error');
     return json({ error: 'invalid_request', message: 'Erro ao criar projeto.' }, 500);
   }
 };

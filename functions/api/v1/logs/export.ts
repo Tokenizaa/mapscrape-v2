@@ -5,7 +5,7 @@ import { getRequest, getQuery } from '@/functions/_util';
 export const onRequestGet = async (context: any): Promise<Response> => {
   const req = getRequest(context);
   const auth = await authenticateRequest(context);
-  if (!auth.ok) {
+  if (auth.ok === false) {
     return new Response(JSON.stringify({ error: auth.error }), { status: auth.status, headers: { 'Content-Type': 'application/json' } });
   }
   const authContext = auth as AuthOk;

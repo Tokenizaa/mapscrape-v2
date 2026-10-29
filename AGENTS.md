@@ -20,16 +20,14 @@ Ordem do CI (`.github/workflows/ci.yml`): `build → lint → test → npm audit
 ## Testes
 
 - `npm test` roda `tests/*.test.ts` com vitest (sem arquivo de config próprio).
-- Os testes gravam num **banco Supabase real** (não são mockados). Requer `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` definidos; caso contrário `initDb()`/queries falham.
+- Os testes gravam num **banco Supabase real** (não são mockados). Requer `SUPABASE_URL` e `SUPABASE_ANON_KEY` definidos; caso contrário `initDb()`/queries falham.
 - Linhas de teste usam IDs únicos (`Date.now()`) para evitar colisão; não há limpeza automática do banco após os testes.
 - Não execute coletas reais de Puppeteer nem escritas remotas sem autorização.
 
 ## Variáveis de ambiente obrigatórias
 
-- `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` — acesso ao banco (server-side only).
-- `SUPABASE_ANON_KEY` — validação de sessões de usuário (`authenticateRequest`).
+- `SUPABASE_URL` + `SUPABASE_ANON_KEY` — conexão com o banco e validação de sessões de usuário (`authenticateRequest`).
 - `MAPSCRAPE_PROVISIONING_TOKEN` — emissão de credenciais de API (admin).
-- `MAPSCRAPE_SESSION_SECRET`, `MAPSCRAPE_ADMIN_EMAIL`, `MAPSCRAPE_ADMIN_SETUP_TOKEN` — produção Vercel / bootstrap da primeira conta.
 - `APP_URL` — URL-base do serviço implantado.
 
 `.env*` é ignorado pelo git (exceto `.env.example`). Nunca commite `.env`, `.env.local` (contém token OIDC da Vercel) ou segredos. Copie de `.env.example` para desenvolvimento local.

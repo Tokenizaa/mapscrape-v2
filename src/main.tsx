@@ -7,8 +7,9 @@ import { createClient } from '@supabase/supabase-js';
 let supabase: any = null;
 
 try {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
-  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY?.trim();
+  const processEnv = typeof process !== 'undefined' ? process.env : {};
+  const supabaseUrl = (import.meta.env?.VITE_SUPABASE_URL || processEnv?.VITE_SUPABASE_URL || '')?.trim();
+  const supabaseAnonKey = (import.meta.env?.VITE_SUPABASE_ANON_KEY || processEnv?.VITE_SUPABASE_ANON_KEY || '')?.trim();
   
   if (supabaseUrl && supabaseAnonKey) {
     supabase = createClient(supabaseUrl, supabaseAnonKey, {
@@ -23,42 +24,29 @@ try {
   console.error('Supabase client initialization error:', e);
 }
 
-const nativeFetch = window.fetch.bind(window);
+try {
+  const descriptor =
+    Object.getOwnPropertyDescriptor(window, 'fetch') ||
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(window), 'fetch');
 
-// If Supabase is available, use it for session management
-if (supabase) {
-  // Subscribe to auth changes to keep session in sync
-  supabase.auth.onAuthStateChange((event: string, session: any) => {
-    if (session?.user?.id) {
-      // Store the Supabase user ID in sessionStorage for fallback
-      window.sessionStorage.setItem('mapscrape_user_id', session.user.id);
-      window.sessionStorage.setItem('mapscrape_user_email', session.user.email || '');
-    } else {
-      // Clear session storage on sign out
-      window.sessionStorage.removeItem('mapscrape_user_id');
-      window.sessionStorage.removeItem('mapscrape_user_email');
-    }
-  });
-  
-  // Initialize session - try to restore from Supabase
-  supabase.auth.getSession().then(({ data, error }) => {
-    if (data?.session?.user?.id) {
-      window.sessionStorage.setItem('mapscrape_user_id', data.session.user.id);
-      window.sessionStorage.setItem('mapscrape_user_email', data.session.user.email || '');
-    }
-  });
-}
-
-window.fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
-  let headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
-  
-  // Add Authorization token if we have a Supabase session
-  const token = window.sessionStorage.getItem('mapscrape_session_token');
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
+  if (!descriptor || descriptor.writable || typeof descriptor.set === 'function') {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input: RequestInfo | URL, init: RequestInit = {}) => {
+      let headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+      
+      // Add Authorization token if we have a Supabase session or API key
+      const token =
+        window.sessionStorage.getItem('mapscrape_api_key') ||
+        window.sessionStorage.getItem('mapscrape_session_token');
+      if (token && !headers.has('Authorization')) {
+        headers.set('Authorization', `Bearer ${token}`);
+      }
+      
+      return nativeFetch(input, { ...init, headers, cache: init.cache || 'no-store' });
+    };
   }
-  
-  return nativeFetch(input, { ...init, headers, cache: init.cache || 'no-store' });
-};
+} catch {
+  // If window.fetch has only a getter or is protected by host sandbox/iframe, skip overriding
+}
 
 createRoot(document.getElementById('root')!).render(<App />);

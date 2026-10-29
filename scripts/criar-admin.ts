@@ -24,11 +24,11 @@ const ADMIN_NAME = process.env.ADMIN_NAME || 'Administrador Geral';
 
 function buildAdminClient(): SupabaseClient {
   const url = process.env.SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  const key = (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
   if (!url || !key) {
     throw new Error(
-      'SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY devem estar definidos no ambiente.'
+      'SUPABASE_URL e SUPABASE_ANON_KEY devem estar definidos no ambiente.'
     );
   }
 

@@ -1,14 +1,27 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 let supabase: SupabaseClient | null = null;
+let pagesRuntimeEnv: Record<string, unknown> = {};
 
-function getSupabase(): SupabaseClient {
+/** Inject Cloudflare Pages bindings before a request handler accesses the database. */
+export function configureDatabaseEnv(env: Record<string, unknown> | undefined): void {
+  pagesRuntimeEnv = env ?? {};
+}
+
+export function getSupabase(): SupabaseClient {
   if (!supabase) {
-    const url = process.env.SUPABASE_URL?.trim();
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+    const processEnv = typeof process !== 'undefined' ? process.env : {};
+    const url = String(pagesRuntimeEnv.SUPABASE_URL ?? processEnv.SUPABASE_URL ?? '').trim();
+    const key = String(
+      pagesRuntimeEnv.SUPABASE_ANON_KEY ??
+      processEnv.SUPABASE_ANON_KEY ??
+      pagesRuntimeEnv.SUPABASE_SERVICE_ROLE_KEY ??
+      processEnv.SUPABASE_SERVICE_ROLE_KEY ??
+      ''
+    ).trim();
     if (!url || !key) {
       throw new Error(
-        'Database não configurada: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente (chave de serviço, apenas servidor).'
+        'Database não configurada: defina SUPABASE_URL e SUPABASE_ANON_KEY no ambiente.'
       );
     }
     supabase = createClient(url, key, {

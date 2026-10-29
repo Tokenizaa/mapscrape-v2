@@ -1,7 +1,8 @@
 export const onRequestPost = async (context: any): Promise<Response> => {
   const req = context.request;
-  const SUPABASE_URL = context.env?.SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim();
-  const SUPABASE_ANON_KEY = context.env?.SUPABASE_ANON_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+  const processEnv = typeof process !== 'undefined' ? process.env : {};
+  const SUPABASE_URL = context.env?.SUPABASE_URL?.trim() || processEnv.SUPABASE_URL?.trim();
+  const SUPABASE_ANON_KEY = context.env?.SUPABASE_ANON_KEY?.trim() || processEnv.SUPABASE_ANON_KEY?.trim();
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return new Response(JSON.stringify({ error: 'authentication_unavailable', message: 'SUPABASE_URL e SUPABASE_ANON_KEY não configurados.' }), {

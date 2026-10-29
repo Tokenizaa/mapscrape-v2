@@ -1,9 +1,9 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 export function getSupabase(): SupabaseClient {
-  const url = (process.env.SUPABASE_URL || process.env.SUPABASE_DIRECT_CONNECTION || '').trim();
-  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
-  if (!url || !key) throw new Error('Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY nas variáveis server-side da Vercel.');
+  const url = (process.env.SUPABASE_URL || '').trim();
+  const key = (process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+  if (!url || !key) throw new Error('Configure SUPABASE_URL e SUPABASE_ANON_KEY nas variáveis de ambiente.');
   return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
 }
 
@@ -15,7 +15,7 @@ export async function requireUser(req: any, res: any) {
   }
   const token = header.slice(7).trim();
   if (!token) { res.status(401).json({ error: 'Token de autenticação ausente.' }); return null; }
-  const url = (process.env.SUPABASE_URL || process.env.SUPABASE_DIRECT_CONNECTION || '').trim();
+  const url = (process.env.SUPABASE_URL || '').trim();
   const key = (process.env.SUPABASE_ANON_KEY || '').trim();
   if (!url || !key) throw new Error('Configure SUPABASE_URL e SUPABASE_ANON_KEY para validar sessões.');
   const authClient = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });

@@ -18,15 +18,18 @@ import { AuthScreen } from './components/AuthScreen';
 import { PlaceRecord, ScrapeJob } from './shared/types';
 import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-react';
 
+import { createClient } from '@supabase/supabase-js';
+
 // Supabase Auth initialization
 let supabase: any = null;
 
 try {
-  const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
-  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY?.trim();
+  const processEnv = typeof process !== 'undefined' ? process.env : {};
+  const supabaseUrl = (import.meta.env?.VITE_SUPABASE_URL || processEnv?.VITE_SUPABASE_URL || '')?.trim();
+  const supabaseAnonKey = (import.meta.env?.VITE_SUPABASE_ANON_KEY || processEnv?.VITE_SUPABASE_ANON_KEY || '')?.trim();
   
   if (supabaseUrl && supabaseAnonKey) {
-    supabase = require('@supabase/supabase-js').createClient(supabaseUrl, supabaseAnonKey, {
+    supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: true,

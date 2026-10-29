@@ -152,8 +152,13 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
     const loadCoverage = async () => {
       try {
         const params = new URLSearchParams();
-        if (selectedJobId) params.set('jobId', selectedJobId);
-        const response = await fetch(`/api/v1/field-coverage?${params.toString()}`);
+        const token =
+          window.sessionStorage.getItem('mapscrape_api_key') ||
+          window.sessionStorage.getItem('mapscrape_session_token');
+        const response = await fetch(`/api/v1/field-coverage?${params.toString()}`, {
+          cache: 'no-store',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
         if (!response.ok) throw new Error('Não foi possível calcular a cobertura dos campos.');
         const data = await response.json();
         if (!cancelled) {

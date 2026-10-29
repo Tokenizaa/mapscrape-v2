@@ -1,14 +1,11 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { authenticateProvisioning, hashApiKey } from '@/functions/_auth';
 import { createApiCredential, listApiCredentials } from '@/src/server/db';
-import { json, getRequest, getBodyJson, getProvisioningToken } from '@/functions/_util';
+import { json, getBodyJson } from '@/functions/_util';
 
 export const onRequestGet = async (context: any): Promise<Response> => {
-  const req = getRequest(context);
-  const expected = context.env?.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
-  if (!expected) return json({ error: 'provisioning_unavailable' }, 503);
-  const token = getProvisioningToken(req);
-  if (!token || String(token).trim() !== expected) return json({ error: 'provisioning_unauthorized' }, 401);
+  const auth = await authenticateProvisioning(context);
+  if (auth.ok === false) return json({ error: auth.error }, auth.status);
 
   try {
     const credentials = await listApiCredentials();
@@ -24,11 +21,9 @@ export const onRequestGet = async (context: any): Promise<Response> => {
 };
 
 export const onRequestPost = async (context: any): Promise<Response> => {
-  const req = getRequest(context);
-  const expected = context.env?.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
-  if (!expected) return json({ error: 'provisioning_unavailable' }, 503);
-  const token = getProvisioningToken(req);
-  if (!token || String(token).trim() !== expected) return json({ error: 'provisioning_unauthorized' }, 401);
+  const req = context.request as Request;
+  const auth = await authenticateProvisioning(context);
+  if (auth.ok === false) return json({ error: auth.error }, auth.status);
 
   const body = await getBodyJson(req);
   const consumerName = body?.consumerName;
@@ -44,7 +39,7 @@ export const onRequestPost = async (context: any): Promise<Response> => {
   if (existing) return json({ error: 'credential_already_exists', message: 'Projeto já possui credencial ativa.' }, 409);
 
   const apiKey = randomBytes(32).toString('hex');
-  const keyHash = hashApiKey(apiKey);
+  const keyHash = await hashApiKey(apiKey);
   const credentialId = `cred_${randomUUID().replace(/-/g, '')}`;
   const now = new Date().toISOString();
 

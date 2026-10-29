@@ -1,24 +1,4 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-let supabase: SupabaseClient | null = null;
-
-function getSupabase(): SupabaseClient {
-  if (!supabase) {
-    const url = process.env.SUPABASE_URL?.trim();
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-    if (!url || !key) {
-      throw new Error('Supabase não configurado: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.');
-    }
-    supabase = createClient(url, key, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-        detectSessionInUrl: false,
-      },
-    });
-  }
-  return supabase;
-}
+import { getSupabase } from './db';
 
 export type AuditLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -63,7 +43,7 @@ export async function initAuditLog(): Promise<void> {
   try {
     db = getSupabase();
   } catch {
-    console.log('Supabase não configurado: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY para ativar logs de auditoria.');
+    console.log('Supabase não configurado: defina SUPABASE_URL e SUPABASE_ANON_KEY para ativar logs de auditoria.');
     return;
   }
   const { error } = await db.from('audit_logs').select('*', { count: 'exact', head: true });
