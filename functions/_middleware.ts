@@ -1,7 +1,6 @@
-import type { PagesFunction } from '@cloudflare/workers-types';
 import { configureDatabaseEnv } from '../src/server/db';
 
-export const onRequest: PagesFunction = async (context) => {
+export const onRequest = async (context: any): Promise<Response> => {
   // Pages bindings live on context.env, not reliably on process.env in Workers.
   configureDatabaseEnv(context.env as Record<string, unknown>);
   const { request } = context;
