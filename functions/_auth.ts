@@ -26,8 +26,9 @@ export type AuthResult = AuthOk | AuthError;
 
 export async function authenticateRequest(context: any): Promise<AuthResult> {
   const req = context.request;
-  const SUPABASE_URL = context.env?.SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim();
-  const SUPABASE_ANON_KEY = context.env?.SUPABASE_ANON_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+  const env = context.env || {};
+  const SUPABASE_URL = env.SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim();
+  const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return { ok: false, status: 503, error: 'authentication_unavailable' };
@@ -92,27 +93,30 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
       },
     });
 
+    const body = await res.text();
     if (res.ok) {
-      const data = await res.json();
-      if (data?.user) {
-        const userId = data.user.id;
-        const email = data.user.email ?? '';
-        return {
-          ok: true,
-          context: { kind: 'user', scope: userId, email },
-        };
-      }
+      try {
+        const data = JSON.parse(body);
+        if (data?.id) {
+          const userId = data.id;
+          const email = data.email ?? '';
+          return {
+            ok: true,
+            context: { kind: 'user', scope: userId, email },
+          };
+        }
+      } catch {}
     }
 
-    return { ok: false, status: 401, error: 'Token inválido ou expirado.' };
-  } catch {
-    return { ok: false, status: 503, error: 'authentication_unavailable' };
+    return { ok: false, status: 401, error: `Token inválido ou expirado (supabase status: ${res.status}, body: ${body.substring(0, 100)})` };
+  } catch (e: any) {
+    return { ok: false, status: 503, error: `authentication_unavailable: ${e?.message}` };
   }
 }
 
 export async function authenticateProvisioning(context: any): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const req = context.request;
-  const expected = context.env?.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
+  const expected = env.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
   if (!expected) {
     return { ok: false, status: 503, error: 'provisioning_unavailable' };
   }
