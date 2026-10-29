@@ -115,16 +115,38 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
 }
 
 export async function authenticateProvisioning(context: any): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
-  const req = context.request;
-  const expected = env.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
-  if (!expected) {
+  const req = context.request as Request;
+  const env = context.env || {};
+  const expected = String(env.MAPSCRAPE_PROVISIONING_TOKEN ?? process.env.MAPSCRAPE_PROVISIONING_TOKEN ?? '').trim();
+  const provisioningToken = req.headers.get('x-mapscrape-provisioning-token')?.trim();
+
+  // Keep the server-side bootstrap token as a supported operational credential.
+  if (expected && provisioningToken && provisioningToken === expected) return { ok: true };
+
+  // The web UI uses a Supabase session. Only platform admins may manage API credentials.
+  const authorization = req.headers.get('authorization') || '';
+  const bearer = authorization.startsWith('Bearer ') ? authorization.slice('Bearer '.length).trim() : '';
+  const supabaseUrl = String(env.SUPABASE_URL ?? process.env.SUPABASE_URL ?? '').trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '').trim();
+
+  if (bearer && supabaseUrl && anonKey) {
+    try {
+      const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+        headers: { apikey: anonKey, Authorization: `Bearer ${bearer}` },
+      });
+      if (response.ok) {
+        const user = await response.json() as { app_metadata?: { platform_role?: string } };
+        if (user?.app_metadata?.platform_role === 'platform_admin') return { ok: true };
+      }
+    } catch {
+      // Fail closed; do not expose upstream authentication details.
+    }
+  }
+
+  if (!expected && (!supabaseUrl || !anonKey)) {
     return { ok: false, status: 503, error: 'provisioning_unavailable' };
   }
-  const token = req.headers.get('x-mapscrape-provisioning-token');
-  if (!token || String(token).trim() !== expected) {
-    return { ok: false, status: 401, error: 'provisioning_unauthorized' };
-  }
-  return { ok: true };
+  return { ok: false, status: 401, error: 'provisioning_unauthorized' };
 }
 
 export async function hashApiKey(apiKey: string): Promise<string> {
