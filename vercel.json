@@ -1,14 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "headers": [
-    {
-      "source": "/api/auth/(.*)",
-      "headers": [
-        {
-          "key": "x-vercel-protected-paths",
-          "value": "/api/auth/(.*)"
-        }
-      ]
-    }
-  ]
+  "headers": []
 }
