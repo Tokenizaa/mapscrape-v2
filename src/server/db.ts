@@ -15,13 +15,10 @@ export function getSupabase(): SupabaseClient {
   if (!supabase) {
     const processEnv = typeof process !== 'undefined' ? process.env : {};
     const url = String(pagesRuntimeEnv.SUPABASE_URL ?? processEnv.SUPABASE_URL ?? '').trim();
-    // Backend privilegiado usa Service Role Key primeiro (ignora RLS);
-    // Anon Key é fallback para operações de usuário autenticado.
+    // Todas as operações de persistência usam a Service Role Key no servidor.
     const key = String(
       pagesRuntimeEnv.SUPABASE_SERVICE_ROLE_KEY ??
       processEnv.SUPABASE_SERVICE_ROLE_KEY ??
-      pagesRuntimeEnv.SUPABASE_ANON_KEY ??
-      processEnv.SUPABASE_ANON_KEY ??
       ''
     ).trim();
     if (!url || !key) {
@@ -84,7 +81,7 @@ export interface UserAccount {
 export async function findUserById(id: string): Promise<UserAccount | null> {
   const db = getSupabase();
   const { data, error } = await db
-    .from('users')
+    .schema('mapscrape').from('users')
     .select('*')
     .eq('id', id)
     .single();
@@ -96,7 +93,7 @@ export async function findUserById(id: string): Promise<UserAccount | null> {
 export async function findUserByEmail(email: string): Promise<UserAccount | null> {
   const db = getSupabase();
   const { data, error } = await db
-    .from('users')
+    .schema('mapscrape').from('users')
     .select('*')
     .eq('email', email.toLowerCase())
     .single();
@@ -156,7 +153,7 @@ export async function createUser(input: {
   createdAt: string;
 }): Promise<void> {
   const db = getSupabase();
-  const { error } = await db.from('users').insert({
+  const { error } = await db.schema('mapscrape').from('users').insert({
     id: input.id,
     email: input.email.toLowerCase(),
     display_name: input.displayName,
@@ -170,7 +167,7 @@ export async function createUser(input: {
 
 export async function updateUserLogin(id: string, timestamp: string): Promise<void> {
   const db = getSupabase();
-  const { error } = await db.from('users').update({ last_login_at: timestamp }).eq('id', id);
+  const { error } = await db.schema('mapscrape').from('users').update({ last_login_at: timestamp }).eq('id', id);
 
   if (error) throw new Error(`Erro ao atualizar login: ${error.message}`);
 }
@@ -198,7 +195,7 @@ export async function createApiCredential(input: {
   createdAt: string;
 }): Promise<void> {
   const db = getSupabase();
-  const { error } = await db.from('api_credentials').insert({
+  const { error } = await db.schema('mapscrape').from('api_credentials').insert({
     id: input.id,
     consumer_name: input.consumerName,
     consumer_project: input.consumerProject,
@@ -215,7 +212,7 @@ export async function createApiCredential(input: {
 export async function findActiveApiCredential(keyHash: string): Promise<{ id: string; consumer_project: string } | null> {
   const db = getSupabase();
   const { data, error } = await db
-    .from('api_credentials')
+    .schema('mapscrape').from('api_credentials')
     .select('id, consumer_project')
     .eq('key_hash', keyHash)
     .eq('status', 'active')
@@ -224,7 +221,7 @@ export async function findActiveApiCredential(keyHash: string): Promise<{ id: st
   if (error || !data) return null;
 
   // Update last_used_at
-  await db.from('api_credentials').update({ last_used_at: new Date().toISOString() }).eq('id', data.id);
+  await db.schema('mapscrape').from('api_credentials').update({ last_used_at: new Date().toISOString() }).eq('id', data.id);
 
   return { id: data.id, consumer_project: data.consumer_project };
 }
@@ -232,7 +229,7 @@ export async function findActiveApiCredential(keyHash: string): Promise<{ id: st
 export async function revokeApiCredential(id: string, consumerProject?: string): Promise<boolean> {
   const db = getSupabase();
   const { error, data } = await db
-    .from('api_credentials')
+    .schema('mapscrape').from('api_credentials')
     .update({ status: 'revoked', revoked_at: new Date().toISOString() })
     .eq('id', id)
     .select('status')
@@ -244,7 +241,7 @@ export async function revokeApiCredential(id: string, consumerProject?: string):
 
 export async function listApiCredentials(): Promise<ApiCredential[]> {
   const db = getSupabase();
-  const { data, error } = await db.from('api_credentials').select('*').order('created_at', { ascending: false });
+  const { data, error } = await db.schema('mapscrape').from('api_credentials').select('*').order('created_at', { ascending: false });
 
   if (error) throw error;
   return data as ApiCredential[];
@@ -276,7 +273,7 @@ export interface ScrapeJob {
 
 export async function createJob(job: ScrapeJob & { user_id: string }): Promise<void> {
   const db = getSupabase();
-  const { error } = await db.from('searches').insert({
+  const { error } = await db.schema('mapscrape').from('searches').insert({
     id: job.id,
     user_id: job.user_id,
     segment: job.segment,
@@ -301,14 +298,14 @@ export async function createJob(job: ScrapeJob & { user_id: string }): Promise<v
 
 export async function updateJobProgress(id: string, updates: Partial<ScrapeJob>): Promise<void> {
   const db = getSupabase();
-  const { error } = await db.from('searches').update(updates).eq('id', id);
+  const { error } = await db.schema('mapscrape').from('searches').update(updates).eq('id', id);
 
   if (error) throw new Error(`Erro ao atualizar job: ${error.message}`);
 }
 
 export async function getJob(id: string, userId?: string): Promise<ScrapeJob | null> {
   const db = getSupabase();
-  let query = db.from('searches').select('*').eq('id', id);
+  let query = db.schema('mapscrape').from('searches').select('*').eq('id', id);
 
   if (userId) {
     query = query.eq('user_id', userId);
@@ -322,7 +319,7 @@ export async function getJob(id: string, userId?: string): Promise<ScrapeJob | n
 
 export async function listJobs(userId?: string): Promise<ScrapeJob[]> {
   const db = getSupabase();
-  let query = db.from('searches').select('*');
+  let query = db.schema('mapscrape').from('searches').select('*');
 
   if (userId) {
     query = query.eq('user_id', userId);
@@ -339,9 +336,9 @@ export async function listJobs(userId?: string): Promise<ScrapeJob[]> {
 export async function deleteJob(id: string, userId?: string): Promise<boolean> {
   const db = getSupabase();
   // Delete places first
-  await db.from('places').delete().eq('job_id', id);
+  await db.schema('mapscrape').from('places').delete().eq('job_id', id);
   // Delete search
-  const { error } = await db.from('searches').delete().eq('id', id);
+  const { error } = await db.schema('mapscrape').from('searches').delete().eq('id', id);
 
   if (error) return false;
   return true;
@@ -407,7 +404,7 @@ function normalizeMapsUrl(url: string | null | undefined): string {
 export async function insertPlace(place: PlaceRecord): Promise<void> {
   const db = getSupabase();
   const cleanMapsUrl = normalizeMapsUrl(place.maps_url);
-  const { error } = await db.from('places').insert({
+  const { error } = await db.schema('mapscrape').from('places').insert({
     id: place.id,
     job_id: place.job_id,
     name: place.name,
@@ -461,7 +458,7 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
 export async function updatePlace(id: string, place: PlaceRecord): Promise<void> {
   const db = getSupabase();
   const cleanMapsUrl = normalizeMapsUrl(place.maps_url);
-  const { error } = await db.from('places').update({
+  const { error } = await db.schema('mapscrape').from('places').update({
     name: place.name,
     category: place.category,
     address: place.address,
@@ -514,13 +511,13 @@ export async function findPlaceByUrl(url: string, consumerProject?: string): Pro
   const cleanUrl = url.trim().split('?')[0].replace(/\/$/, '');
   if (!cleanUrl) return null;
   const db = getSupabase();
-  const { data, error } = await db.from('places').select('*').eq('maps_url', cleanUrl).single();
+  const { data, error } = await db.schema('mapscrape').from('places').select('*').eq('maps_url', cleanUrl).single();
 
   if (error || !data) return null;
 
   // Check ownership if consumerProject is specified
   if (consumerProject) {
-    const { data: jobData, error: jobError } = await db.from('searches').select('user_id').eq('id', data.job_id).single();
+    const { data: jobData, error: jobError } = await db.schema('mapscrape').from('searches').select('user_id').eq('id', data.job_id).single();
 
     if (jobError || jobData?.user_id !== consumerProject) {
       return null;
@@ -554,7 +551,7 @@ export async function getPlaces(options: {
   let allowedJobIds: string[] | null = null;
   if (options.consumerProject) {
     const { data: userJobs, error: jobsError } = await db
-      .from('searches')
+      .schema('mapscrape').from('searches')
       .select('id')
       .eq('user_id', options.consumerProject);
     if (jobsError) throw jobsError;
@@ -564,7 +561,7 @@ export async function getPlaces(options: {
     }
   }
 
-  let query = db.from('places').select('*', { count: 'exact' });
+  let query = db.schema('mapscrape').from('places').select('*', { count: 'exact' });
 
   if (options.jobId) {
     query = query.eq('job_id', options.jobId);
@@ -597,11 +594,11 @@ export async function getPlaces(options: {
 export async function getPlacesByIds(ids: string[], consumerProject?: string): Promise<PlaceRecord[]> {
   if (ids.length === 0) return [];
   const db = getSupabase();
-  let query = db.from('places').select('*').in('id', ids);
+  let query = db.schema('mapscrape').from('places').select('*').in('id', ids);
 
   if (consumerProject) {
     // Filter by user's jobs - get the user's job IDs first
-    const { data: userJobs, error: jobsError } = await db.from('searches').select('id').eq('user_id', consumerProject);
+    const { data: userJobs, error: jobsError } = await db.schema('mapscrape').from('searches').select('id').eq('user_id', consumerProject);
 
     if (jobsError) return [];
 
@@ -609,7 +606,7 @@ export async function getPlacesByIds(ids: string[], consumerProject?: string): P
     if (userJobIds.length === 0) return [];
 
     // Filter places to only those in user's jobs using a more compatible approach
-    const { data: userPlaces, error: placesError } = await db.from('places').select('id').in('job_id', userJobIds);
+    const { data: userPlaces, error: placesError } = await db.schema('mapscrape').from('places').select('id').in('job_id', userJobIds);
 
     if (placesError) return [];
 
@@ -618,7 +615,7 @@ export async function getPlacesByIds(ids: string[], consumerProject?: string): P
 
     if (filteredIds.length === 0) return [];
 
-    query = db.from('places').select('*').in('id', filteredIds);
+    query = db.schema('mapscrape').from('places').select('*').in('id', filteredIds);
   }
 
   const { data, error } = await query.order('collected_at', { ascending: false });
@@ -629,7 +626,7 @@ export async function getPlacesByIds(ids: string[], consumerProject?: string): P
 
 export async function getAllPlaces(jobId?: string, consumerProject?: string): Promise<PlaceRecord[]> {
   const db = getSupabase();
-  let query = db.from('places').select('*');
+  let query = db.schema('mapscrape').from('places').select('*');
 
   if (jobId) {
     query = query.eq('job_id', jobId);
@@ -638,7 +635,7 @@ export async function getAllPlaces(jobId?: string, consumerProject?: string): Pr
   if (consumerProject) {
     // Instead of innerJoin, use a subquery approach
     // First get the user's job IDs
-    const { data: userJobs, error: jobsError } = await db.from('searches').select('id').eq('user_id', consumerProject);
+    const { data: userJobs, error: jobsError } = await db.schema('mapscrape').from('searches').select('id').eq('user_id', consumerProject);
 
     if (jobsError) return [];
 
@@ -646,7 +643,7 @@ export async function getAllPlaces(jobId?: string, consumerProject?: string): Pr
     if (userJobIds.length === 0) return [];
 
     // Get places for those jobs
-    query = db.from('places').select('*').in('job_id', userJobIds);
+    query = db.schema('mapscrape').from('places').select('*').in('job_id', userJobIds);
   }
 
   const { data, error } = await query.order('collected_at', { ascending: false });
@@ -658,11 +655,11 @@ export async function getAllPlaces(jobId?: string, consumerProject?: string): Pr
 export async function listPlaceCategories(consumerProject?: string): Promise<string[]> {
   const db = getSupabase();
   // Use a simple approach: get all places categories, then filter by user if needed
-  let query = db.from('places').select('category').gt('category', '');
+  let query = db.schema('mapscrape').from('places').select('category').gt('category', '');
 
   if (consumerProject) {
     // Get the user's job IDs first
-    const { data: userJobs, error: jobsError } = await db.from('searches').select('id').eq('user_id', consumerProject);
+    const { data: userJobs, error: jobsError } = await db.schema('mapscrape').from('searches').select('id').eq('user_id', consumerProject);
 
     if (jobsError) return [];
 
@@ -670,7 +667,7 @@ export async function listPlaceCategories(consumerProject?: string): Promise<str
     if (userJobIds.length === 0) return [];
 
     // Get places for user's jobs and extract categories
-    const { data: userPlaces, error: placesError } = await db.from('places').select('category').in('job_id', userJobIds);
+    const { data: userPlaces, error: placesError } = await db.schema('mapscrape').from('places').select('category').in('job_id', userJobIds);
 
     if (placesError) return [];
 
@@ -691,7 +688,7 @@ export async function listPlaceCategories(consumerProject?: string): Promise<str
 
 export async function countPlaces(): Promise<number> {
   const db = getSupabase();
-  const { count, error } = await db.from('places').select('*', { count: 'exact', head: true });
+  const { count, error } = await db.schema('mapscrape').from('places').select('*', { count: 'exact', head: true });
   if (error) throw error;
   return count || 0;
 }
@@ -712,7 +709,7 @@ export interface ProjectRecord {
 
 export async function listProjects(consumerProject: string, userId: string): Promise<ProjectRecord[]> {
   const db = getSupabase();
-  const { data, error } = await db.from('projects').select('*').eq('consumer_project', consumerProject).eq('user_id', userId).order('name', { ascending: false });
+  const { data, error } = await db.schema('mapscrape').from('projects').select('*').eq('consumer_project', consumerProject).eq('user_id', userId).order('name', { ascending: false });
 
   if (error) throw error;
   return data as ProjectRecord[];
@@ -725,7 +722,7 @@ export async function resolveProject(consumerProject: string, name: string, user
   if (!normalized) throw new Error('project_name_required');
 
   const db = getSupabase();
-  const { data, error } = await db.from('projects').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).single();
+  const { data, error } = await db.schema('mapscrape').from('projects').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).single();
 
   if (error || !data) {
     const now = new Date().toISOString();
@@ -739,7 +736,7 @@ export async function resolveProject(consumerProject: string, name: string, user
       updated_at: now,
     };
 
-    const { error: insertError } = await db.from('projects').insert(record);
+    const { error: insertError } = await db.schema('mapscrape').from('projects').insert(record);
 
     if (insertError) throw new Error(`Erro ao criar projeto: ${insertError.message}`);
 
@@ -756,21 +753,21 @@ export async function updateProject(consumerProject: string, id: string, name: s
   if (!normalized) throw new Error('project_name_required');
 
   const db = getSupabase();
-  const { data: existing, error: existError } = await db.from('projects').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
+  const { data: existing, error: existError } = await db.schema('mapscrape').from('projects').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
 
   if (existError || !existing) return null;
 
   // Check conflict
-  const { data: conflict, error: conflictError } = await db.from('projects').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).neq('id', id).single();
+  const { data: conflict, error: conflictError } = await db.schema('mapscrape').from('projects').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).neq('id', id).single();
 
   if (conflictError || conflict) throw new Error('project_name_conflict');
 
   const now = new Date().toISOString();
-  const { error: updateError } = await db.from('projects').update({ name: canonicalName, normalized_name: normalized, updated_at: now }).eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
+  const { error: updateError } = await db.schema('mapscrape').from('projects').update({ name: canonicalName, normalized_name: normalized, updated_at: now }).eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
 
   if (updateError) throw new Error(`Erro ao atualizar projeto: ${updateError.message}`);
 
-  const { data: updated, error: updatedError } = await db.from('projects').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
+  const { data: updated, error: updatedError } = await db.schema('mapscrape').from('projects').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
 
   if (updatedError) throw new Error(`Erro ao buscar projeto atualizado: ${updatedError.message}`);
 
@@ -779,12 +776,12 @@ export async function updateProject(consumerProject: string, id: string, name: s
 
 export async function deleteProject(consumerProject: string, id: string, userId: string): Promise<boolean> {
   const db = getSupabase();
-  const { error } = await db.from('projects').delete().eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
+  const { error } = await db.schema('mapscrape').from('projects').delete().eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
 
   if (error) return false;
 
   // Reset project_id in searches that reference this project
-  await db.from('searches').update({ project_id: null }).eq('project_id', id);
+  await db.schema('mapscrape').from('searches').update({ project_id: null }).eq('project_id', id);
 
   return true;
 }
@@ -805,7 +802,7 @@ export interface SearchCategoryRecord {
 
 export async function listSearchCategories(consumerProject: string, userId: string): Promise<SearchCategoryRecord[]> {
   const db = getSupabase();
-  const { data, error } = await db.from('search_categories').select('*').eq('consumer_project', consumerProject).eq('user_id', userId).order('name', { ascending: false });
+  const { data, error } = await db.schema('mapscrape').from('search_categories').select('*').eq('consumer_project', consumerProject).eq('user_id', userId).order('name', { ascending: false });
 
   if (error) throw error;
   return data as SearchCategoryRecord[];
@@ -818,7 +815,7 @@ export async function resolveSearchCategory(consumerProject: string, name: strin
   if (!normalized) throw new Error('category_name_required');
 
   const db = getSupabase();
-  const { data, error } = await db.from('search_categories').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).single();
+  const { data, error } = await db.schema('mapscrape').from('search_categories').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).single();
 
   if (error || !data) {
     const record: SearchCategoryRecord = {
@@ -831,7 +828,7 @@ export async function resolveSearchCategory(consumerProject: string, name: strin
       updated_at: new Date().toISOString(),
     };
 
-    const { error: insertError } = await db.from('search_categories').insert(record);
+    const { error: insertError } = await db.schema('mapscrape').from('search_categories').insert(record);
 
     if (insertError) throw new Error(`Erro ao criar categoria: ${insertError.message}`);
 
@@ -848,21 +845,21 @@ export async function updateSearchCategory(consumerProject: string, id: string, 
   if (!normalized) throw new Error('category_name_required');
 
   const db = getSupabase();
-  const { data: existing, error: existError } = await db.from('search_categories').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
+  const { data: existing, error: existError } = await db.schema('mapscrape').from('search_categories').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
 
   if (existError || !existing) return null;
 
   // Check conflict
-  const { data: conflict, error: conflictError } = await db.from('search_categories').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).neq('id', id).single();
+  const { data: conflict, error: conflictError } = await db.schema('mapscrape').from('search_categories').select('*').eq('consumer_project', consumerProject).eq('normalized_name', normalized).neq('id', id).single();
 
   if (conflictError || conflict) throw new Error('category_name_conflict');
 
   const now = new Date().toISOString();
-  const { error: updateError } = await db.from('search_categories').update({ name: canonicalName, normalized_name: normalized }).eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
+  const { error: updateError } = await db.schema('mapscrape').from('search_categories').update({ name: canonicalName, normalized_name: normalized }).eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
 
   if (updateError) throw new Error(`Erro ao atualizar categoria: ${updateError.message}`);
 
-  const { data: updated, error: updatedError } = await db.from('search_categories').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
+  const { data: updated, error: updatedError } = await db.schema('mapscrape').from('search_categories').select('*').eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId).single();
 
   if (updatedError) throw new Error(`Erro ao buscar categoria atualizada: ${updatedError.message}`);
 
@@ -871,12 +868,12 @@ export async function updateSearchCategory(consumerProject: string, id: string, 
 
 export async function deleteSearchCategory(consumerProject: string, id: string, userId: string): Promise<boolean> {
   const db = getSupabase();
-  const { error } = await db.from('search_categories').delete().eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
+  const { error } = await db.schema('mapscrape').from('search_categories').delete().eq('id', id).eq('consumer_project', consumerProject).eq('user_id', userId);
 
   if (error) return false;
 
   // Reset category_id in searches that reference this category
-  await db.from('searches').update({ category_id: null }).eq('category_id', id);
+  await db.schema('mapscrape').from('searches').update({ category_id: null }).eq('category_id', id);
 
   return true;
 }
@@ -887,7 +884,7 @@ export async function deleteSearchCategory(consumerProject: string, id: string, 
 
 export async function saveRunReport(jobId: string, reportJson: string, generatedAt: string, userId: string): Promise<void> {
   const db = getSupabase();
-  const { error } = await db.from('run_reports').upsert({
+  const { error } = await db.schema('mapscrape').from('run_reports').upsert({
     job_id: jobId,
     report_json: reportJson,
     generated_at: generatedAt,
@@ -898,14 +895,14 @@ export async function saveRunReport(jobId: string, reportJson: string, generated
 
 export async function getRunReport(jobId: string): Promise<string | null> {
   const db = getSupabase();
-  const { data, error } = await db.from('run_reports').select('report_json').eq('job_id', jobId).single();
+  const { data, error } = await db.schema('mapscrape').from('run_reports').select('report_json').eq('job_id', jobId).single();
 
   if (error || !data) return null;
 
   // Supabase may return gzipped JSON
   if (typeof data.report_json === 'string' && data.report_json.startsWith('gzip-base64:')) {
     const { gunzipSync } = await import('node:zlib');
-    return gunzipSync(Buffer.from(data.report_json.slice('gzip-base64:'.length), 'base64')).toString('utf8');
+    return gunzipSync(Buffer.schema('mapscrape').from(data.report_json.slice('gzip-base64:'.length), 'base64')).toString('utf8');
   }
 
   return data.report_json;
@@ -917,7 +914,7 @@ export async function getRunReport(jobId: string): Promise<string | null> {
 
 export async function countUsers(): Promise<number> {
   const db = getSupabase();
-  const { count, error } = await db.from('users').select('*', { count: 'exact', head: true });
+  const { count, error } = await db.schema('mapscrape').from('users').select('*', { count: 'exact', head: true });
   if (error) throw error;
   return count || 0;
 }

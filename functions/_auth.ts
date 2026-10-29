@@ -35,12 +35,12 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
   const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY?.trim() || getProcessEnv().SUPABASE_ANON_KEY?.trim();
   const SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY?.trim() || getProcessEnv().SUPABASE_SERVICE_ROLE_KEY?.trim();
 
-  if (!SUPABASE_URL || (!SUPABASE_ANON_KEY && !SUPABASE_SERVICE_ROLE_KEY)) {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
     return { ok: false, status: 503, error: 'authentication_unavailable' };
   }
 
-  // Backend privilegiado: Service Role Key ignora RLS para validar credenciais.
-  const adminKey = SUPABASE_SERVICE_ROLE_KEY ?? SUPABASE_ANON_KEY;
+  // API credentials are private to mapscrape and are read only with the server-side Service Role Key.
+  const adminKey = SUPABASE_SERVICE_ROLE_KEY;
 
   const authHeader = req.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -62,6 +62,8 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
       headers: {
         'apikey': adminKey,
         'Authorization': `Bearer ${adminKey}`,
+        'Accept-Profile': 'mapscrape',
+        'Content-Profile': 'mapscrape',
       },
     });
 
@@ -75,6 +77,8 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
             headers: {
               'apikey': adminKey,
               'Authorization': `Bearer ${adminKey}`,
+              'Accept-Profile': 'mapscrape',
+              'Content-Profile': 'mapscrape',
               'Content-Type': 'application/json',
               'Prefer': 'return=minimal',
             },
@@ -125,34 +129,24 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
 export async function authenticateProvisioning(context: any): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const req = context.request as Request;
   const env = context.env || {};
-  const expected = String(env.MAPSCRAPE_PROVISIONING_TOKEN ?? getProcessEnv().MAPSCRAPE_PROVISIONING_TOKEN ?? '').trim();
-  const provisioningToken = req.headers.get('x-mapscrape-provisioning-token')?.trim();
-
-  // Keep the server-side bootstrap token as a supported operational credential.
-  if (expected && provisioningToken && provisioningToken === expected) return { ok: true };
-
-  // The web UI uses a Supabase session. Only platform admins may manage API credentials.
   const authorization = req.headers.get('authorization') || '';
   const bearer = authorization.startsWith('Bearer ') ? authorization.slice('Bearer '.length).trim() : '';
   const supabaseUrl = String(env.SUPABASE_URL ?? getProcessEnv().SUPABASE_URL ?? '').trim();
   const anonKey = String(env.SUPABASE_ANON_KEY ?? getProcessEnv().SUPABASE_ANON_KEY ?? '').trim();
 
-  if (bearer && supabaseUrl && anonKey) {
-    try {
-      const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-        headers: { apikey: anonKey, Authorization: `Bearer ${bearer}` },
-      });
-      if (response.ok) {
-        const user = await response.json() as { app_metadata?: { platform_role?: string }; user_metadata?: { role?: string } };
-        if (user?.app_metadata?.platform_role === 'platform_admin' || user?.user_metadata?.role === 'admin') return { ok: true };
-      }
-    } catch {
-      // Fail closed; do not expose upstream authentication details.
-    }
-  }
+  if (!supabaseUrl || !anonKey) return { ok: false, status: 503, error: 'provisioning_unavailable' };
+  if (!bearer) return { ok: false, status: 401, error: 'provisioning_unauthorized' };
 
-  if (!expected && (!supabaseUrl || !anonKey)) {
-    return { ok: false, status: 503, error: 'provisioning_unavailable' };
+  try {
+    const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
+      headers: { apikey: anonKey, Authorization: `Bearer ${bearer}` },
+    });
+    if (response.ok) {
+      const user = await response.json() as { app_metadata?: { platform_role?: string } };
+      if (user?.app_metadata?.platform_role === 'platform_admin') return { ok: true };
+    }
+  } catch {
+    // Fail closed.
   }
   return { ok: false, status: 401, error: 'provisioning_unauthorized' };
 }
