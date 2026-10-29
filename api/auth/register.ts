@@ -1,17 +1,21 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-// Create Supabase client for admin operations
-const supabaseAdmin: SupabaseClient = createClient(
-  process.env.SUPABASE_DIRECT_CONNECTION?.trim() || '',
-  process.env.SUPABASE_ACCESS_TOKEN?.trim() || '',
-  {
+function buildSupabaseAdmin(): SupabaseClient {
+  const url = process.env.SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_ANON_KEY?.trim();
+
+  if (!url || !key) {
+    throw new Error('SUPABASE_URL e SUPABASE_ANON_KEY devem estar definidos.');
+  }
+
+  return createClient(url, key, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
       detectSessionInUrl: false,
     },
-  }
-);
+  });
+}
 
 export default async function handler(req: any, res: any): Promise<void> {
   try {
@@ -21,6 +25,8 @@ export default async function handler(req: any, res: any): Promise<void> {
       res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
       return;
     }
+
+    const supabaseAdmin = buildSupabaseAdmin();
 
     // Check if user already exists in our system
     const { data: existingUser, error: findError } = await supabaseAdmin
