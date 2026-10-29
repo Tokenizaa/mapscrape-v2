@@ -876,7 +876,7 @@ export async function getRunReport(jobId: string): Promise<string | null> {
   // Supabase may return gzipped JSON
   if (typeof data.report_json === 'string' && data.report_json.startsWith('gzip-base64:')) {
     const { gunzipSync } = await import('node:zlib');
-    return gunzipSync(Buffer.schema('mapscrape').from(data.report_json.slice('gzip-base64:'.length), 'base64')).toString('utf8');
+    return gunzipSync(Buffer.from(data.report_json.slice('gzip-base64:'.length), 'base64')).toString('utf8');
   }
 
   return data.report_json;
