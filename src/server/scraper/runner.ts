@@ -117,7 +117,7 @@ async function runScraperJob(
   segment: string,
   location: string,
   limit: number,
-  onProgress: (job: Partial<ScrapeJob>) => void,
+  onProgress: (job: Partial<ScrapeJob>) => Promise<void> | void,
   browserWsEndpoint?: string
 ): Promise<void> {
   // Global job timeout: 5 minutes. After this, the job is marked failed.
@@ -143,8 +143,8 @@ async function runScraperJob(
     let totalDuplicates = 0;
     let totalErrors = 0;
 
-    const reportProgress = (updates: Partial<ScrapeJob>) => {
-      onProgress({
+    const reportProgress = async (updates: Partial<ScrapeJob>): Promise<void> => {
+      await onProgress({
         status: 'running',
         status_message: 'Coletando dados...',
         total_found: totalFound,
@@ -179,11 +179,12 @@ async function runScraperJob(
       }
 
       if (navigationError) {
-        reportProgress({
+        await reportProgress({
           status: 'failed',
           status_message: `Falha ao conectar ao navegador: ${navigationError} (endpoint: ${browserWsEndpoint ? 'configurado' : '<vazio>'})`,
           total_errors: totalErrors + 1,
           current_step: 'Falha na conexão',
+          completed_at: new Date().toISOString(),
         });
         await browser.close().catch(() => {});
         activeJobs.delete(jobId);
@@ -222,7 +223,7 @@ async function runScraperJob(
         }
 
         totalFound = placeUrls.size;
-        reportProgress({
+        await reportProgress({
           total_found: totalFound,
           current_step: `Encontrados ${totalFound} estabelecimento(s)...`,
         });
@@ -258,7 +259,7 @@ async function runScraperJob(
         const alreadyExists = await placeExistsByUrl(placeUrl, scope);
         if (alreadyExists) {
           totalDuplicates += 1;
-          reportProgress({
+          await reportProgress({
             total_duplicates: totalDuplicates,
             current_step: `Ignorando duplicado (${totalDuplicates})...`,
           });
@@ -278,14 +279,14 @@ async function runScraperJob(
           await dbInsertPlace(place);
 
           totalCollected += 1;
-          reportProgress({
+          await reportProgress({
             total_collected: totalCollected,
             current_step: `Coletado ${totalCollected} de ${limit}...`,
           });
         } catch (error) {
           totalErrors += 1;
           console.error(`Erro ao coletar ${placeUrl}:`, error);
-          reportProgress({
+          await reportProgress({
             total_errors: totalErrors,
             current_step: `Erro em ficha (${totalErrors})...`,
           });
@@ -305,7 +306,7 @@ async function runScraperJob(
             ? ('failed' as const)
             : ('completed' as const);
 
-      reportProgress({
+      await reportProgress({
         status: finalStatus,
         status_message: handle.cancelled
           ? 'Interrompida pelo usuário.'
@@ -315,14 +316,16 @@ async function runScraperJob(
         total_duplicates: totalDuplicates,
         total_errors: totalErrors,
         current_step: 'Concluído',
+        completed_at: new Date().toISOString(),
       });
     } catch (error) {
       totalErrors += 1;
-      reportProgress({
+      await reportProgress({
         status: 'failed' as const,
         status_message: 'Falha durante a execução da coleta.',
         total_errors: totalErrors,
         current_step: 'Falha',
+        completed_at: new Date().toISOString(),
       });
       console.error(`runScraperJob ${jobId} failed:`, error);
     } finally {
@@ -331,13 +334,23 @@ async function runScraperJob(
     }
   };
 
-  // Execute with a global timeout to prevent jobs from being stuck in 'running' forever.
-  await Promise.race([run(), new Promise((_, reject) =>
-    setTimeout(() => reject(new Error('global_job_timeout')), GLOBAL_TIMEOUT_MS)
-  )]).catch((error) => {
-    const isTimeout = error?.message === 'global_job_timeout';
-    // reportProgress may not be in scope here if run() threw before defining it.
-    // The catch inside run() should handle most failures, but this is a safety net.
+  // The consumer owns this execution. A timeout must persist a terminal state
+  // and close the remote browser instead of silently leaving the job as running.
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([run(), new Promise((_, reject) => {
+    timeoutHandle = setTimeout(() => reject(new Error('global_job_timeout')), GLOBAL_TIMEOUT_MS);
+  })]).catch(async (error) => {
+    const isTimeout = error instanceof Error && error.message === 'global_job_timeout';
+    await browser?.close().catch(() => {});
+    await onProgress({
+      status: 'failed',
+      status_message: isTimeout ? 'A coleta excedeu o tempo máximo de execução.' : 'Falha ao iniciar a execução da coleta.',
+      total_errors: 1,
+      current_step: isTimeout ? 'Tempo limite excedido' : 'Falha',
+      completed_at: new Date().toISOString(),
+    });
+  }).finally(() => {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
   });
 }
 
