@@ -21,6 +21,7 @@ export const onRequestGet = async (context: any): Promise<Response> => {
 };
 
 export const onRequestPost = async (context: any): Promise<Response> => {
+  const req = context.request as Request;
   const auth = await authenticateProvisioning(context);
   if (auth.ok === false) return json({ error: auth.error }, auth.status);
 
