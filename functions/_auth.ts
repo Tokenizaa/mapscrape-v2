@@ -147,7 +147,7 @@ async function sha256(input: string): Promise<string> {
 }
 
 export function sendAuthError(_json: any, result: AuthResult): Response | false {
-  if (!result.ok) {
+  if ('error' in result) {
     return new Response(JSON.stringify({ error: result.error }), {
       status: result.status,
       headers: { 'Content-Type': 'application/json' },
