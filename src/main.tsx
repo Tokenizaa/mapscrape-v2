@@ -7,8 +7,8 @@ import { createClient } from '@supabase/supabase-js';
 let supabase: any = null;
 
 try {
-  const supabaseUrl = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
-  const supabaseAnonKey = process.env.SUPABASE_ACCESS_TOKEN?.trim();
+  const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY?.trim();
   
   if (supabaseUrl && supabaseAnonKey) {
     supabase = createClient(supabaseUrl, supabaseAnonKey, {

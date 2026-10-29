@@ -4,10 +4,10 @@ let supabase: SupabaseClient | null = null;
 
 function getSupabase(): SupabaseClient {
   if (!supabase) {
-    const url = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
-    const key = process.env.SUPABASE_ACCESS_TOKEN?.trim();
+    const url = process.env.SUPABASE_URL?.trim();
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     if (!url || !key) {
-      throw new Error('Supabase não configurado: defina SUPABASE_DIRECT_CONNECTION e SUPABASE_ACCESS_TOKEN.');
+      throw new Error('Supabase não configurado: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.');
     }
     supabase = createClient(url, key, {
       auth: {
@@ -59,7 +59,13 @@ function sanitizeMetadata(metadata: Record<string, unknown>): Record<string, unk
 }
 
 export async function initAuditLog(): Promise<void> {
-  const db = getSupabase();
+  let db;
+  try {
+    db = getSupabase();
+  } catch {
+    console.log('Supabase não configurado: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY para ativar logs de auditoria.');
+    return;
+  }
   const { error } = await db.from('audit_logs').select('*', { count: 'exact', head: true });
 
   // Check if table exists, if not, just log
@@ -122,9 +128,21 @@ export async function listAuditLogs(options: {
     const q = `%${options.query.trim().slice(0, 200)}%`;
     query = query.or(`message.ilike.%${q}%,event.ilike.%${q}%,metadata.ilike.%${q}%,job_id.ilike.%${q}%`);
   }
+  // Data isolation: when scoped to a consumer, only expose logs for that user's jobs.
+  let allowedJobIds: string[] | null = null;
   if (options.consumerProject) {
-    // Join with searches to filter by user
-    query = db.from('audit_logs').select('*').eq('job_id', { exp: 'searches.id = audit_logs.job_id AND searches.user_id = ?', params: [options.consumerProject] });
+    const { data: userJobs, error: jobsError } = await db
+      .from('searches')
+      .select('id')
+      .eq('user_id', options.consumerProject);
+    if (jobsError) throw jobsError;
+    allowedJobIds = (userJobs ?? []).map((j: any) => j.id);
+    if (allowedJobIds.length > 0) {
+      query = query.in('job_id', allowedJobIds);
+    } else {
+      // Scoped consumer has no jobs -> no logs visible.
+      return { logs: [], total: 0 };
+    }
   }
 
   // Get total count

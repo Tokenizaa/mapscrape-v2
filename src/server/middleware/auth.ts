@@ -32,7 +32,7 @@ export function supabaseAuthMiddleware(req: Request, res: Response, next: NextFu
   // Verify the Supabase JWT token
   try {
     const supabase = require('@supabase/supabase-js')
-      .createClient(process.env.SUPABASE_DIRECT_CONNECTION?.trim() || '', process.env.SUPABASE_ACCESS_TOKEN?.trim() || '');
+      .createClient(process.env.SUPABASE_URL?.trim() || '', process.env.SUPABASE_ANON_KEY?.trim() || '');
 
     const { data, error } = supabase.auth.getUser(token);
 
@@ -81,7 +81,7 @@ export function optionalSupabaseAuthMiddleware(req: Request, res: Response, next
 
     try {
       const supabase = require('@supabase/supabase-js')
-        .createClient(process.env.SUPABASE_DIRECT_CONNECTION?.trim() || '', process.env.SUPABASE_ACCESS_TOKEN?.trim() || '');
+        .createClient(process.env.SUPABASE_URL?.trim() || '', process.env.SUPABASE_ANON_KEY?.trim() || '');
 
       const { data, error } = supabase.auth.getUser(token);
 

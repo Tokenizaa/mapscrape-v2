@@ -312,6 +312,26 @@ paths:
         '500':
           $ref: '#/components/responses/ServerError'
   /api/v1/jobs:
+    get:
+      tags: [Jobs]
+      summary: Listar jobs (coletas) do consumidor autenticado
+      responses:
+        '200':
+          description: Jobs visíveis no escopo da credencial
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Job'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/ServerError'
     post:
       tags: [Jobs]
       summary: Iniciar coleta assíncrona
@@ -403,6 +423,75 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           description: Coleta inexistente ou fora do escopo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/ServerError'
+    delete:
+      tags: [Jobs]
+      summary: Excluir uma coleta e seus resultados
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Job excluído
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        const: deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Coleta inexistente ou fora do escopo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/ServerError'
+  /api/v1/jobs/{id}/stop:
+    post:
+      tags: [Jobs]
+      summary: Interromper uma coleta em andamento
+      parameters:
+        - $ref: '#/components/parameters/Id'
+      responses:
+        '200':
+          description: Job interrompido
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                      status:
+                        type: string
+                        const: stopped
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Coleta inexistente ou fora do escopo
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Coleta não está em andamento
           content:
             application/json:
               schema:

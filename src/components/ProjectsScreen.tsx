@@ -18,7 +18,10 @@ import {
 import { ScrapeJob } from '../shared/types';
 
 async function accountFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  const token = window.sessionStorage.getItem('mapscrape_session_token');
+  // Preferem a chave de consumidor conectada; caso contrário, usam a sessão da conta.
+  const token =
+    window.sessionStorage.getItem('mapscrape_api_key') ||
+    window.sessionStorage.getItem('mapscrape_session_token');
   const headers = new Headers(init.headers || {});
   if (token) headers.set('Authorization', `Bearer ${token}`);
   return fetch(input, { ...init, headers, cache: init.cache || 'no-store' });
@@ -56,15 +59,19 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
     if (!apiReady) return;
     try {
       const [projectRes, categoryRes] = await Promise.all([
-        accountFetch('/api/projects', { cache: 'no-store' }),
-        accountFetch('/api/search-categories', { cache: 'no-store' }),
+        accountFetch('/api/v1/projects', { cache: 'no-store' }),
+        accountFetch('/api/v1/categories', { cache: 'no-store' }),
       ]);
       if (!projectRes.ok) throw new Error(`Projetos: HTTP ${projectRes.status}`);
       if (!categoryRes.ok) throw new Error(`Categorias: HTTP ${categoryRes.status}`);
       const projectData = await projectRes.json();
       const categoryData = await categoryRes.json();
-      setCatalog(Array.isArray(projectData.projects) ? projectData.projects : []);
-      setCategories(Array.isArray(categoryData.categories) ? categoryData.categories : []);
+      setCatalog(
+        Array.isArray(projectData.data) ? projectData.data : projectData.projects ?? [],
+      );
+      setCategories(
+        Array.isArray(categoryData.data) ? categoryData.data : categoryData.categories ?? [],
+      );
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : 'Falha ao carregar projetos e categorias.',
@@ -84,20 +91,21 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
     setIsSavingProject(true);
     setMessage(null);
     try {
-      const response = await accountFetch('/api/projects', {
+      const response = await accountFetch('/api/v1/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+      const project = data.data ?? data.project;
       setCatalog((current) =>
-        current.some((item) => item.id === data.project.id)
+        current.some((item) => item.id === project.id)
           ? current
-          : [...current, data.project].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+          : [...current, project].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
       );
       setNewProjectName('');
-      setMessage({ text: `Projeto “${data.project.name}” salvo com sucesso.`, type: 'success' });
+      setMessage({ text: `Projeto “${project.name}” salvo com sucesso.`, type: 'success' });
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : 'Falha ao criar projeto.',
@@ -112,18 +120,19 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
     const name = editingProjectName.trim();
     if (!name) return;
     try {
-      const response = await accountFetch(`/api/projects/${encodeURIComponent(id)}`, {
+      const response = await accountFetch(`/api/v1/projects/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+      const project = data.data ?? data.project;
       setCatalog((current) =>
-        current.map((item) => (item.id === id ? data.project : item)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+        current.map((item) => (item.id === id ? project : item)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
       );
       setEditingProjectId(null);
-      setMessage({ text: `Projeto atualizado para “${data.project.name}”.`, type: 'success' });
+      setMessage({ text: `Projeto atualizado para “${project.name}”.`, type: 'success' });
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : 'Falha ao atualizar projeto.',
@@ -137,7 +146,7 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
       return;
     }
     try {
-      const response = await accountFetch(`/api/projects/${encodeURIComponent(id)}`, {
+      const response = await accountFetch(`/api/v1/projects/${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
       const data = await response.json();
@@ -159,23 +168,24 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
     setIsSavingCategory(true);
     setMessage(null);
     try {
-      const response = await accountFetch('/api/search-categories', {
+      const response = await accountFetch('/api/v1/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
       const data = await response.json();
-      if (!response.ok || !data.category?.id) {
+      if (!response.ok || !data.data?.id && !data.category?.id) {
         throw new Error(data.message || data.error || `Não foi possível salvar a categoria (HTTP ${response.status}).`);
       }
+      const category = data.data ?? data.category;
       setCategories((current) =>
-        current.some((item) => item.id === data.category.id)
+        current.some((item) => item.id === category.id)
           ? current
-          : [...current, data.category].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+          : [...current, category].sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
       );
       setNewCategoryName('');
       setMessage({
-        text: `Categoria de pesquisa “${data.category.name}” cadastrada e disponível para coletas.`,
+        text: `Categoria de pesquisa “${category.name}” cadastrada e disponível para coletas.`,
         type: 'success',
       });
     } catch (error) {
@@ -192,18 +202,19 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
     const name = editingCategoryName.trim();
     if (!name) return;
     try {
-      const response = await accountFetch(`/api/search-categories/${encodeURIComponent(id)}`, {
+      const response = await accountFetch(`/api/v1/categories/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
+      const category = data.data ?? data.category;
       setCategories((current) =>
-        current.map((item) => (item.id === id ? data.category : item)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+        current.map((item) => (item.id === id ? category : item)).sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
       );
       setEditingCategoryId(null);
-      setMessage({ text: `Categoria atualizada para “${data.category.name}”.`, type: 'success' });
+      setMessage({ text: `Categoria atualizada para “${category.name}”.`, type: 'success' });
     } catch (error) {
       setMessage({
         text: error instanceof Error ? error.message : 'Falha ao atualizar categoria.',
@@ -215,7 +226,7 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
   const handleDeleteCategory = async (id: string, name: string) => {
     if (!window.confirm(`Excluir a categoria de pesquisa “${name}”?`)) return;
     try {
-      const response = await accountFetch(`/api/search-categories/${encodeURIComponent(id)}`, {
+      const response = await accountFetch(`/api/v1/categories/${encodeURIComponent(id)}`, {
         method: 'DELETE',
       });
       const data = await response.json();

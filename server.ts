@@ -3,19 +3,6 @@ import express from 'express';
 import path from 'path';
 import { initDb } from './src/server/db';
 import { initAuditLog } from './src/server/audit-log';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-const supabaseAdmin: SupabaseClient = createClient(
-  process.env.SUPABASE_DIRECT_CONNECTION?.trim() || '',
-  process.env.SUPABASE_ACCESS_TOKEN?.trim() || '',
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-  }
-);
 
 export async function createApp(): Promise<express.Express> {
   await initDb();

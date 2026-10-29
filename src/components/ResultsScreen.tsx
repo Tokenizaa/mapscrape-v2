@@ -134,9 +134,15 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/categories', { cache: 'no-store' })
+    const token =
+      window.sessionStorage.getItem('mapscrape_api_key') ||
+      window.sessionStorage.getItem('mapscrape_session_token');
+    fetch('/api/v1/categories', {
+      cache: 'no-store',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
       .then((response) => { if (!response.ok) throw new Error('Falha ao carregar categorias'); return response.json(); })
-      .then((data) => { if (!cancelled) setCategories(Array.isArray(data.categories) ? data.categories : []); })
+      .then((data) => { if (!cancelled) setCategories(Array.isArray(data.data) ? data.data : data.categories ?? []); })
       .catch(() => { if (!cancelled) setCategories([]); });
     return () => { cancelled = true; };
   }, []);
@@ -147,7 +153,7 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       try {
         const params = new URLSearchParams();
         if (selectedJobId) params.set('jobId', selectedJobId);
-        const response = await fetch(`/api/field-coverage?${params.toString()}`);
+        const response = await fetch(`/api/v1/field-coverage?${params.toString()}`);
         if (!response.ok) throw new Error('Não foi possível calcular a cobertura dos campos.');
         const data = await response.json();
         if (!cancelled) {

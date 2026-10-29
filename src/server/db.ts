@@ -4,11 +4,11 @@ let supabase: SupabaseClient | null = null;
 
 function getSupabase(): SupabaseClient {
   if (!supabase) {
-    const url = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
-    const key = process.env.SUPABASE_ACCESS_TOKEN?.trim();
+    const url = process.env.SUPABASE_URL?.trim();
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     if (!url || !key) {
       throw new Error(
-        'Database não configurada: defina SUPABASE_DIRECT_CONNECTION e SUPABASE_ACCESS_TOKEN no ambiente.'
+        'Database não configurada: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente (chave de serviço, apenas servidor).'
       );
     }
     supabase = createClient(url, key, {
@@ -519,56 +519,52 @@ export async function getPlaces(options: {
   consumerProject?: string;
 }): Promise<{ places: PlaceRecord[]; total: number }> {
   const db = getSupabase();
-  const whereClauses: string[] = [];
+  const sortBy = options.sortBy || 'collected_at';
+  const ascending = options.sortOrder === 'asc';
+  const limit = Math.max(1, Math.min(100, options.limit ?? 50));
+  const offset = Math.max(0, options.offset ?? 0);
+
+  // Resolve the user's job ids when scoped by consumerProject (data isolation).
+  let allowedJobIds: string[] | null = null;
+  if (options.consumerProject) {
+    const { data: userJobs, error: jobsError } = await db
+      .from('searches')
+      .select('id')
+      .eq('user_id', options.consumerProject);
+    if (jobsError) throw jobsError;
+    allowedJobIds = (userJobs ?? []).map((j: any) => j.id);
+    if (allowedJobIds.length === 0) {
+      return { places: [], total: 0 };
+    }
+  }
+
+  let query = db.from('places').select('*', { count: 'exact' });
 
   if (options.jobId) {
-    whereClauses.push(`job_id = '${options.jobId}'`);
+    query = query.eq('job_id', options.jobId);
+  }
+  if (allowedJobIds) {
+    query = query.in('job_id', allowedJobIds);
   }
 
   if (options.query && options.query.trim()) {
-    const q = `%${options.query.trim()}%`;
-    whereClauses.push(`(name LIKE '${q}' OR category LIKE '${q}' OR address LIKE '${q}' OR phone LIKE '${q}' OR website LIKE '${q}')`);
+    const q = String(options.query.trim());
+    query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%,address.ilike.%${q}%,phone.ilike.%${q}%,website.ilike.%${q}%`);
   }
 
   if (options.category && options.category.trim()) {
-    whereClauses.push(`lower(trim(category)) = lower(trim('${options.category.trim()}'))`);
+    query = query.ilike('category', `%${String(options.category.trim())}%`);
   }
 
-  if (options.consumerProject) {
-    whereClauses.push(`EXISTS (SELECT 1 FROM searches s WHERE s.id = places.job_id AND s.user_id = '${options.consumerProject}')`);
-  }
+  query = query.order(sortBy, { ascending });
 
-  const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
-
-  // Get count
-  const { count, error: countError } = await db.from('places').select('*', { count: 'exact', head: true }).select(`* FROM (${whereSql}) as subquery`);
-
-  if (countError) throw countError;
-  const total = count || 0;
-
-  // Sorting
-  const sortBy = options.sortBy || 'collected_at';
-  const sortOrder = options.sortOrder === 'asc' ? 'asc' : 'desc';
-
-  const limit = options.limit || 50;
-  const offset = options.offset || 0;
-
-  // Build query with WHERE, ORDER BY, LIMIT/OFFSET
-  let query = db.from('places').select('*').order(sortBy, { ascending: sortOrder === 'asc' });
-
-  // Apply range for pagination
-  if (whereSql) {
-    // Use a subquery approach for filtering
-    const { data } = await db.from('places').select('*').range(offset, offset + limit - 1);
-    return { places: data as unknown as PlaceRecord[], total };
-  }
-
-  const { data, error } = await db.from('places').select('*').range(offset, offset + limit - 1);
+  const { data, error, count } = await query.range(offset, offset + limit - 1);
 
   if (error) throw error;
+
   return {
-    places: data as unknown as PlaceRecord[],
-    total,
+    places: (data ?? []) as unknown as PlaceRecord[],
+    total: count ?? 0,
   };
 }
 

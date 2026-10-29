@@ -91,7 +91,7 @@ export const ExportScreen: React.FC<ExportScreenProps> = ({
       }
 
       const token = window.sessionStorage.getItem('mapscrape_session_token');
-      const response = await fetch('/api/export/csv', {
+      const response = await fetch('/api/v1/export/csv', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

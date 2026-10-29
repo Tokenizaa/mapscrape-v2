@@ -17,7 +17,10 @@ import { BRAZILIAN_STATES, POPULAR_CATEGORIES } from '../shared/brazilLocations'
 
 // Requisições internas usam a sessão da conta; API keys ficam reservadas a integrações externas.
 async function accountFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  const token = window.sessionStorage.getItem('mapscrape_session_token');
+  // Preferem a chave de consumidor conectada; caso contrário, usam a sessão da conta.
+  const token =
+    window.sessionStorage.getItem('mapscrape_api_key') ||
+    window.sessionStorage.getItem('mapscrape_session_token');
   const headers = new Headers(init.headers || {});
   if (token) headers.set('Authorization', `Bearer ${token}`);
   return fetch(input, { ...init, headers, cache: init.cache || 'no-store' });
@@ -85,18 +88,22 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
     if (!apiReady) return;
     let active = true;
     void Promise.all([
-      accountFetch('/api/projects', { cache: 'no-store' }).then(async (response) => {
+      accountFetch('/api/v1/projects', { cache: 'no-store' }).then(async (response) => {
         if (!response.ok) throw new Error(`Projetos: HTTP ${response.status}`);
         return response.json();
       }),
-      accountFetch('/api/search-categories', { cache: 'no-store' }).then(async (response) => {
+      accountFetch('/api/v1/categories', { cache: 'no-store' }).then(async (response) => {
         if (!response.ok) throw new Error(`Categorias: HTTP ${response.status}`);
         return response.json();
       }),
     ]).then(([projectData, categoryData]) => {
       if (!active) return;
-      setProjects(Array.isArray(projectData.projects) ? projectData.projects : []);
-      setCategories(Array.isArray(categoryData.categories) ? categoryData.categories : []);
+      setProjects(
+        Array.isArray(projectData.data) ? projectData.data : projectData.projects ?? [],
+      );
+      setCategories(
+        Array.isArray(categoryData.data) ? categoryData.data : categoryData.categories ?? [],
+      );
       setCatalogMessage('');
     }).catch((error) => {
       if (active) setCatalogMessage(error instanceof Error ? error.message : 'Falha ao carregar projetos e categorias.');
@@ -115,12 +122,12 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
       return;
     }
     try {
-      const response = await accountFetch('/api/projects', {
+      const response = await accountFetch('/api/v1/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      const project = data.project;
+      const project = data.data ?? data.project;
       setProjects((current) => current.some((item) => item.id === project.id) ? current : [...current, project].sort((a,b) => a.name.localeCompare(b.name, 'pt-BR')));
       setProjectName(project.name);
       setCatalogMessage(`Projeto “${project.name}” pronto para uso.`);
@@ -138,12 +145,12 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
       return;
     }
     try {
-      const response = await accountFetch('/api/search-categories', {
+      const response = await accountFetch('/api/v1/categories', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      const category = data.category;
+      const category = data.data ?? data.category;
       setCategories((current) => current.some((item) => item.id === category.id) ? current : [...current, category].sort((a,b) => a.name.localeCompare(b.name, 'pt-BR')));
       setCategoryName(category.name);
       if (!segment.trim()) setSegment(category.name);

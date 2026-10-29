@@ -41,7 +41,7 @@ export const LogsScreen: React.FC = () => {
       if (category) params.set('category', category);
       if (query.trim()) params.set('query', query.trim());
       if (jobId.trim()) params.set('jobId', jobId.trim());
-      const response = await fetch(`/api/logs?${params.toString()}`, {
+      const response = await fetch(`/api/v1/logs?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!response.ok) throw new Error('Não foi possível carregar os logs.');
@@ -65,7 +65,7 @@ export const LogsScreen: React.FC = () => {
       if (category) params.set('category', category);
       if (query.trim()) params.set('query', query.trim());
       if (jobId.trim()) params.set('jobId', jobId.trim());
-      const res = await fetch(`/api/logs/export?${params.toString()}`, {
+      const res = await fetch(`/api/v1/logs/export?${params.toString()}`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!res.ok) throw new Error('Falha ao exportar logs.');
@@ -167,14 +167,14 @@ export const LogsScreen: React.FC = () => {
         </label>
         <div className="flex flex-wrap gap-2">
           <button
-            onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}`; }}
+            onClick={() => { if (jobId.trim()) window.location.href = `/api/v1/reports/${encodeURIComponent(jobId.trim())}`; }}
             disabled={!jobId.trim()}
             className="rounded-xl border border-zinc-750 bg-zinc-950 px-4 py-2.5 text-sm font-semibold text-zinc-200 hover:bg-zinc-850 disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer"
           >
             Baixar JSON
           </button>
           <button
-            onClick={() => { if (jobId.trim()) window.location.href = `/api/reports/${encodeURIComponent(jobId.trim())}/pdf`; }}
+            onClick={() => { if (jobId.trim()) window.location.href = `/api/v1/reports/${encodeURIComponent(jobId.trim())}/pdf`; }}
             disabled={!jobId.trim()}
             className="rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 px-4 py-2.5 text-sm font-semibold text-zinc-100 disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer"
           >

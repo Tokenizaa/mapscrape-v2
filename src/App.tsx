@@ -22,8 +22,8 @@ import { Menu, ChevronRight, Activity, Database, FileSpreadsheet } from 'lucide-
 let supabase: any = null;
 
 try {
-  const supabaseUrl = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
-  const supabaseAnonKey = process.env.SUPABASE_ACCESS_TOKEN?.trim();
+  const supabaseUrl = process.env.VITE_SUPABASE_URL?.trim();
+  const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY?.trim();
   
   if (supabaseUrl && supabaseAnonKey) {
     supabase = require('@supabase/supabase-js').createClient(supabaseUrl, supabaseAnonKey, {
@@ -38,11 +38,17 @@ try {
   console.error('Supabase client initialization error:', e);
 }
 
-// Todas as chamadas internas usam a sessão da conta. Chaves de API são apenas para consumidores externos.
+// Chamadas internas da API v1. Preferem a chave de consumidor conectada (quando houver);
+// caso contrário, usam o token de sessão da conta (Supabase). Ambas são aceitas pelas rotas v1.
+function getAuthToken(): string | null {
+  return (
+    window.sessionStorage.getItem('mapscrape_api_key') ||
+    window.sessionStorage.getItem('mapscrape_session_token')
+  );
+}
+
 async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  // Get the Supabase session token from sessionStorage
-  // This is set by the AuthScreen when user logs in via Supabase
-  const token = window.sessionStorage.getItem('mapscrape_session_token');
+  const token = getAuthToken();
   const headers = new Headers(init.headers || {});
   if (token) headers.set('Authorization', `Bearer ${token}`);
   return fetch(input, { ...init, headers, cache: init.cache || 'no-store' });
@@ -162,7 +168,7 @@ export default function App() {
     setApiKeyError('');
     window.sessionStorage.setItem('mapscrape_api_key', key);
     try {
-      const response = await apiFetch('/api/history', { cache: 'no-store' });
+      const response = await apiFetch('/api/v1/jobs', { cache: 'no-store' });
       if (!response.ok) throw new Error(response.status === 401 ? 'Chave de API inválida ou revogada.' : `Falha de autenticação (HTTP ${response.status}).`);
       setHasApiKey(true);
       setApiKeyInput('');
@@ -228,10 +234,11 @@ export default function App() {
   // Load past searches history
   const loadHistory = useCallback(async () => {
     try {
-      const res = await apiFetch('/api/history');
+      const res = await apiFetch('/api/v1/jobs');
       if (res.ok) {
         const data = await res.json();
-        setJobs(data);
+        const jobs = data && data.data ? data.data : data;
+        setJobs(Array.isArray(jobs) ? jobs : []);
       }
     } catch (err) {
       console.error('Failed to load history:', err);
@@ -254,11 +261,12 @@ export default function App() {
       if (searchQuery.trim()) params.append('query', searchQuery.trim());
       if (categoryFilter) params.append('category', categoryFilter);
 
-      const res = await apiFetch(`/api/places?${params.toString()}`);
+      const res = await apiFetch(`/api/v1/leads?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setPlaces(data.places || []);
-        setTotalPlaces(data.total || 0);
+        const leads = data && data.data ? data.data : data;
+        setPlaces(Array.isArray(leads) ? leads : leads?.places ?? []);
+        setTotalPlaces(data && data.pagination ? data.pagination.total : data?.total ?? 0);
       }
     } catch (err) {
       console.error('Failed to load places:', err);
@@ -284,7 +292,7 @@ export default function App() {
     let consecutiveErrors = 0;
     const pollStatus = async () => {
       try {
-        const res = await apiFetch(`/api/scrape/status/${encodeURIComponent(jobId)}`, {
+        const res = await apiFetch(`/api/v1/jobs/${encodeURIComponent(jobId)}`, {
           headers: { Accept: 'application/json' },
           cache: 'no-store',
         });
@@ -293,7 +301,8 @@ export default function App() {
           throw new Error(`HTTP ${res.status}: ${body.slice(0, 160)}`);
         }
 
-        const updatedJob = await res.json() as ScrapeJob & { isRunning?: boolean };
+        const body = await res.json();
+        const updatedJob = (body && body.data ? body.data : body) as ScrapeJob & { isRunning?: boolean };
         consecutiveErrors = 0;
         setCurrentJob(updatedJob);
         setIsScraping(updatedJob.status === 'running');
@@ -330,7 +339,7 @@ export default function App() {
   // Handlers
   const handleStartScrape = async (projectName: string, categoryName: string, segment: string, location: string, limit: number) => {
     try {
-      const res = await apiFetch('/api/scrape/start', {
+      const res = await apiFetch('/api/v1/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectName, categoryName, segment, location, limit }),
@@ -374,7 +383,7 @@ export default function App() {
   const handleStopScrape = async () => {
     if (!currentJob) return;
     try {
-      await apiFetch(`/api/scrape/stop/${currentJob.id}`, { method: 'POST' });
+      await apiFetch(`/api/v1/jobs/${currentJob.id}/stop`, { method: 'POST' });
     } catch (err: any) {
       console.error('Stop error:', err);
     }
@@ -382,7 +391,7 @@ export default function App() {
 
   const handleDeleteJob = async (jobId: string) => {
     try {
-      const res = await apiFetch(`/api/history/${jobId}`, { method: 'DELETE' });
+      const res = await apiFetch(`/api/v1/jobs/${jobId}`, { method: 'DELETE' });
       if (res.ok) {
         if (selectedJobId === jobId) {
           setSelectedJobId(undefined);

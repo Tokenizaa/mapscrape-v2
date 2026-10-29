@@ -1,181 +1,207 @@
--- Safe additive repair migration for the production dashboard API.
--- Does not drop or truncate any existing table or record.
-create extension if not exists pgcrypto;
+-- Migration: 20261029010000_repair_dashboard_schema.sql
+-- Cria (idempotente) as tabelas do MapScrape v2 no Supabase.
+-- Não usa DROP TABLE / TRUNCATE: compatível com dados existentes.
+-- Aplique apenas no projeto Supabase do MapScrape (não em bancos de outros produtos).
 
-create table if not exists public.users (
-  id text primary key references auth.users(id) on delete cascade,
-  email text not null unique,
-  display_name text not null default '',
-  role text not null default 'user',
-  created_at timestamptz not null default now(),
-  last_login_at timestamptz
+-- Extensões (opcional; IDs são TEXT, mantida por compatibilidade com seed)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossl";
+
+-- Função auxiliar para updated_at
+CREATE OR REPLACE FUNCTION handle_updated_at()
+RETURNS trigger AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- ============================================================================
+-- Table: users (perfis vinculados ao Supabase Auth)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL UNIQUE,
+  display_name TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user',
+  created_at TEXT NOT NULL,
+  last_login_at TEXT
 );
 
-create table if not exists public.searches (
-  id text primary key,
-  user_id text not null references public.users(id) on delete cascade,
-  segment text not null default '',
-  project_name text not null default '',
-  location text not null default '',
-  limit_requested integer not null default 0,
-  status text not null default 'queued',
-  status_message text not null default '',
-  total_found integer not null default 0,
-  total_collected integer not null default 0,
-  total_duplicates integer not null default 0,
-  total_errors integer not null default 0,
-  current_step text default '',
-  created_at timestamptz not null default now(),
-  completed_at timestamptz,
-  project_id text,
-  category_id text
+-- ============================================================================
+-- Table: searches (jobs / coletas)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS searches (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  segment TEXT NOT NULL,
+  project_name TEXT NOT NULL DEFAULT '',
+  location TEXT NOT NULL,
+  limit_requested INTEGER NOT NULL,
+  status TEXT NOT NULL,
+  status_message TEXT NOT NULL DEFAULT '',
+  total_found INTEGER NOT NULL DEFAULT 0,
+  total_collected INTEGER NOT NULL DEFAULT 0,
+  total_duplicates INTEGER NOT NULL DEFAULT 0,
+  total_errors INTEGER NOT NULL DEFAULT 0,
+  current_step TEXT DEFAULT '',
+  created_at TEXT NOT NULL,
+  completed_at TEXT,
+  project_id TEXT,
+  category_id TEXT
 );
 
-create table if not exists public.places (
-  id text primary key,
-  job_id text not null references public.searches(id) on delete cascade,
-  name text not null default '',
-  category text not null default '',
-  address text not null default '',
-  phone text not null default '',
-  website text not null default '',
-  rating text not null default '',
-  review_count text not null default '',
-  price_range text not null default '',
-  business_status text not null default '',
-  opening_hours text not null default '',
-  latitude text not null default '',
-  longitude text not null default '',
-  maps_url text not null default '',
-  description text not null default '',
-  services_attributes text not null default '',
-  photos text default '',
-  videos text default '',
-  logo_url text default '',
-  booking_url text default '',
-  social_links text default '',
-  reviews text default '[]',
-  review_topics text default '[]',
-  additional_attributes text default '{}',
-  media_items text default '[]',
-  plus_code text default '',
-  attributes text default '[]',
-  accessibility_attributes text default '[]',
-  next_opening_text text default '',
-  next_open_day text default '',
-  next_open_time text default '',
-  visible_photos_count text default '',
-  postal_code text default '',
-  country text default '',
-  city text default '',
-  state text default '',
-  source_place_id text default '',
-  source_url text default '',
-  popular_times text default '{}',
-  rating_distribution text default '{}',
-  review_highlights text default '[]',
-  field_status text default '{}',
-  collected_at timestamptz not null default now()
+-- ============================================================================
+-- Table: places (resultados da coleta)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS places (
+  id TEXT PRIMARY KEY,
+  job_id TEXT NOT NULL REFERENCES searches(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT '',
+  address TEXT NOT NULL DEFAULT '',
+  phone TEXT NOT NULL DEFAULT '',
+  website TEXT NOT NULL DEFAULT '',
+  rating TEXT NOT NULL DEFAULT '',
+  review_count TEXT NOT NULL DEFAULT '',
+  price_range TEXT NOT NULL DEFAULT '',
+  business_status TEXT NOT NULL DEFAULT '',
+  opening_hours TEXT NOT NULL DEFAULT '',
+  latitude TEXT NOT NULL DEFAULT '',
+  longitude TEXT NOT NULL DEFAULT '',
+  maps_url TEXT NOT NULL DEFAULT '',
+  description TEXT NOT NULL DEFAULT '',
+  services_attributes TEXT NOT NULL DEFAULT '',
+  photos TEXT DEFAULT '',
+  videos TEXT DEFAULT '',
+  logo_url TEXT DEFAULT '',
+  booking_url TEXT DEFAULT '',
+  social_links TEXT DEFAULT '',
+  reviews TEXT DEFAULT '[]',
+  review_topics TEXT DEFAULT '[]',
+  additional_attributes TEXT DEFAULT '{}',
+  media_items TEXT DEFAULT '[]',
+  plus_code TEXT DEFAULT '',
+  attributes TEXT DEFAULT '[]',
+  accessibility_attributes TEXT DEFAULT '[]',
+  next_opening_text TEXT DEFAULT '',
+  next_open_day TEXT DEFAULT '',
+  next_open_time TEXT DEFAULT '',
+  visible_photos_count TEXT DEFAULT '',
+  postal_code TEXT DEFAULT '',
+  country TEXT DEFAULT '',
+  city TEXT DEFAULT '',
+  state TEXT DEFAULT '',
+  source_place_id TEXT DEFAULT '',
+  source_url TEXT DEFAULT '',
+  popular_times TEXT DEFAULT '{}',
+  rating_distribution TEXT DEFAULT '{}',
+  review_highlights TEXT DEFAULT '[]',
+  field_status TEXT DEFAULT '{}',
+  collected_at TEXT NOT NULL
 );
 
-alter table public.searches add column if not exists project_name text not null default '';
-alter table public.searches add column if not exists project_id text;
-alter table public.searches add column if not exists category_id text;
-alter table public.searches add column if not exists total_found integer not null default 0;
-alter table public.searches add column if not exists total_collected integer not null default 0;
-alter table public.searches add column if not exists total_duplicates integer not null default 0;
-alter table public.searches add column if not exists total_errors integer not null default 0;
-alter table public.searches add column if not exists status_message text not null default '';
-alter table public.places add column if not exists collected_at timestamptz not null default now();
-alter table public.places add column if not exists category text not null default '';
-alter table public.places add column if not exists address text not null default '';
-alter table public.places add column if not exists phone text not null default '';
-alter table public.places add column if not exists website text not null default '';
-alter table public.places add column if not exists rating text not null default '';
-alter table public.places add column if not exists review_count text not null default '';
-
-create table if not exists public.projects (
-  id text primary key,
-  consumer_project text not null,
-  name text not null,
-  normalized_name text not null,
-  user_id text not null references public.users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (consumer_project, normalized_name)
-);
-create table if not exists public.search_categories (
-  id text primary key,
-  consumer_project text not null,
-  name text not null,
-  normalized_name text not null,
-  user_id text not null references public.users(id) on delete cascade,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (consumer_project, normalized_name)
-);
-create table if not exists public.audit_logs (
-  id text primary key,
-  created_at timestamptz not null default now(),
-  level text not null default 'info',
-  category text not null default 'system',
-  event text not null default '',
-  message text not null default '',
-  job_id text not null default '',
-  metadata text not null default '{}'
-);
-create table if not exists public.run_reports (
-  job_id text primary key references public.searches(id) on delete cascade,
-  report_json text not null,
-  generated_at timestamptz not null default now()
-);
-create table if not exists public.api_credentials (
-  id text primary key,
-  consumer_name text not null,
-  consumer_project text not null,
-  key_hash text not null unique,
-  status text not null default 'active',
-  created_at timestamptz not null default now(),
-  last_used_at timestamptz,
-  revoked_at timestamptz,
-  user_id text references public.users(id) on delete set null
+-- ============================================================================
+-- Table: api_credentials (chaves de consumidor/integração externa)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS api_credentials (
+  id TEXT PRIMARY KEY,
+  consumer_name TEXT NOT NULL,
+  consumer_project TEXT NOT NULL,
+  key_hash TEXT NOT NULL UNIQUE,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TEXT NOT NULL,
+  last_used_at TEXT,
+  revoked_at TEXT,
+  user_id TEXT REFERENCES users(id) ON DELETE SET NULL
 );
 
-create index if not exists idx_searches_user_id on public.searches(user_id);
-create index if not exists idx_places_job_id on public.places(job_id);
-create index if not exists idx_projects_user_id on public.projects(user_id);
-create index if not exists idx_search_categories_user_id on public.search_categories(user_id);
-create index if not exists idx_audit_logs_created_at on public.audit_logs(created_at desc);
+-- ============================================================================
+-- Table: projects (organização do consumidor)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS projects (
+  id TEXT PRIMARY KEY,
+  consumer_project TEXT NOT NULL,
+  name TEXT NOT NULL,
+  normalized_name TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (consumer_project, normalized_name)
+);
 
--- Backfill profiles for existing Auth users without deleting or changing their identity.
-insert into public.users (id, email, display_name, role, created_at)
-select u.id::text, coalesce(u.email, ''), coalesce(u.raw_user_meta_data->>'name', split_part(coalesce(u.email,''),'@',1)), 'user', coalesce(u.created_at, now())
-from auth.users u
-on conflict (id) do nothing;
+-- ============================================================================
+-- Table: search_categories (categorias de pesquisa do consumidor)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS search_categories (
+  id TEXT PRIMARY KEY,
+  consumer_project TEXT NOT NULL,
+  name TEXT NOT NULL,
+  normalized_name TEXT NOT NULL,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (consumer_project, normalized_name)
+);
 
--- Ensure new Supabase Auth accounts get the profile row required by legacy foreign keys.
-create or replace function public.mapscrape_sync_auth_profile()
-returns trigger language plpgsql security definer set search_path = public
-as $$
-begin
-  insert into public.users (id, email, display_name, role, created_at)
-  values (new.id::text, coalesce(new.email, ''), coalesce(new.raw_user_meta_data->>'name', split_part(coalesce(new.email,''),'@',1)), 'user', now())
-  on conflict (id) do update set email = excluded.email;
-  return new;
-end;
-$$;
-drop trigger if exists mapscrape_auth_profile_sync on auth.users;
-create trigger mapscrape_auth_profile_sync
-after insert on auth.users
-for each row execute function public.mapscrape_sync_auth_profile();
+-- ============================================================================
+-- Table: run_reports (relatórios de execução)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS run_reports (
+  job_id TEXT PRIMARY KEY REFERENCES searches(id) ON DELETE CASCADE,
+  report_json TEXT NOT NULL,
+  generated_at TEXT NOT NULL
+);
 
-alter table public.users enable row level security;
-alter table public.searches enable row level security;
-alter table public.places enable row level security;
-alter table public.projects enable row level security;
-alter table public.search_categories enable row level security;
-alter table public.audit_logs enable row level security;
-alter table public.run_reports enable row level security;
-alter table public.api_credentials enable row level security;
+-- ============================================================================
+-- Table: audit_logs (logs de auditoria)
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL,
+  level TEXT NOT NULL DEFAULT 'info',
+  category TEXT NOT NULL,
+  event TEXT NOT NULL,
+  message TEXT NOT NULL DEFAULT '',
+  job_id TEXT DEFAULT '',
+  metadata TEXT NOT NULL DEFAULT '{}'
+);
 
--- The API uses server-side Supabase credentials; direct browser access remains denied by RLS.
+-- ============================================================================
+-- Indexes
+-- ============================================================================
+CREATE INDEX IF NOT EXISTS idx_searches_user_id ON searches (user_id);
+CREATE INDEX IF NOT EXISTS idx_places_job_id ON places (job_id);
+CREATE INDEX IF NOT EXISTS idx_places_maps_url ON places (maps_url);
+CREATE INDEX IF NOT EXISTS idx_api_credentials_status ON api_credentials (status);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_api_credentials_active_project
+  ON api_credentials (consumer_project) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_projects_scope ON projects (consumer_project, normalized_name);
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects (user_id);
+CREATE INDEX IF NOT EXISTS idx_search_categories_scope ON search_categories (consumer_project, normalized_name);
+CREATE INDEX IF NOT EXISTS idx_search_categories_user_id ON search_categories (user_id);
+CREATE INDEX IF NOT EXISTS idx_run_reports_job_id ON run_reports (job_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_job_id ON audit_logs (job_id);
+
+-- ============================================================================
+-- Triggers de updated_at
+-- ============================================================================
+DROP TRIGGER IF EXISTS projects_updated_at ON projects;
+CREATE TRIGGER projects_updated_at
+  BEFORE UPDATE ON projects
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_updated_at();
+
+DROP TRIGGER IF EXISTS search_categories_updated_at ON search_categories;
+CREATE TRIGGER search_categories_updated_at
+  BEFORE UPDATE ON search_categories
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_updated_at();
+
+-- ============================================================================
+-- Observação sobre RLS
+-- ============================================================================
+-- As políticas de Row Level Security (RLS) devem ser habilitadas por tabela no
+-- dashboard do Supabase (ou via migration separada) para isolar dados por user_id
+-- em produção. O isolamento de dados também é imposto no código das rotas v1
+-- (consumer_project / user_id do escopo autenticado).

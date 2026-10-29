@@ -1,4 +1,12 @@
 {
   "buildCommand": "npm run build",
+  "functions": {
+    "api/auth/*.ts": { "runtime": "nodejs@24.x" },
+    "api/v1/*.ts": { "runtime": "nodejs@24.x" },
+    "api/v1/**/*.ts": { "runtime": "nodejs@24.x" },
+    "api/history.ts": { "runtime": "nodejs@24.x" },
+    "api/history/[jobId].ts": { "runtime": "nodejs@24.x" },
+    "api/places.ts": { "runtime": "nodejs@24.x" }
+  },
   "headers": []
 }
