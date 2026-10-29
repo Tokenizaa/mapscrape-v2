@@ -17,7 +17,8 @@ export const onRequestGet = async (context: any): Promise<Response> => {
         id: c.id, name: c.name, consumer_project: c.consumer_project, created_at: c.created_at,
       })),
     });
-  } catch {
+  } catch (error) {
+    console.error('[api/v1/categories] list failed:', error instanceof Error ? error.message : 'unknown error');
     return json({ error: 'lead_query_failed', message: 'Erro ao listar categorias.' }, 500);
   }
 };
@@ -44,7 +45,8 @@ export const onRequestPost = async (context: any): Promise<Response> => {
         created_at: category.created_at,
       },
     }, 201);
-  } catch {
+  } catch (error) {
+    console.error('[api/v1/categories] create failed:', error instanceof Error ? error.message : 'unknown error');
     return json({ error: 'invalid_request', message: 'Erro ao criar categoria.' }, 500);
   }
 };
