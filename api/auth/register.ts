@@ -56,6 +56,53 @@ export default async function handler(req: any, res: any): Promise<void> {
     });
 
     if (error) {
+      // Se o email já existe no Supabase Auth (usuário órfão sem perfil na tabela users),
+      // tenta fazer login automático. O handler de login agora auto-provisiona o perfil.
+      const alreadyRegistered =
+        error.message?.includes('User already registered') ||
+        error.message?.includes('already registered') ||
+        error.code === 'invalid_credentials';
+
+      if (alreadyRegistered) {
+        const { data: signInData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+          email: email.toLowerCase(),
+          password,
+        });
+
+        if (!signInError && signInData?.user) {
+          // Redireciona para o fluxo de login que auto-provisiona o perfil
+          const { data: userData, error: userError } = await supabaseAdmin
+            .from('users')
+            .select('*')
+            .eq('id', signInData.user.id)
+            .single();
+
+          if (!userError && userData) {
+            return res.status(200).json({
+              token: signInData.session?.access_token || '',
+              user: {
+                id: userData.id,
+                email: userData.email,
+                name: userData.display_name,
+                role: userData.role,
+              },
+            });
+          }
+
+          // Se ainda não tem perfil, o login.ts criará; aqui apenas retorna sucesso para o frontend tentar login
+          return res.status(200).json({
+            token: signInData.session?.access_token || '',
+            user: {
+              id: signInData.user.id,
+              email: signInData.user.email,
+              name: name || signInData.user.email?.split('@')[0] || 'Usuário',
+              role: 'user',
+              needsProfile: true,
+            },
+          });
+        }
+      }
+
       res.status(400).json({ error: error.message || 'Erro ao criar conta.' });
       return;
     }

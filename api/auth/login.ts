@@ -40,15 +40,45 @@ export default async function handler(req: any, res: any): Promise<void> {
     }
 
     // Check if user has a profile in our users table
-    const { data: userData, error: userError } = await supabaseAdmin
+    let userData: any = null;
+    let userError: any = null;
+    ({ data: userData, error: userError } = await supabaseAdmin
       .from('users')
       .select('*')
       .eq('id', data.user.id)
-      .single();
+      .single());
 
     if (userError || !userData) {
-      res.status(404).json({ error: 'Perfil de usuário não encontrado. Cadastre-se primeiro.' });
-      return;
+      // Usuário autenticado no Supabase Auth mas sem perfil na tabela users.
+      // Auto-provisiona o perfil para evitar usuários órfãos (ex: cadastro onde
+      // o Auth foi criado mas a inserção na tabela users falhou).
+      const displayName = data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Usuário';
+      const emailLower = (data.user.email || email).toLowerCase();
+
+      const { error: insertError } = await supabaseAdmin.from('users').insert({
+        id: data.user.id,
+        email: emailLower,
+        display_name: displayName,
+        role: 'user',
+        created_at: new Date().toISOString(),
+      });
+
+      if (insertError) {
+        res.status(404).json({ error: 'Perfil de usuário não encontrado. Cadastre-se primeiro.' });
+        return;
+      }
+
+      // Recarrega o perfil recém-criado
+      ({ data: userData, error: userError } = await supabaseAdmin
+        .from('users')
+        .select('*')
+        .eq('id', data.user.id)
+        .single());
+
+      if (userError || !userData) {
+        res.status(404).json({ error: 'Perfil de usuário não encontrado. Cadastre-se primeiro.' });
+        return;
+      }
     }
 
     // Return user profile and a session token for the frontend
