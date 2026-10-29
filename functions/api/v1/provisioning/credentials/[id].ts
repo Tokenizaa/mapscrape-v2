@@ -4,7 +4,7 @@ import { json, getParams } from '@/functions/_util';
 
 export const onRequestDelete = async (context: any): Promise<Response> => {
   const auth = await authenticateProvisioning(context);
-  if (!auth.ok) return json({ error: auth.error }, auth.status);
+  if (auth.ok === false) return json({ error: auth.error }, auth.status);
 
   const params = getParams(context);
   const id = params.id;
