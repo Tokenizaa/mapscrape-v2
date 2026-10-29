@@ -1,0 +1,82 @@
+import { randomBytes, randomUUID } from 'node:crypto';
+import { authenticateProvisioning, hashApiKey } from '@/src/server/auth';
+import { createApiCredential, findActiveApiCredential, revokeApiCredential, listApiCredentials } from '@/src/server/db';
+import { json, getBody, getProvisioningToken } from '@/functions/_util';
+
+function checkProvisioning(request: Request): { ok: true } | { ok: false; status: number; error: string } {
+  const expected = process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
+  if (!expected) {
+    return { ok: false, status: 503, error: 'provisioning_unavailable' };
+  }
+  const token = getProvisioningToken(request);
+  if (!token || String(token).trim() !== expected) {
+    return { ok: false, status: 401, error: 'provisioning_unauthorized' };
+  }
+  return { ok: true };
+}
+
+export const onRequestGet = async (request: Request): Promise<Response> => {
+  const prov = checkProvisioning(request);
+  if (!prov.ok) return json({ error: prov.error }, prov.status);
+
+  try {
+    const credentials = await listApiCredentials();
+    return json({
+      data: credentials.map((c) => ({
+        id: c.id,
+        consumer_name: c.consumer_name,
+        consumer_project: c.consumer_project,
+        status: c.status,
+        created_at: c.created_at,
+        last_used_at: c.last_used_at,
+        revoked_at: c.revoked_at,
+      })),
+    });
+  } catch {
+    return json({ error: 'invalid_request', message: 'Erro ao listar credenciais.' }, 500);
+  }
+};
+
+export const onRequestPost = async (request: Request): Promise<Response> => {
+  const prov = checkProvisioning(request);
+  if (!prov.ok) return json({ error: prov.error }, prov.status);
+
+  const body = await getBody(request);
+  const consumerName = body?.consumerName;
+  const consumerProject = body?.consumerProject;
+  if (!consumerName || !String(consumerName).trim()) {
+    return json({ error: 'invalid_request', message: 'consumerName é obrigatório.' }, 422);
+  }
+  if (!consumerProject || !String(consumerProject).trim()) {
+    return json({ error: 'invalid_request', message: 'consumerProject é obrigatório.' }, 422);
+  }
+  const name = String(consumerName).trim();
+  const project = String(consumerProject).trim();
+  if (name.length > 120) {
+    return json({ error: 'invalid_request', message: 'consumerName no máximo 120 caracteres.' }, 422);
+  }
+  if (project.length > 200) {
+    return json({ error: 'invalid_request', message: 'consumerProject no máximo 200 caracteres.' }, 422);
+  }
+
+  const existing = (await listApiCredentials()).some(
+    (c) => c.consumer_project === project && c.status === 'active',
+  );
+  if (existing) {
+    return json({ error: 'credential_already_exists', message: 'Projeto já possui credencial ativa.' }, 409);
+  }
+
+  const apiKey = randomBytes(32).toString('hex');
+  const keyHash = hashApiKey(apiKey);
+  const credentialId = `cred_${randomUUID().replace(/-/g, '')}`;
+  const now = new Date().toISOString();
+
+  try {
+    await createApiCredential({ id: credentialId, consumerName: name, consumerProject: project, keyHash, createdAt: now });
+    return json({
+      data: { credentialId, apiKey, consumerName: name, consumerProject: project, revealOnce: true },
+    }, 201);
+  } catch {
+    return json({ error: 'invalid_request', message: 'Erro ao criar credencial.' }, 500);
+  }
+};

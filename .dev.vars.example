@@ -1,0 +1,24 @@
+# MapScrape v2 — Variáveis de ambiente para desenvolvimento local com wrangler dev
+# Copie para .dev.vars e preencha os valores reais. Nunca commite .dev.vars.
+
+# Supabase (obrigatório — acesso ao banco)
+SUPABASE_URL="https://seu-projeto.supabase.co"
+SUPABASE_SERVICE_ROLE_KEY="sua-service-role-key"
+SUPABASE_ANON_KEY="sua-anon-key"
+
+# URL base do app (usada em links auto-referenciais, callbacks OAuth)
+APP_URL="http://localhost:5173"
+
+# Token de provisionamento de credenciais de API (admin/infra)
+MAPSCRAPE_PROVISIONING_TOKEN="seu-token-de-provisionamento-forte"
+
+# Endpoint WebSocket do navegador remoto (Puppeteer se conecta aqui)
+# Mantenha o mesmo endpoint usado na Vercel (Browserless ou similar)
+BROWSER_WS_ENDPOINT="wss://seu-endpoint-browserless.com"
+
+# Segredo de sessão (produção Vercel / bootstrap)
+MAPSCRAPE_SESSION_SECRET="sua-sessao-secreta"
+
+# Admin bootstrap (opcional)
+MAPSCRAPE_ADMIN_EMAIL="admin@mapscrape.app"
+MAPSCRAPE_ADMIN_SETUP_TOKEN="token-de-setup-admin"
