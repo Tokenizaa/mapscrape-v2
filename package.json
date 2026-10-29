@@ -11,13 +11,13 @@
     "test": "vitest run --fileParallelism=false",
     "clean": "rm -rf dist server.js server.bundle.mjs",
     "lint": "tsc --noEmit",
-    "deploy": "npm run build && wrangler deploy"
+    "deploy": "npm run build && wrangler deploy",
+    "deploy:consumer": "wrangler deploy --config wrangler.queue-consumer.toml"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/express": "^4.17.21",
-
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
