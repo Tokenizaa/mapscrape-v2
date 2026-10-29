@@ -12,16 +12,18 @@ export function getSupabase(): SupabaseClient {
   if (!supabase) {
     const processEnv = typeof process !== 'undefined' ? process.env : {};
     const url = String(pagesRuntimeEnv.SUPABASE_URL ?? processEnv.SUPABASE_URL ?? '').trim();
+    // Backend privilegiado usa Service Role Key primeiro (ignora RLS);
+    // Anon Key é fallback para operações de usuário autenticado.
     const key = String(
-      pagesRuntimeEnv.SUPABASE_ANON_KEY ??
-      processEnv.SUPABASE_ANON_KEY ??
       pagesRuntimeEnv.SUPABASE_SERVICE_ROLE_KEY ??
       processEnv.SUPABASE_SERVICE_ROLE_KEY ??
+      pagesRuntimeEnv.SUPABASE_ANON_KEY ??
+      processEnv.SUPABASE_ANON_KEY ??
       ''
     ).trim();
     if (!url || !key) {
       throw new Error(
-        'Database não configurada: defina SUPABASE_URL e SUPABASE_ANON_KEY no ambiente.'
+        'Database não configurada: defina SUPABASE_URL e SUPABASE_ANON_KEY (ou SUPABASE_SERVICE_ROLE_KEY) no ambiente.'
       );
     }
     supabase = createClient(url, key, {
@@ -393,8 +395,15 @@ export interface PlaceRecord {
   collected_at: string;
 }
 
+/** Normaliza uma URL do Google Maps para comparação consistente (remove query string e trailing slash). */
+function normalizeMapsUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  return String(url).trim().split('?')[0].replace(/\/$/, '');
+}
+
 export async function insertPlace(place: PlaceRecord): Promise<void> {
   const db = getSupabase();
+  const cleanMapsUrl = normalizeMapsUrl(place.maps_url);
   const { error } = await db.from('places').insert({
     id: place.id,
     job_id: place.job_id,
@@ -410,7 +419,7 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
     business_status: place.business_status,
     latitude: place.latitude,
     longitude: place.longitude,
-    maps_url: place.maps_url,
+    maps_url: cleanMapsUrl,
     description: place.description,
     services_attributes: place.services_attributes,
     photos: place.photos || '',
@@ -448,6 +457,7 @@ export async function insertPlace(place: PlaceRecord): Promise<void> {
 /** Update an existing place row so a new scrape can enrich old records without duplicating them. */
 export async function updatePlace(id: string, place: PlaceRecord): Promise<void> {
   const db = getSupabase();
+  const cleanMapsUrl = normalizeMapsUrl(place.maps_url);
   const { error } = await db.from('places').update({
     name: place.name,
     category: place.category,
@@ -461,7 +471,7 @@ export async function updatePlace(id: string, place: PlaceRecord): Promise<void>
     business_status: place.business_status,
     latitude: place.latitude,
     longitude: place.longitude,
-    maps_url: place.maps_url,
+    maps_url: cleanMapsUrl,
     description: place.description,
     services_attributes: place.services_attributes,
     photos: place.photos || '',
@@ -787,6 +797,7 @@ export interface SearchCategoryRecord {
   normalized_name: string;
   user_id: string;
   created_at: string;
+  updated_at: string;
 }
 
 export async function listSearchCategories(consumerProject: string, userId: string): Promise<SearchCategoryRecord[]> {
@@ -814,6 +825,7 @@ export async function resolveSearchCategory(consumerProject: string, name: strin
       normalized_name: normalized,
       user_id: userId,
       created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
     };
 
     const { error: insertError } = await db.from('search_categories').insert(record);

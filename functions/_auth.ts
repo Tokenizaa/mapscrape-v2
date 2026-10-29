@@ -33,10 +33,14 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
   const env = context.env || {};
   const SUPABASE_URL = env.SUPABASE_URL?.trim() || getProcessEnv().SUPABASE_URL?.trim();
   const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY?.trim() || getProcessEnv().SUPABASE_ANON_KEY?.trim();
+  const SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY?.trim() || getProcessEnv().SUPABASE_SERVICE_ROLE_KEY?.trim();
 
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  if (!SUPABASE_URL || (!SUPABASE_ANON_KEY && !SUPABASE_SERVICE_ROLE_KEY)) {
     return { ok: false, status: 503, error: 'authentication_unavailable' };
   }
+
+  // Backend privilegiado: Service Role Key ignora RLS para validar credenciais.
+  const adminKey = SUPABASE_SERVICE_ROLE_KEY ?? SUPABASE_ANON_KEY;
 
   const authHeader = req.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -53,11 +57,11 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
     const keyHash = await sha256(token);
     const supabaseUrl = SUPABASE_URL;
 
-    // Consulta a credencial via REST do Supabase
+    // Consulta a credencial via REST do Supabase (usa Service Role Key quando disponível)
     const res = await fetch(`${supabaseUrl}/rest/v1/api_credentials?key_hash=eq.${keyHash}&status=eq.active&select=id,consumer_project`, {
       headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'apikey': adminKey,
+        'Authorization': `Bearer ${adminKey}`,
       },
     });
 
@@ -69,8 +73,8 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
           await fetch(`${supabaseUrl}/rest/v1/api_credentials?id=eq.${data[0].id}`, {
             method: 'PATCH',
             headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+              'apikey': adminKey,
+              'Authorization': `Bearer ${adminKey}`,
               'Content-Type': 'application/json',
               'Prefer': 'return=minimal',
             },

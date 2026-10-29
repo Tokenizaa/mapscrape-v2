@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS searches (
   id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   segment TEXT NOT NULL,
   project_name TEXT NOT NULL DEFAULT '',
   location TEXT NOT NULL,
@@ -123,7 +123,7 @@ CREATE TABLE IF NOT EXISTS projects (
   consumer_project TEXT NOT NULL,
   name TEXT NOT NULL,
   normalized_name TEXT NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   UNIQUE (consumer_project, normalized_name)
@@ -137,7 +137,7 @@ CREATE TABLE IF NOT EXISTS search_categories (
   consumer_project TEXT NOT NULL,
   name TEXT NOT NULL,
   normalized_name TEXT NOT NULL,
-  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL,
   UNIQUE (consumer_project, normalized_name)

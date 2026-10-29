@@ -1,6 +1,6 @@
 # MapScrape v2 — instruções para agentes
 
-Serviço central de raspagem do Google Maps com API REST autenticada. Frontend React + Vite + Tailwind; backend Express (dev local) e funções serverless em `api/` (Vercel); banco Supabase; scraper Puppeteer.
+Serviço central de raspagem do Google Maps com API REST autenticada. Frontend React + Vite + Tailwind; backend Express (dev local) e funções serverless em `functions/api/` (Cloudflare Pages); banco Supabase; scraper Puppeteer.
 
 ## Comandos (npm, Node 24)
 
@@ -24,31 +24,26 @@ Ordem do CI (`.github/workflows/ci.yml`): `build → lint → test → npm audit
 - Linhas de teste usam IDs únicos (`Date.now()`) para evitar colisão; não há limpeza automática do banco após os testes.
 - Não execute coletas reais de Puppeteer nem escritas remotas sem autorização.
 
+## Implantação
+
+**Cloudflare Pages Functions** (`wrangler.jsonc`, worker `mapscrape`, entrada `server.bundle.mjs`). Deploy via `wrangler deploy`. Variáveis de ambiente no painel Cloudflare geram novo deployment automático.
+
+`.env*` é ignorado pelo git (exceto `.env.example`). Nunca commite `.env`, `.env.local` (contém token OIDC) ou segredos. Copie de `.env.example` para desenvolvimento local.
+
+## Arquitetura e pontos de entrada
+
+- `functions/api/` — funções serverless do Cloudflare Pages. Cada arquivo em `functions/api/v1/*` é um endpoint: `health`, `projects`, `jobs`, `leads`, `categories`, `provisioning/credentials`, `auth/{login,register,me}`. `functions/_lib.ts` é o cliente Supabase compartilhado.
+- `src/server/` — backend Express usado localmente (`server.ts`, porta 3000) e reutilizado pelas funções: `db.ts` (Supabase), `auth.ts` (auth v1), `scraper/` (Puppeteer), `audit-log.ts`, `run-report.ts`, `browserless-endpoint.ts`.
+- `src/` — frontend React + Vite (`App.tsx`, `main.tsx`, `components/`).
+- Alias TypeScript: `@/*` → raiz do projeto (use em `functions/api/` e `src/`).
+
+Autenticação v1: `Authorization: Bearer <MAPSCRAPE_API_KEY>` (chave hasheada SHA-256 em `api_credentials`, escopo `consumer_project`) OU `Bearer <Supabase session JWT>` (usuário web). Sem token = 401.
+
 ## Variáveis de ambiente obrigatórias
 
 - `SUPABASE_URL` + `SUPABASE_ANON_KEY` — conexão com o banco e validação de sessões de usuário (`authenticateRequest`).
 - `MAPSCRAPE_PROVISIONING_TOKEN` — emissão de credenciais de API (admin).
 - `APP_URL` — URL-base do serviço implantado.
-
-`.env*` é ignorado pelo git (exceto `.env.example`). Nunca commite `.env`, `.env.local` (contém token OIDC da Vercel) ou segredos. Copie de `.env.example` para desenvolvimento local.
-
-## Arquitetura e pontos de entrada
-
-- `api/` — funções serverless da Vercel. Cada arquivo em `api/v1/*` é um endpoint: `health`, `projects`, `jobs`, `leads`, `categories`, `provisioning/credentials`, `auth/{login,register,me}`. `api/_lib.ts` é o cliente Supabase compartilhado.
-- `src/server/` — backend Express usado localmente (`server.ts`, porta 3000) e reutilizado pelas funções: `db.ts` (Supabase), `auth.ts` (auth v1), `scraper/` (Puppeteer), `audit-log.ts`, `run-report.ts`, `browserless-endpoint.ts`.
-- `src/` — frontend React + Vite (`App.tsx`, `main.tsx`, `components/`).
-- Alias TypeScript: `@/*` → raiz do projeto (use em `api/` e `src/`).
-
-Autenticação v1: `Authorization: Bearer <MAPSCRAPE_API_KEY>` (chave hasheada SHA-256 em `api_credentials`, escopo `consumer_project`) OU `Bearer <Supabase session JWT>` (usuário web). Sem token = 401.
-
-## Implantação
-
-Dois alvos configurados — verifique qual está ativo antes de deploy:
-
-- **Vercel**: `vercel.json` (`buildCommand: npm run build`), funções em `api/`. Deploy via Git Integration ou `vercel deploy`. Variáveis de ambiente no painel Vercel geram novo deployment automático.
-- **Cloudflare Workers**: `wrangler.jsonc` (worker `mapscrape`), entrada `server.bundle.mjs`. `npm run preview` = `bun run build && wrangler dev`; `npm run deploy` = `bun run build && wrangler deploy`.
-
-`npm run build` gera `dist/` e `server.bundle.mjs` (ambos gitignored). Não commite artefatos de build.
 
 ## Banco de dados
 

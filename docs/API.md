@@ -14,7 +14,7 @@ A interface web usa uma conta individual, separada das credenciais de integraç�
 | POST | `/api/auth/login` | Iniciar sessão |
 | GET | `/api/auth/me` | Validar sessão e recuperar perfil |
 
-A primeira conta só pode ser criada com o e-mail administrador configurado (`MAPSCRAPE_ADMIN_EMAIL`, padrão `olfnetto@gmail.com`) e o segredo `MAPSCRAPE_ADMIN_SETUP_TOKEN` definido no ambiente de produção; o token é enviado no campo de configuração inicial do formulário e validado exclusivamente no servidor. Enquanto não houver contas, cadastros sem a autorização correta são recusados. Depois da primeira conta, os novos cadastros recebem papel `user`. Como alternativa operacional, `MAPSCRAPE_ADMIN_EMAIL`, `MAPSCRAPE_ADMIN_PASSWORD` e `MAPSCRAPE_SESSION_SECRET` permitem bootstrap server-side sem enviar a senha pelo navegador. Nunca exponha segredos no bundle público, URLs ou logs.
+A primeira conta só pode ser criada com o e-mail administrador configurado (`MAPSCRAPE_ADMIN_EMAIL`, padrão `olfnetto@gmail.com`) e validada exclusivamente no servidor. Enquanto não houver contas, cadastros sem essa autorização são recusados. Depois da primeira conta, os novos cadastros recebem papel `user`. Como alternativa operacional, `MAPSCRAPE_ADMIN_EMAIL`, `MAPSCRAPE_ADMIN_PASSWORD` e `MAPSCRAPE_SESSION_SECRET` permitem bootstrap server-side sem enviar a senha pelo navegador. Nunca exponha segredos no bundle público, URLs ou logs.
 
 
 ### Uso da plataforma versus integração externa

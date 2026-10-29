@@ -7,10 +7,9 @@ A interface nativa usa contas individuais com cadastro e login por e-mail e senh
 Configure no ambiente **Production** da Vercel:
 - `MAPSCRAPE_SESSION_SECRET`: segredo aleatório forte, exclusivo para assinar sessões.
 - `MAPSCRAPE_ADMIN_EMAIL`: e-mail da conta administradora inicial (padrão: `olfnetto@gmail.com`).
-- `MAPSCRAPE_ADMIN_SETUP_TOKEN`: token aleatório forte, definido como segredo server-side e informado somente no primeiro formulário de cadastro.
 - Opcionalmente, `MAPSCRAPE_ADMIN_PASSWORD`: permite bootstrap server-side alternativo, sem expor senha no frontend.
 
-Enquanto o banco não tiver contas, somente o e-mail administrador configurado e o token inicial correto podem criar a primeira conta; cadastros sem essa autorização são recusados. Após a criação da primeira conta, os novos cadastros recebem papel de usuário. Nunca coloque o token nos arquivos do repositório, no bundle público, em URLs ou logs. Alterações nas variáveis de ambiente exigem novo deployment automático pelo Git Integration para entrarem em vigor.
+Enquanto o banco não tiver contas, somente o e-mail administrador configurado pode criar a primeira conta; cadastros sem essa autorização são recusados. Após a criação da primeira conta, os novos cadastros recebem papel de usuário. Nunca coloque segredos nos arquivos do repositório, no bundle público, em URLs ou logs. Alterações nas variáveis de ambiente exigem novo deployment automático pelo Git Integration para entrarem em vigor.
 
 Endpoints de conta: `POST /api/auth/register`, `POST /api/auth/login` e `GET /api/auth/me`. Sessões expiram em 12 horas. Login e cadastro têm limite de tentativas.
 

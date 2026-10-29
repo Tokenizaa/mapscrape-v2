@@ -1,6 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { createHash } from 'node:crypto';
-import { findActiveApiCredential } from './db';
+import { findActiveApiCredential, getSupabase } from './db';
 
 /**
  * Resultado da autenticação de uma requisição v1.
@@ -74,21 +73,6 @@ export function hashApiKey(apiKey: string): string {
   return createHash('sha256').update(apiKey.trim()).digest('hex');
 }
 
-function buildSupabaseAnon(): ReturnType<typeof createClient> {
-  const url = process.env.SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_ANON_KEY?.trim();
-  if (!url || !key) {
-    throw new Error('SUPABASE_URL e SUPABASE_ANON_KEY devem estar definidos.');
-  }
-  return createClient(url, key, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-  });
-}
-
 /**
  * Extrai e autentica a identidade do chamador a partir do header Authorization.
  *
@@ -132,8 +116,9 @@ export async function authenticateRequest(
   }
 
   // 2) Tenta como token de sessão Supabase (interface web).
+  // Usa getSupabase() que resolve bindings do Cloudflare (context.env) antes de process.env.
   try {
-    const supabase = buildSupabaseAnon();
+    const supabase = getSupabase();
     const { data, error } = await supabase.auth.getUser(token);
     if (error || !data?.user) {
       return { ok: false, status: 401, error: 'Token inválido ou expirado.' };
