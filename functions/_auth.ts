@@ -4,6 +4,10 @@
  */
 import { json } from './_util';
 
+function getProcessEnv(): Record<string, string | undefined> {
+  return typeof process !== 'undefined' ? process.env : {};
+}
+
 export interface AuthContext {
   kind: 'consumer' | 'user';
   scope: string;
@@ -27,8 +31,8 @@ export type AuthResult = AuthOk | AuthError;
 export async function authenticateRequest(context: any): Promise<AuthResult> {
   const req = context.request;
   const env = context.env || {};
-  const SUPABASE_URL = env.SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim();
-  const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+  const SUPABASE_URL = env.SUPABASE_URL?.trim() || getProcessEnv().SUPABASE_URL?.trim();
+  const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY?.trim() || getProcessEnv().SUPABASE_ANON_KEY?.trim();
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return { ok: false, status: 503, error: 'authentication_unavailable' };
@@ -117,7 +121,7 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
 export async function authenticateProvisioning(context: any): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const req = context.request as Request;
   const env = context.env || {};
-  const expected = String(env.MAPSCRAPE_PROVISIONING_TOKEN ?? process.env.MAPSCRAPE_PROVISIONING_TOKEN ?? '').trim();
+  const expected = String(env.MAPSCRAPE_PROVISIONING_TOKEN ?? getProcessEnv().MAPSCRAPE_PROVISIONING_TOKEN ?? '').trim();
   const provisioningToken = req.headers.get('x-mapscrape-provisioning-token')?.trim();
 
   // Keep the server-side bootstrap token as a supported operational credential.
