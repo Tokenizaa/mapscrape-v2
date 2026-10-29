@@ -1,9 +1,4 @@
 {
   "buildCommand": "npm run build",
-  "headers": [],
-  "functions": {
-    "api/**/*.{ts,js}": {
-      "runtime": "nodejs@20.x"
-    }
-  }
+  "headers": []
 }
