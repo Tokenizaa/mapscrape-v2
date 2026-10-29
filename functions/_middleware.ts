@@ -1,6 +1,4 @@
-import type { PagesFunction } from '@cloudflare/workers-types';
-
-export const onRequest: PagesFunction = async (context) => {
+export const onRequest = async (context: any): Promise<Response> => {
   const { request } = context;
   const url = new URL(request.url);
 
