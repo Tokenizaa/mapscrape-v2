@@ -43,7 +43,11 @@ jobs:
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add package-lock.json
             git commit -m "fix: remediate vulnerable transitive dependencies"
-            git push origin "HEAD:${GITHUB_HEAD_REF}"
+            FIX_COMMIT=$(git rev-parse HEAD)
+            git fetch origin "${GITHUB_HEAD_REF}"
+            git checkout -B "${GITHUB_HEAD_REF}" "origin/${GITHUB_HEAD_REF}"
+            git cherry-pick "$FIX_COMMIT"
+            git push origin "${GITHUB_HEAD_REF}"
           fi
       - name: Install dependencies
         run: npm ci
