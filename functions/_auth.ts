@@ -123,6 +123,7 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
 
 export async function authenticateProvisioning(context: any): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const req = context.request;
+  const env = context.env || {};
   const expected = env.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
   if (!expected) {
     return { ok: false, status: 503, error: 'provisioning_unavailable' };
@@ -145,7 +146,7 @@ async function sha256(input: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function sendAuthError(response: any, result: AuthResult): result is AuthError {
+export function sendAuthError(_json: any, result: AuthResult): Response | false {
   if (!result.ok) {
     return new Response(JSON.stringify({ error: result.error }), {
       status: result.status,
