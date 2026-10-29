@@ -1,6 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-function buildSupabaseAdmin(): SupabaseClient {
+function buildSupabase(): SupabaseClient {
   const url = process.env.SUPABASE_URL?.trim();
   const key = process.env.SUPABASE_ANON_KEY?.trim();
 
@@ -9,103 +9,64 @@ function buildSupabaseAdmin(): SupabaseClient {
   }
 
   return createClient(url, key, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
+    auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
   });
 }
 
 export default async function handler(req: any, res: any): Promise<void> {
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', 'POST');
+    res.status(405).json({ error: 'Método não permitido.' });
+    return;
+  }
+
   try {
-    const { email, password } = req.body as { email: string; password: string };
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
 
     if (!email || !password) {
       res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
       return;
     }
 
-    const supabaseAdmin = buildSupabaseAdmin();
+    const supabase = buildSupabase();
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-    // Use Supabase Auth to sign in
-    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
-      email: email.toLowerCase(),
-      password,
-    });
-
-    if (error) {
+    if (error || !data.user || !data.session?.access_token) {
       res.status(401).json({ error: 'Credenciais inválidas.' });
       return;
     }
 
-    // Check if user has a profile in our users table
-    let userData: any = null;
-    let userError: any = null;
-    ({ data: userData, error: userError } = await supabaseAdmin
-      .from('users')
-      .select('*')
-      .eq('id', data.user.id)
-      .single());
-
-    const emailLower = (data.user.email || email).toLowerCase();
-
-    if (userError || !userData) {
-      // Fallback: buscar por email (cobre caso de mismatch de ID entre Supabase Auth
-      // e a tabela users, ex: usuário cadastrado diretamente no banco com outro ID)
-      ({ data: userData, error: userError } = await supabaseAdmin
+    // The Supabase Auth UUID is the identity source. The legacy users table is
+    // optional metadata; an absent/inaccessible profile must never block login.
+    let profile: { id?: string; email?: string; display_name?: string; role?: string } | null = null;
+    try {
+      const { data: found } = await supabase
         .from('users')
-        .select('*')
-        .eq('email', emailLower)
-        .single());
-    }
-
-    if (userError || !userData) {
-      // Usuário autenticado no Supabase Auth mas sem perfil na tabela users.
-      // Auto-provisiona o perfil para evitar usuários órfãos.
-      const displayName = data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'Usuário';
-
-      const { error: insertError } = await supabaseAdmin.from('users').insert({
-        id: data.user.id,
-        email: emailLower,
-        display_name: displayName,
-        role: 'user',
-        created_at: new Date().toISOString(),
-      });
-
-      if (insertError) {
-        res.status(404).json({ error: 'Perfil de usuário não encontrado. Cadastre-se primeiro.' });
-        return;
-      }
-
-      // Recarrega o perfil recém-criado
-      ({ data: userData, error: userError } = await supabaseAdmin
-        .from('users')
-        .select('*')
+        .select('id,email,display_name,role')
         .eq('id', data.user.id)
-        .single());
-
-      if (userError || !userData) {
-        res.status(404).json({ error: 'Perfil de usuário não encontrado. Cadastre-se primeiro.' });
-        return;
-      }
+        .maybeSingle();
+      profile = found;
+    } catch {
+      profile = null;
     }
 
-    // Return user profile and a session token for the frontend
+    const userEmail = data.user.email || email;
+    const metadataName = typeof data.user.user_metadata?.name === 'string'
+      ? data.user.user_metadata.name
+      : '';
+    const name = profile?.display_name || metadataName || userEmail.split('@')[0] || 'Usuário';
+    const role = profile?.id === data.user.id && profile.role === 'admin' ? 'admin' : 'user';
+
     res.status(200).json({
-      token: data.session?.access_token || '',
-      user: {
-        id: userData.id,
-        email: userData.email,
-        name: userData.display_name,
-        role: userData.role,
-      },
+      token: data.session.access_token,
+      user: { id: data.user.id, email: userEmail, name, role },
     });
   } catch (error) {
     console.error('Login API error:', error);
     res.status(503).json({
       error: 'authentication_unavailable',
-      message: 'API de autenticação indisponível.',
+      message: 'API de autenticação indisponível. Verifique a configuração do Supabase.',
     });
   }
 }
