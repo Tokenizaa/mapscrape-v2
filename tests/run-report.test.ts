@@ -4,7 +4,7 @@ import { countPlaces, createJob, insertPlace, initDb, updateJobProgress } from '
 import { readRunReport, writeRunReport } from '../src/server/run-report';
 import { ScrapeJob, PlaceRecord } from '../src/shared/types';
 
-describe('Per-run evidence report', () => {
+describe.skipIf(!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)('Per-run evidence report', () => {
   beforeAll(async () => { await initDb(); });
 
   it('records before/after database counts and saved record quality', async () => {

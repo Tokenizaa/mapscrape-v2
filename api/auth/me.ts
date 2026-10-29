@@ -39,14 +39,18 @@ export default async function handler(req: any, res: any): Promise<void> {
     const authUser = data.user;
     let profile: { id?: string; email?: string; display_name?: string; role?: string } | null = null;
 
-    // Legacy profile data is optional. Never make a valid Auth session depend on it.
+    // Profile lookup uses server-side credentials and cannot invalidate a valid Auth token.
     try {
-      const { data: found } = await supabase
-        .from('users')
-        .select('id,email,display_name,role')
-        .eq('id', authUser.id)
-        .maybeSingle();
-      profile = found;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+      if (serviceKey) {
+        const profileDb = createClient(process.env.SUPABASE_URL!.trim(), serviceKey, {
+          auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+        });
+        const { data: found, error: profileError } = await profileDb.schema('mapscrape')
+          .from('users').select('id,email,display_name,role').eq('id', authUser.id).maybeSingle();
+        if (profileError) console.warn('Profile lookup failed:', profileError.message);
+        profile = found;
+      }
     } catch {
       profile = null;
     }

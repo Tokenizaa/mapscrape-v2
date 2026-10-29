@@ -55,20 +55,25 @@ export default async function handler(req: any, res: any): Promise<void> {
       return;
     }
 
-    // Keep legacy profile metadata when the project permits it, but never let a
-    // users-table/RLS/schema failure undo or misreport the Supabase Auth result.
-    if (data.session) {
-      try {
-        await supabase.from('users').upsert({
+    // Profile writes use the server-only service role; never expose this key to clients.
+    try {
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+      if (serviceKey) {
+        const profileDb = createClient(process.env.SUPABASE_URL!.trim(), serviceKey, {
+          auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+        });
+        const { error: profileError } = await profileDb.schema('mapscrape').from('users').upsert({
           id: data.user.id,
           email,
           display_name: displayName,
           role: 'user',
-          created_at: new Date().toISOString(),
         }, { onConflict: 'id', ignoreDuplicates: true });
-      } catch (profileError) {
-        console.warn('Optional user profile could not be saved:', profileError);
+        if (profileError) console.warn('Optional user profile could not be saved:', profileError.message);
+      } else {
+        console.warn('SUPABASE_SERVICE_ROLE_KEY ausente: perfil não foi persistido.');
       }
+    } catch (profileError) {
+      console.warn('Optional user profile could not be saved:', profileError);
     }
 
     if (!data.session) {

@@ -37,16 +37,19 @@ export default async function handler(req: any, res: any): Promise<void> {
       return;
     }
 
-    // The Supabase Auth UUID is the identity source. The legacy users table is
-    // optional metadata; an absent/inaccessible profile must never block login.
+    // Supabase Auth remains the identity source; server role reads the private profile schema.
     let profile: { id?: string; email?: string; display_name?: string; role?: string } | null = null;
     try {
-      const { data: found } = await supabase
-        .from('users')
-        .select('id,email,display_name,role')
-        .eq('id', data.user.id)
-        .maybeSingle();
-      profile = found;
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+      if (serviceKey) {
+        const profileDb = createClient(process.env.SUPABASE_URL!.trim(), serviceKey, {
+          auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false },
+        });
+        const { data: found, error: profileError } = await profileDb.schema('mapscrape')
+          .from('users').select('id,email,display_name,role').eq('id', data.user.id).maybeSingle();
+        if (profileError) console.warn('Profile lookup failed:', profileError.message);
+        profile = found;
+      }
     } catch {
       profile = null;
     }

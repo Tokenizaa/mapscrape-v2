@@ -14,7 +14,7 @@ import {
 } from '../src/server/db';
 import { ScrapeJob } from '../src/shared/types';
 
-describe('Projects and Categories CRUD & Isolation', () => {
+describe.skipIf(!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)('Projects and Categories CRUD & Isolation', () => {
   const userA = `user_a_${Date.now()}`;
   const userB = `user_b_${Date.now()}`;
 

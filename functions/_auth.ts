@@ -29,6 +29,7 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
   const env = context.env || {};
   const SUPABASE_URL = env.SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim();
   const SUPABASE_ANON_KEY = env.SUPABASE_ANON_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
+  const SUPABASE_SERVICE_ROLE_KEY = env.SUPABASE_SERVICE_ROLE_KEY?.trim() || process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
     return { ok: false, status: 503, error: 'authentication_unavailable' };
@@ -49,34 +50,40 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
     const keyHash = await sha256(token);
     const supabaseUrl = SUPABASE_URL;
 
-    // Consulta a credencial via REST do Supabase
-    const res = await fetch(`${supabaseUrl}/rest/v1/api_credentials?key_hash=eq.${keyHash}&status=eq.active&select=id,consumer_project`, {
-      headers: {
-        'apikey': SUPABASE_ANON_KEY,
-        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+    // API credentials live in the private mapscrape schema and require server credentials.
+    if (SUPABASE_SERVICE_ROLE_KEY) {
+      const profileHeaders = {
+        'apikey': SUPABASE_SERVICE_ROLE_KEY,
+        'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        'Accept-Profile': 'mapscrape',
+        'Content-Profile': 'mapscrape',
+      };
+      const res = await fetch(`${supabaseUrl}/rest/v1/api_credentials?key_hash=eq.${keyHash}&status=eq.active&select=id,consumer_project`, {
+        headers: profileHeaders,
+      });
 
-    if (res.ok) {
-      const data = await res.json();
-      if (data && data.length > 0) {
-        // Atualiza last_used_at (best effort)
-        try {
-          await fetch(`${supabaseUrl}/rest/v1/api_credentials?id=eq.${data[0].id}`, {
-            method: 'PATCH',
-            headers: {
-              'apikey': SUPABASE_ANON_KEY,
-              'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-              'Content-Type': 'application/json',
-              'Prefer': 'return=minimal',
-            },
-            body: JSON.stringify({ last_used_at: new Date().toISOString() }),
-          }).catch(() => {});
-        } catch {}
-        return {
-          ok: true,
-          context: { kind: 'consumer', scope: data[0].consumer_project, credentialId: data[0].id },
-        };
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.length > 0) {
+          // Atualiza last_used_at (best effort).
+          try {
+            await fetch(`${supabaseUrl}/rest/v1/api_credentials?id=eq.${data[0].id}`, {
+              method: 'PATCH',
+              headers: {
+                ...profileHeaders,
+                'Content-Type': 'application/json',
+                'Prefer': 'return=minimal',
+              },
+              body: JSON.stringify({ last_used_at: new Date().toISOString() }),
+            }).catch(() => {});
+          } catch {}
+          return {
+            ok: true,
+            context: { kind: 'consumer', scope: data[0].consumer_project, credentialId: data[0].id },
+          };
+        }
+      } else if (res.status >= 500) {
+        return { ok: false, status: 503, error: 'authentication_unavailable' };
       }
     }
   } catch {
@@ -116,6 +123,7 @@ export async function authenticateRequest(context: any): Promise<AuthResult> {
 
 export async function authenticateProvisioning(context: any): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
   const req = context.request;
+  const env = context.env || {};
   const expected = env.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
   if (!expected) {
     return { ok: false, status: 503, error: 'provisioning_unavailable' };
@@ -138,8 +146,8 @@ async function sha256(input: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function sendAuthError(response: any, result: AuthResult): result is AuthError {
-  if (!result.ok) {
+export function sendAuthError(_json: any, result: AuthResult): Response | false {
+  if ('error' in result) {
     return new Response(JSON.stringify({ error: result.error }), {
       status: result.status,
       headers: { 'Content-Type': 'application/json' },

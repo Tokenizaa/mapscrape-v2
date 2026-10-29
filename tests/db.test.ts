@@ -77,7 +77,7 @@ const place: PlaceRecord = {
   collected_at: new Date().toISOString(),
 };
 
-describe('Database persistence', () => {
+describe.skipIf(!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)('Database persistence', () => {
   beforeAll(async () => {
     await initDb();
   });
