@@ -23,7 +23,8 @@ export const onRequestGet = async (context: any): Promise<Response> => {
         created_at: j.created_at, completed_at: j.completed_at, isRunning: j.status === 'running',
       })),
     });
-  } catch {
+  } catch (error) {
+    console.error('[api/v1/jobs] list failed:', error instanceof Error ? error.message : 'unknown error');
     return json({ error: 'job_query_failed', message: 'Erro ao listar jobs.' }, 500);
   }
 };
@@ -74,7 +75,8 @@ export const onRequestPost = async (context: any): Promise<Response> => {
         resultsUrl: `/api/v1/jobs/${job.id}/results`,
       },
     }, 202);
-  } catch {
+  } catch (error) {
+    console.error('[api/v1/jobs] create failed:', error instanceof Error ? error.message : 'unknown error');
     return json({ error: 'job_start_failed', message: 'Erro ao iniciar job.' }, 500);
   }
 };
