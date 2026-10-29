@@ -130,8 +130,8 @@ export async function authenticateProvisioning(context: any): Promise<{ ok: true
   // The web UI uses a Supabase session. Only platform admins may manage API credentials.
   const authorization = req.headers.get('authorization') || '';
   const bearer = authorization.startsWith('Bearer ') ? authorization.slice('Bearer '.length).trim() : '';
-  const supabaseUrl = String(env.SUPABASE_URL ?? process.env.SUPABASE_URL ?? '').trim();
-  const anonKey = String(env.SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '').trim();
+  const supabaseUrl = String(env.SUPABASE_URL ?? getProcessEnv().SUPABASE_URL ?? '').trim();
+  const anonKey = String(env.SUPABASE_ANON_KEY ?? getProcessEnv().SUPABASE_ANON_KEY ?? '').trim();
 
   if (bearer && supabaseUrl && anonKey) {
     try {
@@ -164,12 +164,12 @@ async function sha256(input: string): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export function sendAuthError(response: any, result: AuthResult): result is AuthError {
-  if (!result.ok) {
+export function sendAuthError(_response: any, result: AuthResult): Response | null {
+  if (result.ok === false) {
     return new Response(JSON.stringify({ error: result.error }), {
       status: result.status,
       headers: { 'Content-Type': 'application/json' },
     });
   }
-  return false;
+  return null;
 }
