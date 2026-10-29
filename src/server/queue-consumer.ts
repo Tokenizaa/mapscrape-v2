@@ -36,7 +36,7 @@ export default {
       } catch (error) {
         const detail = error instanceof Error ? error.message : String(error);
         console.error('Queue consumer failed for job ' + jobId + ':', detail);
-        if (message.attempts >= 3) {
+        if (message.attempts >= 4) {
           await updateJobProgress(jobId, { status: 'failed', status_message: 'Falha no processamento após novas tentativas: ' + detail.slice(0, 180), current_step: 'Falha no consumidor', completed_at: new Date().toISOString() }).catch((updateError) => console.error('Could not persist terminal queue failure:', updateError));
           message.ack();
         } else {
