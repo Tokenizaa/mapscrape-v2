@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { initDb } from '../src/server/db';
 import { initAuditLog, listAuditLogs, writeAuditLog } from '../src/server/audit-log';
 
-describe('Structured audit log', () => {
+describe.skipIf(!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY)('Structured audit log', () => {
   beforeAll(async () => {
     await initDb();
     await initAuditLog();
