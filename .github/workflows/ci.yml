@@ -37,9 +37,12 @@ jobs:
         run: npm run build
       - name: TypeScript typecheck
         run: npm run lint
+      - name: Bundle queue consumer (dry run)
+        run: npm run build:consumer
       # The full integration suite writes to Supabase and requires a dedicated test project + auth token.
       # Keep PR CI deterministic and never point tests at the production database.
       - name: Run isolated unit tests
         run: npm run test:unit
       - name: npm audit
         run: npm audit --audit-level=high
+
