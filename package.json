@@ -11,7 +11,7 @@
     "test": "vitest run --fileParallelism=false",
     "clean": "rm -rf dist server.js server.bundle.mjs",
     "lint": "tsc --noEmit",
-    "deploy": "npm run build && wrangler deploy",
+    "deploy": "npm run build && wrangler pages deploy dist --project-name=mapscrape",
     "deploy:consumer": "wrangler deploy --config wrangler.queue-consumer.toml",
     "test:unit": "vitest run tests/csv.test.ts tests/normalizer.test.ts --fileParallelism=false",
     "test:integration": "vitest run tests/audit-log.test.ts tests/db.test.ts tests/e2e-scrape-validation.test.ts tests/projects-categories.test.ts tests/run-report.test.ts --fileParallelism=false"
