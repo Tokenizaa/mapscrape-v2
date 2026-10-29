@@ -1,12 +1,10 @@
-import { revokeApiCredential, listApiCredentials } from '@/src/server/db';
-import { json, getRequest, getParams, getProvisioningToken } from '@/functions/_util';
+import { revokeApiCredential } from '@/src/server/db';
+import { authenticateProvisioning } from '@/functions/_auth';
+import { json, getParams } from '@/functions/_util';
 
 export const onRequestDelete = async (context: any): Promise<Response> => {
-  const req = getRequest(context);
-  const expected = context.env?.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
-  if (!expected) return json({ error: 'provisioning_unavailable' }, 503);
-  const token = getProvisioningToken(req);
-  if (!token || String(token).trim() !== expected) return json({ error: 'provisioning_unauthorized' }, 401);
+  const auth = await authenticateProvisioning(context);
+  if (!auth.ok) return json({ error: auth.error }, auth.status);
 
   const params = getParams(context);
   const id = params.id;
