@@ -66,7 +66,7 @@ export async function initAuditLog(): Promise<void> {
     console.log('Supabase não configurado: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY para ativar logs de auditoria.');
     return;
   }
-  const { error } = await db.from('audit_logs').select('*', { count: 'exact', head: true });
+  const { error } = await db.schema('mapscrape').from('audit_logs').select('*', { count: 'exact', head: true });
 
   // Check if table exists, if not, just log
   if (error) {
@@ -86,7 +86,7 @@ export async function writeAuditLog(input: {
   const createdAt = new Date().toISOString();
   const sanitizedMetadata = sanitizeMetadata(input.metadata ?? {});
   const metadata = JSON.stringify(sanitizedMetadata);
-  const { error } = await db.from('audit_logs').insert({
+  const { error } = await db.schema('mapscrape').from('audit_logs').insert({
     id: `log_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
     created_at: createdAt,
     level: input.level ?? 'info',
@@ -113,7 +113,7 @@ export async function listAuditLogs(options: {
 } = {}): Promise<{ logs: AuditEvent[]; total: number }> {
   const db = getSupabase();
 
-  let query = db.from('audit_logs').select('id, created_at, level, category, event, message, job_id, metadata');
+  let query = db.schema('mapscrape').from('audit_logs').select('id, created_at, level, category, event, message, job_id, metadata');
 
   if (options.level) {
     query = query.eq('level', options.level);
@@ -132,7 +132,7 @@ export async function listAuditLogs(options: {
   let allowedJobIds: string[] | null = null;
   if (options.consumerProject) {
     const { data: userJobs, error: jobsError } = await db
-      .from('searches')
+      .schema('mapscrape').from('searches')
       .select('id')
       .eq('user_id', options.consumerProject);
     if (jobsError) throw jobsError;
@@ -146,7 +146,7 @@ export async function listAuditLogs(options: {
   }
 
   // Get total count
-  const { count, error: countError } = await db.from('audit_logs').select('*', { count: 'exact', head: true });
+  const { count, error: countError } = await db.schema('mapscrape').from('audit_logs').select('*', { count: 'exact', head: true });
 
   if (countError) throw countError;
 
