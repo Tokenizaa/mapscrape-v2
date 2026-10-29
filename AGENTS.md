@@ -1,37 +1,65 @@
-# Instruções permanentes para agentes — MapScrape v2
+# MapScrape v2 — instruções para agentes
 
-## Identidade do produto
+Serviço central de raspagem do Google Maps com API REST autenticada. Frontend React + Vite + Tailwind; backend Express (dev local) e funções serverless em `api/` (Vercel); banco Supabase; scraper Puppeteer.
 
-Este repositório é o serviço central MapScrape, cujo contrato público é a API REST v1. O objetivo do produto é permitir que múltiplas aplicações independentes consumam a capacidade de coleta via HTTP/HTTPS, sem clonar o MapScrape, instalar seu scraper ou manter implementações duplicadas.
+## Comandos (npm, Node 24)
 
-Arquitetura esperada:
+package-lock.json é o lockfile canônico do CI (bun.lock existe mas não é usado).
 
-Google Maps → serviço MapScrape → API REST v1 → múltiplos projetos consumidores
+| Comando | O que faz |
+|---|---|
+| `npm run dev` | `tsx server.ts` — Express + `/api/health` na porta 3000 |
+| `npm run build` | `vite build` + `esbuild` empacota `server.ts` → `server.bundle.mjs` |
+| `npm start` | `node --import tsx server.ts` |
+| `npm test` | `vitest run --fileParallelism=false` |
+| `npm run lint` | `tsc --noEmit` (este **é** o typecheck/lint; não há ESLint) |
+| `npm run clean` | remove `dist/`, `server.bundle.mjs`, `server.js` |
 
-## Regras obrigatórias
+Ordem do CI (`.github/workflows/ci.yml`): `build → lint → test → npm audit`. Recomendado antes de commitar: `lint -> build -> test`.
 
-1. **Trabalhe no serviço MapScrape.** Não investigue nem modifique projetos consumidores, a menos que o usuário solicite explicitamente outra tarefa.
-2. **API-first:** mudanças na capacidade de coleta devem ser expostas por endpoints documentados e testados quando forem necessárias aos consumidores. Não exija importação de módulos internos ou acesso direto ao banco por clientes.
-3. **Não recomende clonar MapScrape para consumidores.** Consumidores precisam apenas da URL-base implantada e de uma chave individual no backend. O consumidor não instala Puppeteer, não executa o scraper e não conecta diretamente ao banco central.
-4. **Contrato único:** mantenha código, docs/API.md, docs/openapi.yaml, README.md e exemplos de integração consistentes. Atualize a documentação quando alterar rotas, schemas, autenticação, erros ou fluxo de jobs.
-5. **Isolamento obrigatório:** credenciais individuais devem identificar o consumidor e restringir leads, jobs, resultados, detalhes e operações relacionadas aos dados daquele consumidor. Não confie somente na autenticação; valide também a propriedade dos recursos.
-6. **Segredos:** nunca comite, imprima ou exponha MAPSCRAPE_API_KEY, MAPSCRAPE_PROVISIONING_TOKEN, tokens de provedores ou credenciais de banco. A chave bootstrap é administrativa e deve ficar em secrets autorizados. Não coloque chaves no frontend.
-7. **Provisionamento simples e seguro:** a emissão de credenciais deve ocorrer pelo fluxo oficial e seguro do serviço central/infraestrutura. Não oriente um agente consumidor a clonar este repositório para provisionar uma chave. Se faltar autorização, informe exatamente qual secret/permissão operacional está ausente.
-8. **Não invente disponibilidade:** distinguir código local, testes automatizados, CI e produção. Build verde ou health check não comprovam raspagem funcional. Validar execução de navegador, persistência e leitura dos resultados quando houver ambiente/credenciais autorizados.
-9. **Sem mudanças remotas arriscadas sem autorização:** não executar deploy, raspagem em massa, escritas de produção, migrações destrutivas ou alterações de credenciais sem autorização explícita.
-10. **Preservação:** antes de modificar o banco ou arquivos existentes, inspecione o estado do Git e preserve as alterações locais. Nunca usar comandos destrutivos de Git para forçar sincronização.
-11. **Execução completa:** quando solicitado a corrigir, implemente a correção segura, rode os testes relevantes, lint e build, repita os testes após alterações e informe os resultados reais. Não pare apenas em auditoria ou plano.
-12. **Relato honesto:** listar commits, arquivos alterados, verificações executadas, falhas restantes e bloqueios externos. Não dizer que CI passou enquanto estiver em execução nem que produção foi corrigida sem deploy e teste efetivos.
+## Testes
 
-## Contrato central da API
+- `npm test` roda `tests/*.test.ts` com vitest (sem arquivo de config próprio).
+- Os testes gravam num **banco Supabase real** (não são mockados). Requer `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` definidos; caso contrário `initDb()`/queries falham.
+- Linhas de teste usam IDs únicos (`Date.now()`) para evitar colisão; não há limpeza automática do banco após os testes.
+- Não execute coletas reais de Puppeteer nem escritas remotas sem autorização.
 
-Consulte antes de alterar:
-- docs/API.md — contrato REST e autenticação;
-- docs/openapi.yaml — esquema OpenAPI;
-- docs/INTEGRATION-FOR-LLMS.md — prompt para agentes que trabalham nos projetos consumidores.
+## Variáveis de ambiente obrigatórias
 
-Endpoints principais: health, listagem/detalhe de leads, criação/status/resultados de jobs e provisionamento de credenciais. Mudanças devem preservar compatibilidade ou documentar explicitamente qualquer quebra.
+- `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` — acesso ao banco (server-side only).
+- `SUPABASE_ANON_KEY` — validação de sessões de usuário (`authenticateRequest`).
+- `MAPSCRAPE_PROVISIONING_TOKEN` — emissão de credenciais de API (admin).
+- `MAPSCRAPE_SESSION_SECRET`, `MAPSCRAPE_ADMIN_EMAIL`, `MAPSCRAPE_ADMIN_SETUP_TOKEN` — produção Vercel / bootstrap da primeira conta.
+- `APP_URL` — URL-base do serviço implantado.
 
-## Critério de sucesso
+`.env*` é ignorado pelo git (exceto `.env.example`). Nunca commite `.env`, `.env.local` (contém token OIDC da Vercel) ou segredos. Copie de `.env.example` para desenvolvimento local.
 
-Um projeto novo deve poder consumir a API com configuração server-side de URL e chave, solicitar/acompanhar uma coleta e recuperar seus resultados sem clonar o MapScrape nem instalar o scraper. O serviço central permanece responsável pela coleta, autenticação, isolamento, persistência e contrato.
+## Arquitetura e pontos de entrada
+
+- `api/` — funções serverless da Vercel. Cada arquivo em `api/v1/*` é um endpoint: `health`, `projects`, `jobs`, `leads`, `categories`, `provisioning/credentials`, `auth/{login,register,me}`. `api/_lib.ts` é o cliente Supabase compartilhado.
+- `src/server/` — backend Express usado localmente (`server.ts`, porta 3000) e reutilizado pelas funções: `db.ts` (Supabase), `auth.ts` (auth v1), `scraper/` (Puppeteer), `audit-log.ts`, `run-report.ts`, `browserless-endpoint.ts`.
+- `src/` — frontend React + Vite (`App.tsx`, `main.tsx`, `components/`).
+- Alias TypeScript: `@/*` → raiz do projeto (use em `api/` e `src/`).
+
+Autenticação v1: `Authorization: Bearer <MAPSCRAPE_API_KEY>` (chave hasheada SHA-256 em `api_credentials`, escopo `consumer_project`) OU `Bearer <Supabase session JWT>` (usuário web). Sem token = 401.
+
+## Implantação
+
+Dois alvos configurados — verifique qual está ativo antes de deploy:
+
+- **Vercel**: `vercel.json` (`buildCommand: npm run build`), funções em `api/`. Deploy via Git Integration ou `vercel deploy`. Variáveis de ambiente no painel Vercel geram novo deployment automático.
+- **Cloudflare Workers**: `wrangler.jsonc` (worker `mapscrape`), entrada `server.bundle.mjs`. `npm run preview` = `bun run build && wrangler dev`; `npm run deploy` = `bun run build && wrangler deploy`.
+
+`npm run build` gera `dist/` e `server.bundle.mjs` (ambos gitignored). Não commite artefatos de build.
+
+## Banco de dados
+
+Supabase. Esquema via migrações versionadas em `supabase/migrations/` (aplique no SQL Editor do Supabase antes de testes ou de usar o servidor): `20261028_create_users_and_admin.sql`, `20261029010000_repair_dashboard_schema.sql`. Tabelas: `users`, `api_credentials`, `searches` (jobs), `places`, `projects`, `search_categories`, `run_reports`.
+
+## Raspagem (Puppeteer)
+
+`src/server/scraper/` (`runner.ts`, `extractor.ts`, `selectors.ts`, `normalizer.ts`, `csv.ts`). CI define `PUPPETEER_SKIP_DOWNLOAD=true`. O health check (`/api/v1/health`) só valida o banco; não comprova que o navegador de raspagem está operacional.
+
+## CI
+
+`.github/workflows/ci.yml`: `npm ci` → `npm run build` → `npm run lint` → `npm test` → `npm audit --audit-level=high` (Node 24, push/PR em `main`). `.github/workflows/sync-lockfile.yml` regenera `package-lock.json` a partir de `package.json`.

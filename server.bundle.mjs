@@ -58,11 +58,11 @@ __export(db_exports, {
 import { createClient } from "@supabase/supabase-js";
 function getSupabase() {
   if (!supabase) {
-    const url = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
-    const key = process.env.SUPABASE_ACCESS_TOKEN?.trim();
+    const url = process.env.SUPABASE_URL?.trim();
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     if (!url || !key) {
       throw new Error(
-        "Database n\xE3o configurada: defina SUPABASE_DIRECT_CONNECTION e SUPABASE_ACCESS_TOKEN no ambiente."
+        "Database n\xE3o configurada: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no ambiente (chave de servi\xE7o, apenas servidor)."
       );
     }
     supabase = createClient(url, key, {
@@ -345,38 +345,39 @@ async function placeExistsByUrl(url, _jobId) {
 }
 async function getPlaces(options) {
   const db = getSupabase();
-  const whereClauses = [];
+  const sortBy = options.sortBy || "collected_at";
+  const ascending = options.sortOrder === "asc";
+  const limit = Math.max(1, Math.min(100, options.limit ?? 50));
+  const offset = Math.max(0, options.offset ?? 0);
+  let allowedJobIds = null;
+  if (options.consumerProject) {
+    const { data: userJobs, error: jobsError } = await db.from("searches").select("id").eq("user_id", options.consumerProject);
+    if (jobsError) throw jobsError;
+    allowedJobIds = (userJobs ?? []).map((j) => j.id);
+    if (allowedJobIds.length === 0) {
+      return { places: [], total: 0 };
+    }
+  }
+  let query = db.from("places").select("*", { count: "exact" });
   if (options.jobId) {
-    whereClauses.push(`job_id = '${options.jobId}'`);
+    query = query.eq("job_id", options.jobId);
+  }
+  if (allowedJobIds) {
+    query = query.in("job_id", allowedJobIds);
   }
   if (options.query && options.query.trim()) {
-    const q = `%${options.query.trim()}%`;
-    whereClauses.push(`(name LIKE '${q}' OR category LIKE '${q}' OR address LIKE '${q}' OR phone LIKE '${q}' OR website LIKE '${q}')`);
+    const q = String(options.query.trim());
+    query = query.or(`name.ilike.%${q}%,category.ilike.%${q}%,address.ilike.%${q}%,phone.ilike.%${q}%,website.ilike.%${q}%`);
   }
   if (options.category && options.category.trim()) {
-    whereClauses.push(`lower(trim(category)) = lower(trim('${options.category.trim()}'))`);
+    query = query.ilike("category", `%${String(options.category.trim())}%`);
   }
-  if (options.consumerProject) {
-    whereClauses.push(`EXISTS (SELECT 1 FROM searches s WHERE s.id = places.job_id AND s.user_id = '${options.consumerProject}')`);
-  }
-  const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
-  const { count, error: countError } = await db.from("places").select("*", { count: "exact", head: true }).select(`* FROM (${whereSql}) as subquery`);
-  if (countError) throw countError;
-  const total = count || 0;
-  const sortBy = options.sortBy || "collected_at";
-  const sortOrder = options.sortOrder === "asc" ? "asc" : "desc";
-  const limit = options.limit || 50;
-  const offset = options.offset || 0;
-  let query = db.from("places").select("*").order(sortBy, { ascending: sortOrder === "asc" });
-  if (whereSql) {
-    const { data: data2 } = await db.from("places").select("*").range(offset, offset + limit - 1);
-    return { places: data2, total };
-  }
-  const { data, error } = await db.from("places").select("*").range(offset, offset + limit - 1);
+  query = query.order(sortBy, { ascending });
+  const { data, error, count } = await query.range(offset, offset + limit - 1);
   if (error) throw error;
   return {
-    places: data,
-    total
+    places: data ?? [],
+    total: count ?? 0
   };
 }
 async function getPlacesByIds(ids, consumerProject) {
@@ -587,10 +588,10 @@ import { createClient as createClient2 } from "@supabase/supabase-js";
 var supabase2 = null;
 function getSupabase2() {
   if (!supabase2) {
-    const url = process.env.SUPABASE_DIRECT_CONNECTION?.trim();
-    const key = process.env.SUPABASE_ACCESS_TOKEN?.trim();
+    const url = process.env.SUPABASE_URL?.trim();
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
     if (!url || !key) {
-      throw new Error("Supabase n\xE3o configurado: defina SUPABASE_DIRECT_CONNECTION e SUPABASE_ACCESS_TOKEN.");
+      throw new Error("Supabase n\xE3o configurado: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY.");
     }
     supabase2 = createClient2(url, key, {
       auth: {
@@ -603,7 +604,13 @@ function getSupabase2() {
   return supabase2;
 }
 async function initAuditLog() {
-  const db = getSupabase2();
+  let db;
+  try {
+    db = getSupabase2();
+  } catch {
+    console.log("Supabase n\xE3o configurado: defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY para ativar logs de auditoria.");
+    return;
+  }
   const { error } = await db.from("audit_logs").select("*", { count: "exact", head: true });
   if (error) {
     console.log("Tabela audit_logs deve existir no Supabase (criar via dashboard ou migration).");
@@ -611,18 +618,6 @@ async function initAuditLog() {
 }
 
 // server.ts
-import { createClient as createClient3 } from "@supabase/supabase-js";
-var supabaseAdmin = createClient3(
-  process.env.SUPABASE_DIRECT_CONNECTION?.trim() || "",
-  process.env.SUPABASE_ACCESS_TOKEN?.trim() || "",
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false
-    }
-  }
-);
 async function createApp() {
   await initDb();
   await initAuditLog();

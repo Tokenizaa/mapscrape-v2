@@ -1,13 +1,16 @@
-import { authenticateRequest, sendAuthError, type AuthOk } from '@/src/server/auth';
+import { authenticateRequest, sendAuthError, type AuthOk } from '@/functions/_auth';
 import { getAllPlaces } from '@/src/server/db';
-import { json, getQuery } from '@/functions/_util';
+import { json, getRequest, getQuery } from '@/functions/_util';
 
-export const onRequestGet = async (request: Request): Promise<Response> => {
-  const auth = await authenticateRequest(request.headers.get('authorization'));
-  if (!auth.ok) return json({ error: auth.error }, auth.status);
-  const scope = (auth as AuthOk).context.scope;
+export const onRequestGet = async (context: any): Promise<Response> => {
+  const req = getRequest(context);
+  const auth = await authenticateRequest(context);
+  const err = sendAuthError(json, auth);
+  if (err) return err;
+  const authContext = auth as AuthOk;
+  const scope = authContext.context.scope;
 
-  const q = getQuery(request.url);
+  const q = getQuery(req.url);
   const jobId = q.jobId || undefined;
 
   try {
@@ -15,24 +18,15 @@ export const onRequestGet = async (request: Request): Promise<Response> => {
     const totalRecords = places.length;
 
     const coverageFields: { key: string; label: string }[] = [
-      { key: 'name', label: 'Nome' },
-      { key: 'category', label: 'Categoria' },
-      { key: 'address', label: 'Endereço' },
-      { key: 'phone', label: 'Telefone' },
-      { key: 'website', label: 'Site' },
-      { key: 'rating', label: 'Nota' },
-      { key: 'review_count', label: 'Avaliações' },
-      { key: 'price_range', label: 'Faixa de preço' },
-      { key: 'business_status', label: 'Status de funcionamento' },
-      { key: 'opening_hours', label: 'Horários' },
-      { key: 'latitude', label: 'Latitude' },
-      { key: 'longitude', label: 'Longitude' },
-      { key: 'maps_url', label: 'Link do Maps' },
-      { key: 'description', label: 'Descrição' },
-      { key: 'photos', label: 'Fotos' },
-      { key: 'city', label: 'Cidade' },
-      { key: 'state', label: 'Estado' },
-      { key: 'collected_at', label: 'Data da coleta' },
+      { key: 'name', label: 'Nome' }, { key: 'category', label: 'Categoria' },
+      { key: 'address', label: 'Endereço' }, { key: 'phone', label: 'Telefone' },
+      { key: 'website', label: 'Site' }, { key: 'rating', label: 'Nota' },
+      { key: 'review_count', label: 'Avaliações' }, { key: 'price_range', label: 'Faixa de preço' },
+      { key: 'business_status', label: 'Status de funcionamento' }, { key: 'opening_hours', label: 'Horários' },
+      { key: 'latitude', label: 'Latitude' }, { key: 'longitude', label: 'Longitude' },
+      { key: 'maps_url', label: 'Link do Maps' }, { key: 'description', label: 'Descrição' },
+      { key: 'photos', label: 'Fotos' }, { key: 'city', label: 'Cidade' },
+      { key: 'state', label: 'Estado' }, { key: 'collected_at', label: 'Data da coleta' },
     ];
 
     const fields = coverageFields.map((f) => {

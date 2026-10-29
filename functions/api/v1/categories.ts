@@ -1,20 +1,20 @@
-import { authenticateRequest, sendAuthError, type AuthOk } from '@/src/server/auth';
+import { authenticateRequest, sendAuthError, type AuthOk } from '@/functions/_auth';
 import { listSearchCategories, resolveSearchCategory } from '@/src/server/db';
-import { json, getBody } from '@/functions/_util';
+import { json, getRequest, getBodyJson } from '@/functions/_util';
 
-export const onRequestGet = async (request: Request): Promise<Response> => {
-  const auth = await authenticateRequest(request.headers.get('authorization'));
-  if (!auth.ok) return json({ error: auth.error }, auth.status);
-  const scope = (auth as AuthOk).context.scope;
+export const onRequestGet = async (context: any): Promise<Response> => {
+  const req = getRequest(context);
+  const auth = await authenticateRequest(context);
+  const err = sendAuthError(json, auth);
+  if (err) return err;
+  const authContext = auth as AuthOk;
+  const scope = authContext.context.scope;
 
   try {
     const categories = await listSearchCategories(scope, scope);
     return json({
       data: categories.map((c) => ({
-        id: c.id,
-        name: c.name,
-        consumer_project: c.consumer_project,
-        created_at: c.created_at,
+        id: c.id, name: c.name, consumer_project: c.consumer_project, created_at: c.created_at,
       })),
     });
   } catch {
@@ -22,12 +22,15 @@ export const onRequestGet = async (request: Request): Promise<Response> => {
   }
 };
 
-export const onRequestPost = async (request: Request): Promise<Response> => {
-  const auth = await authenticateRequest(request.headers.get('authorization'));
-  if (!auth.ok) return json({ error: auth.error }, auth.status);
-  const scope = (auth as AuthOk).context.scope;
+export const onRequestPost = async (context: any): Promise<Response> => {
+  const req = getRequest(context);
+  const auth = await authenticateRequest(context);
+  const err = sendAuthError(json, auth);
+  if (err) return err;
+  const authContext = auth as AuthOk;
+  const scope = authContext.context.scope;
 
-  const body = await getBody(request);
+  const body = await getBodyJson(req);
   const name = body?.name;
   if (!name || !String(name).trim()) {
     return json({ error: 'category_name_required', message: 'Nome da categoria é obrigatório.' }, 422);
@@ -37,9 +40,7 @@ export const onRequestPost = async (request: Request): Promise<Response> => {
     const category = await resolveSearchCategory(scope, String(name).trim(), scope);
     return json({
       data: {
-        id: category.id,
-        name: category.name,
-        consumer_project: category.consumer_project,
+        id: category.id, name: category.name, consumer_project: category.consumer_project,
         created_at: category.created_at,
       },
     }, 201);

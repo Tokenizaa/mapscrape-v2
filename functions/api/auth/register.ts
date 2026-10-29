@@ -1,56 +1,82 @@
-import { createClient } from '@supabase/supabase-js';
-import { json, getBody } from '@/functions/_util';
+export const onRequestPost = async (context: any): Promise<Response> => {
+  const req = context.request;
+  const SUPABASE_URL = context.env?.SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim();
+  const SUPABASE_ANON_KEY = context.env?.SUPABASE_ANON_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
 
-function buildSupabase() {
-  const url = process.env.SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_ANON_KEY?.trim();
-  if (!url || !key) throw new Error('SUPABASE_URL e SUPABASE_ANON_KEY devem estar definidos.');
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
-}
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return new Response(JSON.stringify({ error: 'authentication_unavailable', message: 'SUPABASE_URL e SUPABASE_ANON_KEY não configurados.' }), {
+      status: 503, headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
-export const onRequestPost = async (request: Request): Promise<Response> => {
   try {
-    const body = await getBody(request);
+    const bodyText = await req.text();
+    let body: any = {};
+    try { body = JSON.parse(bodyText); } catch { body = {}; }
     const name = typeof body?.name === 'string' ? body.name.trim() : '';
     const email = typeof body?.email === 'string' ? body.email.trim().toLowerCase() : '';
     const password = typeof body?.password === 'string' ? body.password : '';
 
     if (!email || !password) {
-      return json({ error: 'E-mail e senha são obrigatórios.' }, 400);
+      return new Response(JSON.stringify({ error: 'E-mail e senha são obrigatórios.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
     if (password.length < 12) {
-      return json({ error: 'A senha deve ter pelo menos 12 caracteres.' }, 400);
+      return new Response(JSON.stringify({ error: 'A senha deve ter pelo menos 12 caracteres.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
-    const supabase = buildSupabase();
     const displayName = name || email.split('@')[0];
-    const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { name: displayName } } });
 
-    if (error) {
-      const message = /already registered|already exists/i.test(error.message)
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, password, options: { data: { name: displayName } } }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      const message = /already registered|already exists/i.test(data.msg ?? data.message ?? '')
         ? 'Este e-mail já está cadastrado. Faça login.'
-        : error.message;
-      return json({ error: message }, 400);
+        : (data.msg ?? data.message ?? 'Erro ao cadastrar.');
+      return new Response(JSON.stringify({ error: message }), { status: 400, headers: { 'Content-Type': 'application/json' } });
     }
 
     if (!data.user) {
-      return json({ error: 'O Supabase Auth não retornou o usuário criado.' }, 500);
+      return new Response(JSON.stringify({ error: 'O Supabase Auth não retornou o usuário criado.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
 
-    if (data.session) {
-      try {
-        await supabase.from('users').upsert({
-          id: data.user.id, email, display_name: displayName, role: 'user', created_at: new Date().toISOString(),
-        }, { onConflict: 'id', ignoreDuplicates: true });
-      } catch { console.warn('Optional user profile could not be saved.'); }
-    }
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates',
+        },
+        body: JSON.stringify({ id: data.user.id, email, display_name: displayName, role: 'user', created_at: new Date().toISOString() }),
+      }).catch(() => {});
+    } catch {}
 
     if (!data.session) {
-      return json({ token: '', requiresEmailConfirmation: true, message: 'Conta criada. Confirme seu e-mail e depois faça login.', user: { id: data.user.id, email, name: displayName, role: 'user' } }, 201);
+      return new Response(JSON.stringify({
+        token: '', requiresEmailConfirmation: true,
+        message: 'Conta criada. Confirme seu e-mail e depois faça login.',
+        user: { id: data.user.id, email, name: displayName, role: 'user' },
+      }), { status: 201, headers: { 'Content-Type': 'application/json' } });
     }
 
-    return json({ token: data.session.access_token, user: { id: data.user.id, email, name: displayName, role: 'user' } }, 201);
-  } catch {
-    return json({ error: 'API de autenticação indisponível.', detail: 'Erro desconhecido.' }, 503);
+    return new Response(JSON.stringify({
+      token: data.session.access_token,
+      user: { id: data.user.id, email, name: displayName, role: 'user' },
+    }), { status: 201, headers: { 'Content-Type': 'application/json' } });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: 'API de autenticação indisponível.', detail: error?.message ?? 'Erro desconhecido.' }), {
+      status: 503, headers: { 'Content-Type': 'application/json' },
+    });
   }
 };

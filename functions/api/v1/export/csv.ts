@@ -1,14 +1,17 @@
-import { authenticateRequest, sendAuthError, type AuthOk } from '@/src/server/auth';
+import { authenticateRequest, sendAuthError, type AuthOk } from '@/functions/_auth';
 import { generateCsv } from '@/src/server/scraper/csv';
 import { getAllPlaces, getPlacesByIds } from '@/src/server/db';
-import { json, getBody } from '@/functions/_util';
+import { json, getRequest, getBodyJson } from '@/functions/_util';
 
-export const onRequestPost = async (request: Request): Promise<Response> => {
-  const auth = await authenticateRequest(request.headers.get('authorization'));
-  if (!auth.ok) return json({ error: auth.error }, auth.status);
-  const scope = (auth as AuthOk).context.scope;
+export const onRequestPost = async (context: any): Promise<Response> => {
+  const req = getRequest(context);
+  const auth = await authenticateRequest(context);
+  const err = sendAuthError(json, auth);
+  if (err) return err;
+  const authContext = auth as AuthOk;
+  const scope = authContext.context.scope;
 
-  const body = await getBody(request);
+  const body = await getBodyJson(req);
   const fields = Array.isArray(body?.fields) ? body.fields : undefined;
   const filename = body?.filename ? String(body.filename).trim() : 'mapscrape_export';
   const jobId = body?.jobId || undefined;

@@ -1,26 +1,23 @@
-import { authenticateRequest, sendAuthError, type AuthOk } from '@/src/server/auth';
+import { authenticateRequest, sendAuthError, type AuthOk } from '@/functions/_auth';
 import { listAuditLogs } from '@/src/server/audit-log';
-import { getQuery } from '@/functions/_util';
+import { getRequest, getQuery } from '@/functions/_util';
 
-export const onRequestGet = async (request: Request): Promise<Response> => {
-  const auth = await authenticateRequest(request.headers.get('authorization'));
+export const onRequestGet = async (context: any): Promise<Response> => {
+  const req = getRequest(context);
+  const auth = await authenticateRequest(context);
   if (!auth.ok) {
-    const e = auth as { status: number; error: string };
-    return new Response(JSON.stringify({ error: e.error }), { status: e.status, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify({ error: auth.error }), { status: auth.status, headers: { 'Content-Type': 'application/json' } });
   }
-  const scope = (auth as AuthOk).context.scope;
+  const authContext = auth as AuthOk;
+  const scope = authContext.context.scope;
 
-  const q = getQuery(request.url);
+  const q = getQuery(req.url);
 
   try {
     const { logs } = await listAuditLogs({
-      limit: q.limit ? Number(q.limit) : 500,
-      offset: q.offset ? Number(q.offset) : 0,
-      level: q.level || undefined,
-      category: q.category || undefined,
-      query: q.query || undefined,
-      jobId: q.jobId || undefined,
-      consumerProject: scope,
+      limit: q.limit ? Number(q.limit) : 500, offset: q.offset ? Number(q.offset) : 0,
+      level: q.level || undefined, category: q.category || undefined,
+      query: q.query || undefined, jobId: q.jobId || undefined, consumerProject: scope,
     });
 
     const jsonl = logs.map((log) => JSON.stringify(log)).join('\n') + (logs.length ? '\n' : '');
@@ -34,8 +31,7 @@ export const onRequestGet = async (request: Request): Promise<Response> => {
     });
   } catch {
     return new Response(JSON.stringify({ error: 'logs_export_failed', message: 'Erro ao exportar logs de auditoria.' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      status: 500, headers: { 'Content-Type': 'application/json' },
     });
   }
 };

@@ -1,6 +1,6 @@
-import { authenticateRequest, sendAuthError, type AuthOk } from '@/src/server/auth';
+import { authenticateRequest, sendAuthError, type AuthOk } from '@/functions/_auth';
 import { getPlacesByIds } from '@/src/server/db';
-import { json, getParams } from '@/functions/_util';
+import { json, getRequest, getParams } from '@/functions/_util';
 
 function toLead(p: any) {
   return {
@@ -25,25 +25,21 @@ function toLead(p: any) {
   };
 }
 
-export const onRequestGet = async (
-  request: Request,
-  context: { params?: Record<string, string | string[]> },
-): Promise<Response> => {
-  const auth = await authenticateRequest(request.headers.get('authorization'));
-  if (!auth.ok) return json({ error: auth.error }, auth.status);
-  const scope = (auth as AuthOk).context.scope;
+export const onRequestGet = async (context: any): Promise<Response> => {
+  const req = getRequest(context);
+  const auth = await authenticateRequest(context);
+  const err = sendAuthError(json, auth);
+  if (err) return err;
+  const authContext = auth as AuthOk;
+  const scope = authContext.context.scope;
   const params = getParams(context);
   const id = params.id;
-  if (!id) {
-    return json({ error: 'lead_not_found', message: 'Lead não encontrado.' }, 404);
-  }
+  if (!id) return json({ error: 'lead_not_found', message: 'Lead não encontrado.' }, 404);
 
   try {
     const places = await getPlacesByIds([id], scope);
     const place = places[0];
-    if (!place) {
-      return json({ error: 'lead_not_found', message: 'Lead inexistente ou fora do escopo.' }, 404);
-    }
+    if (!place) return json({ error: 'lead_not_found', message: 'Lead inexistente ou fora do escopo.' }, 404);
     return json({ data: toLead(place) });
   } catch {
     return json({ error: 'lead_query_failed', message: 'Erro ao consultar lead.' }, 500);

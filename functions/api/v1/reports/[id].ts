@@ -1,13 +1,12 @@
-import { authenticateRequest, sendAuthError, type AuthOk } from '@/src/server/auth';
+import { authenticateRequest, sendAuthError, type AuthOk } from '@/functions/_auth';
 import { readRunReport } from '@/src/server/run-report';
-import { json, getParams } from '@/functions/_util';
+import { json, getRequest, getParams } from '@/functions/_util';
 
-export const onRequestGet = async (
-  request: Request,
-  context: { params?: Record<string, string | string[]> },
-): Promise<Response> => {
-  const auth = await authenticateRequest(request.headers.get('authorization'));
-  if (!auth.ok) return json({ error: auth.error }, auth.status);
+export const onRequestGet = async (context: any): Promise<Response> => {
+  const req = getRequest(context);
+  const auth = await authenticateRequest(context);
+  const err = sendAuthError(json, auth);
+  if (err) return err;
 
   const params = getParams(context);
   const id = params.id;

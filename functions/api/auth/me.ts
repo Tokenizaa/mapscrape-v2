@@ -1,42 +1,50 @@
-import { createClient } from '@supabase/supabase-js';
-import { json } from '@/functions/_util';
+export const onRequestGet = async (context: any): Promise<Response> => {
+  const req = context.request;
+  const SUPABASE_URL = context.env?.SUPABASE_URL?.trim() || process.env.SUPABASE_URL?.trim();
+  const SUPABASE_ANON_KEY = context.env?.SUPABASE_ANON_KEY?.trim() || process.env.SUPABASE_ANON_KEY?.trim();
 
-function buildSupabase() {
-  const url = process.env.SUPABASE_URL?.trim();
-  const key = process.env.SUPABASE_ANON_KEY?.trim();
-  if (!url || !key) throw new Error('SUPABASE_URL e SUPABASE_ANON_KEY devem estar definidos.');
-  return createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false, detectSessionInUrl: false } });
-}
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+    return new Response(JSON.stringify({ error: 'authentication_unavailable', message: 'SUPABASE_URL e SUPABASE_ANON_KEY não configurados.' }), {
+      status: 503, headers: { 'Content-Type': 'application/json' },
+    });
+  }
 
-export const onRequestGet = async (request: Request): Promise<Response> => {
-  const authHeader = request.headers.get('authorization');
+  const authHeader = req.headers.get('authorization');
   if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
-    return json({ error: 'Token de autenticação ausente.' }, 401);
+    return new Response(JSON.stringify({ error: 'Token de autenticação ausente.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   }
 
   try {
-    const supabase = buildSupabase();
     const token = authHeader.slice('Bearer '.length).trim();
-    const { data, error } = await supabase.auth.getUser(token);
 
-    if (error || !data.user) {
-      return json({ error: 'Token inválido ou expirado.' }, 401);
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+      method: 'GET',
+      headers: {
+        'apikey': SUPABASE_ANON_KEY,
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || !data?.user) {
+      return new Response(JSON.stringify({ error: 'Token inválido ou expirado.' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     }
 
     const authUser = data.user;
-    let profile: { id?: string; email?: string; display_name?: string; role?: string } | null = null;
-    try {
-      const { data: found } = await supabase.from('users').select('id,email,display_name,role').eq('id', authUser.id).maybeSingle();
-      profile = found;
-    } catch { profile = null; }
-
     const email = authUser.email || '';
-    const metadataName = typeof authUser.user_metadata?.name === 'string' ? authUser.user_metadata.name : '';
-    const name = profile?.display_name || metadataName || email.split('@')[0] || 'Usuário';
-    const role = profile?.id === authUser.id && profile.role === 'admin' ? 'admin' : 'user';
+    const userMetadata = authUser.user_metadata ?? {};
+    const appMetadata = authUser.app_metadata ?? {};
+    const profileName = typeof userMetadata.name === 'string' ? userMetadata.name : '';
+    const name = profileName || email.split('@')[0] || 'Usuário';
+    const role = appMetadata.platform_role === 'platform_admin' ? 'admin' : 'user';
 
-    return json({ user: { id: authUser.id, email: profile?.email || email, name, role } });
-  } catch {
-    return json({ error: 'API de autenticação indisponível.', detail: 'Erro desconhecido.' }, 503);
+    return new Response(JSON.stringify({ user: { id: authUser.id, email, name, role } }), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: 'API de autenticação indisponível.', detail: error?.message ?? 'Erro desconhecido.' }), {
+      status: 503, headers: { 'Content-Type': 'application/json' },
+    });
   }
 };
