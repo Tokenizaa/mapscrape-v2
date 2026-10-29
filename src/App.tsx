@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import { Sidebar, ScreenTab } from './components/Sidebar';
 import { SearchScreen } from './components/SearchScreen';
 import { ResultsScreen } from './components/ResultsScreen';
@@ -614,6 +615,7 @@ export default function App() {
           <p>MapScrape &mdash; Extração direta e transparente de fichas públicas do Google Maps com Puppeteer e SQLite.</p>
         </footer>
       </div>
+      <SpeedInsights />
     </div>
   );
 }
