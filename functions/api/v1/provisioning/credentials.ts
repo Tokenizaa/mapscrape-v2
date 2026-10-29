@@ -1,12 +1,11 @@
 import { randomBytes, randomUUID } from 'node:crypto';
 import { authenticateProvisioning, hashApiKey } from '@/functions/_auth';
 import { createApiCredential, listApiCredentials } from '@/src/server/db';
-import { json, getRequest, getBodyJson } from '@/functions/_util';
+import { json, getBodyJson } from '@/functions/_util';
 
 export const onRequestGet = async (context: any): Promise<Response> => {
-  const req = getRequest(context);
   const auth = await authenticateProvisioning(context);
-  if (!auth.ok) return json({ error: auth.error }, auth.status);
+  if (auth.ok === false) return json({ error: auth.error }, auth.status);
 
   try {
     const credentials = await listApiCredentials();
@@ -22,11 +21,8 @@ export const onRequestGet = async (context: any): Promise<Response> => {
 };
 
 export const onRequestPost = async (context: any): Promise<Response> => {
-  const req = getRequest(context);
-  const expected = context.env?.MAPSCRAPE_PROVISIONING_TOKEN?.trim() || process.env.MAPSCRAPE_PROVISIONING_TOKEN?.trim();
-  if (!expected) return json({ error: 'provisioning_unavailable' }, 503);
-  const token = getProvisioningToken(req);
-  if (!token || String(token).trim() !== expected) return json({ error: 'provisioning_unauthorized' }, 401);
+  const auth = await authenticateProvisioning(context);
+  if (auth.ok === false) return json({ error: auth.error }, auth.status);
 
   const body = await getBodyJson(req);
   const consumerName = body?.consumerName;
