@@ -9,6 +9,7 @@ import {
   updateJobProgress,
   getJob,
   placeExistsByUrl,
+  pagesRuntimeEnv,
 } from '../db';
 
 interface ActiveJobHandle {
@@ -24,16 +25,20 @@ async function safeAudit(input: Parameters<typeof writeAuditLog>[0]): Promise<vo
 
 /**
  * Launch a browser instance for scraping.
+ * On Cloudflare Pages / serverless, connects to a remote Chromium via
+ * BROWSER_WS_ENDPOINT (Browserless, etc.). Locally, launches Puppeteer.
  */
-async function connectScraperBrowser(): Promise<Browser> {
-  if (process.env.VERCEL) {
-    const { getBrowserWSEndpoint, getBrowserEndpointDiagnostic } = await import('../browserless-endpoint');
-    const endpoint = getBrowserWSEndpoint();
+async function connectScraperBrowser(browserWsEndpoint?: string): Promise<Browser> {
+  const processEnv = typeof process !== 'undefined' ? process.env : {};
+  const wsEndpoint = String(
+    browserWsEndpoint ?? pagesRuntimeEnv.BROWSER_WS_ENDPOINT ?? processEnv.BROWSER_WS_ENDPOINT ?? ''
+  ).trim();
+  if (wsEndpoint) {
     try {
-      return await puppeteer.connect({ browserWSEndpoint: endpoint, protocolTimeout: 60000 });
+      return await puppeteer.connect({ browserWSEndpoint: wsEndpoint, protocolTimeout: 60000 });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'falha desconhecida';
-      throw new Error(`Falha ao conectar ao Chromium remoto. Diagnóstico seguro do endpoint: ${JSON.stringify(getBrowserEndpointDiagnostic(endpoint))}. Erro Puppeteer: ${message}`);
+      throw new Error(`Falha ao conectar ao Chromium remoto (${wsEndpoint}). Erro Puppeteer: ${message}`);
     }
   }
   return puppeteer.launch({
@@ -111,9 +116,10 @@ async function runScraperJob(
   segment: string,
   location: string,
   limit: number,
-  onProgress: (job: Partial<ScrapeJob>) => void
+  onProgress: (job: Partial<ScrapeJob>) => void,
+  browserWsEndpoint?: string
 ): Promise<void> {
-  const browser = await connectScraperBrowser();
+  const browser = await connectScraperBrowser(browserWsEndpoint);
   const page = await browser.newPage();
 
   // Register the job as active so stopScrapeJob() can cancel it.
@@ -153,12 +159,29 @@ async function runScraperJob(
       // Non-fatal: proceed without scope-based dedupe.
     }
 
-    // 1. Navigate to the Google Maps search results page.
-    await page.goto(
-      'https://www.google.com/maps/search/' +
-        encodeURIComponent(segment + ' ' + location),
-      { waitUntil: 'networkidle0', timeout: 60000 }
-    );
+    // 1. Connect to remote browser and navigate to Google Maps.
+    let navigationError: string | null = null;
+    try {
+      await page.goto(
+        'https://www.google.com/maps/search/' +
+          encodeURIComponent(segment + ' ' + location),
+        { waitUntil: 'networkidle0', timeout: 60000 }
+      );
+    } catch (navError) {
+      navigationError = navError instanceof Error ? navError.message : String(navError);
+    }
+
+    if (navigationError) {
+      reportProgress({
+        status: 'failed',
+        status_message: `Falha ao conectar ao navegador: ${navigationError} (endpoint: ${browserWsEndpoint ?? '<vazio>'})`,
+        total_errors: totalErrors + 1,
+        current_step: 'Falha na conexão',
+      });
+      await browser.close().catch(() => {});
+      activeJobs.delete(jobId);
+      return;
+    }
 
     // Wait for the results list to appear.
     await page

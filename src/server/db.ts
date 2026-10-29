@@ -8,6 +8,9 @@ export function configureDatabaseEnv(env: Record<string, unknown> | undefined): 
   pagesRuntimeEnv = env ?? {};
 }
 
+/** Export the injected Pages runtime env for other modules (e.g. scraper). */
+export { pagesRuntimeEnv };
+
 export function getSupabase(): SupabaseClient {
   if (!supabase) {
     const processEnv = typeof process !== 'undefined' ? process.env : {};

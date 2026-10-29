@@ -350,7 +350,7 @@ export default function App() {
 
       const contentType = res.headers.get('content-type') || '';
       const responseText = await res.text();
-      let data: { error?: string; jobId?: string; message?: string } | null = null;
+      let data: { data?: { jobId?: string }; jobId?: string; error?: string; message?: string } | null = null;
 
       if (contentType.includes('application/json')) {
         try {
@@ -369,14 +369,15 @@ export default function App() {
         return;
       }
 
-      if (!data || typeof data.jobId !== 'string' || !data.jobId) {
+      const jobId = data?.data?.jobId ?? data?.jobId;
+      if (!jobId || typeof jobId !== 'string') {
         alert(`Resposta inválida do servidor (HTTP ${res.status}). Esperava JSON com jobId; Content-Type: ${contentType || 'ausente'}.`);
         return;
       }
 
       setIsScraping(true);
-      setSelectedJobId(data.jobId);
-      subscribeToJobStream(data.jobId);
+      setSelectedJobId(jobId);
+      subscribeToJobStream(jobId);
       loadHistory();
     } catch (err: any) {
       alert(`Falha na comunicação com o servidor: ${err.message}`);
