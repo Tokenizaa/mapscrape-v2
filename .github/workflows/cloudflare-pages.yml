@@ -30,7 +30,7 @@ jobs:
         run: npm run build
 
       - name: Remove generated Wrangler config from build output
-        run: rm -f dist/wrangler.json
+        run: rm -f dist/wrangler.json .wrangler/deploy/config.json
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
