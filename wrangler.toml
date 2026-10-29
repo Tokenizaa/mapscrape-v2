@@ -1,11 +1,10 @@
 name = "mapscrape"
 compatibility_date = "2026-10-29"
 compatibility_flags = ["nodejs_compat"]
+pages_build_output_dir = "dist"
 
 [observability]
 enabled = true
-
-pages_build_output_dir = "dist"
 
 [vars]
 MAPSCRAPE_API_VERSION = "v1"
@@ -13,3 +12,4 @@ MAPSCRAPE_API_VERSION = "v1"
 [[queues.producers]]
 binding = "SCRAPE_QUEUE"
 queue = "scrape-queue"
+
