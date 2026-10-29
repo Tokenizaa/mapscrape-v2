@@ -17,6 +17,9 @@ export default {
         continue;
       }
       try {
+        if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+          throw new Error('SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY precisam estar configurados no Worker consumidor.');
+        }
         const job = await getJob(jobId);
         if (!job) { console.error('Scrape queue job not found: ' + jobId); message.ack(); continue; }
         // Queue delivery is at-least-once. Do not rerun jobs in a terminal state.
