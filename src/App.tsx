@@ -41,21 +41,7 @@ try {
   console.error('Supabase client initialization error:', e);
 }
 
-// Chamadas internas da API v1. Preferem a chave de consumidor conectada (quando houver);
-// caso contrário, usam o token de sessão da conta (Supabase). Ambas são aceitas pelas rotas v1.
-function getAuthToken(): string | null {
-  return (
-    window.sessionStorage.getItem('mapscrape_api_key') ||
-    window.sessionStorage.getItem('mapscrape_session_token')
-  );
-}
-
-async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  const token = getAuthToken();
-  const headers = new Headers(init.headers || {});
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-  return fetch(input, { ...init, headers, cache: init.cache || 'no-store' });
-}
+import { apiFetch, getAuthToken } from './utils/api.ts';
 
 export default function App() {
   const [currentTab, setCurrentTab] = useState<ScreenTab>('dashboard');
@@ -76,7 +62,7 @@ export default function App() {
     let active = true;
     
     // Restore session from Supabase
-    supabase.auth.getSession().then(async ({ data, error }) => {
+    supabase.auth.getSession().then(async ({ data, error }: { data: any; error: any }) => {
       if (!active) return;
       
       if (data?.session?.user?.id) {
@@ -249,7 +235,7 @@ export default function App() {
   }, []);
 
   // Load places for table
-  const loadPlaces = useCallback(async () => {
+  const loadPlaces = useCallback(async (jobIdOverride?: string) => {
     setIsLoadingPlaces(true);
     try {
       const offset = (currentPage - 1) * pageSize;
@@ -260,7 +246,8 @@ export default function App() {
         sortOrder,
       });
 
-      if (selectedJobId) params.append('jobId', selectedJobId);
+      const effectiveJobId = jobIdOverride || selectedJobId;
+      if (effectiveJobId) params.append('jobId', effectiveJobId);
       if (searchQuery.trim()) params.append('query', searchQuery.trim());
       if (categoryFilter) params.append('category', categoryFilter);
 
@@ -301,7 +288,23 @@ export default function App() {
         });
         if (!res.ok) {
           const body = await res.text();
-          throw new Error(`HTTP ${res.status}: ${body.slice(0, 160)}`);
+          const message = `HTTP ${res.status}: ${body.slice(0, 160)}`;
+          if (res.status === 404 || res.status === 401 || res.status === 403) {
+            if (progressPollRef.current) clearInterval(progressPollRef.current);
+            progressPollRef.current = null;
+            setIsScraping(false);
+            setCurrentJob((current) => current ? {
+              ...current, status: 'failed',
+              status_message: res.status === 404
+                ? 'A API não encontrou esta coleta. Atualize o histórico e tente novamente.'
+                : 'Sua sessão expirou ou não tem permissão para consultar esta coleta.',
+              current_step: 'Consulta interrompida',
+            } : current);
+            console.error('Consulta de progresso encerrada:', message);
+            await loadHistory();
+            return;
+          }
+          throw new Error(message);
         }
 
         const body = await res.json();
@@ -310,7 +313,7 @@ export default function App() {
         setCurrentJob(updatedJob);
         setIsScraping(updatedJob.status === 'running');
         await loadHistory();
-        await loadPlaces();
+        await loadPlaces(jobId);
 
         if (updatedJob.status !== 'running') {
           if (progressPollRef.current) clearInterval(progressPollRef.current);
@@ -331,6 +334,17 @@ export default function App() {
     void pollStatus();
     progressPollRef.current = setInterval(() => { void pollStatus(); }, 2000);
   }, [loadHistory, loadPlaces]);
+
+  // Restore an in-progress job after a reload so its persisted cursor can resume.
+  useEffect(() => {
+    if (currentJob) return;
+    const resumableJob = jobs.find((job) => job.status === 'running' && Boolean(job.phase));
+    if (!resumableJob) return;
+    setCurrentJob(resumableJob);
+    setSelectedJobId(resumableJob.id);
+    setIsScraping(true);
+    subscribeToJobStream(resumableJob.id);
+  }, [jobs, currentJob, subscribeToJobStream]);
 
   // Clean up progress polling on unmount
   useEffect(() => {
@@ -375,6 +389,10 @@ export default function App() {
         return;
       }
 
+      setPlaces([]);
+      setTotalPlaces(0);
+      setCurrentPage(1);
+      setSelectedPlaceIds(new Set());
       setIsScraping(true);
       setSelectedJobId(jobId);
       subscribeToJobStream(jobId);
@@ -385,11 +403,28 @@ export default function App() {
   };
 
   const handleStopScrape = async () => {
-    if (!currentJob) return;
+    if (!currentJob || currentJob.status !== 'running') return;
     try {
-      await apiFetch(`/api/v1/jobs/${currentJob.id}/stop`, { method: 'POST' });
+      const response = await apiFetch(`/api/v1/jobs/${encodeURIComponent(currentJob.id)}/stop`, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok || body?.success !== true) {
+        throw new Error(body?.error || `Falha ao solicitar interrupção (HTTP ${response.status}).`);
+      }
+
+      // Keep polling until the worker confirms it has actually stopped.
+      setCurrentJob((job) => job && job.id === currentJob.id ? {
+        ...job,
+        status_message: 'Pedido recebido. Encerrando a coleta com segurança...',
+        current_step: 'Interrompendo...',
+      } : job);
+      await loadHistory();
     } catch (err: any) {
       console.error('Stop error:', err);
+      alert(err instanceof Error ? err.message : 'Não foi possível interromper a coleta.');
     }
   };
 
@@ -565,6 +600,8 @@ export default function App() {
               onGoToResults={() => setCurrentTab('results')}
               initialProjectName={preselectedProject}
               initialCategoryName={preselectedCategory}
+              places={places}
+              totalPlaces={totalPlaces}
             />
           )}
 
@@ -602,6 +639,8 @@ export default function App() {
               jobs={jobs}
               selectedJobId={selectedJobId}
               onSelectJobId={setSelectedJobId}
+              searchQuery={searchQuery}
+              selectedCategory={categoryFilter}
             />
           )}
 

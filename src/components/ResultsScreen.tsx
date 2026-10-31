@@ -81,6 +81,7 @@ const detailFields: { key: keyof PlaceRecord; label: string }[] = [
   { key: 'next_open_day', label: 'Próximo dia de abertura' },
   { key: 'next_open_time', label: 'Próximo horário de abertura' },
   { key: 'visible_photos_count', label: 'Total de fotos informado' },
+  { key: 'neighborhood', label: 'Bairro' },
   { key: 'postal_code', label: 'CEP / código postal' },
   { key: 'country', label: 'País' },
   { key: 'city', label: 'Cidade' },
@@ -142,7 +143,14 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     })
       .then((response) => { if (!response.ok) throw new Error('Falha ao carregar categorias'); return response.json(); })
-      .then((data) => { if (!cancelled) setCategories(Array.isArray(data.data) ? data.data : data.categories ?? []); })
+      .then((data) => {
+        if (!cancelled) {
+          const list: string[] = Array.isArray(data.placeCategories)
+            ? data.placeCategories.filter((name: unknown): name is string => typeof name === 'string' && Boolean(name.trim()))
+            : [];
+          setCategories(Array.from(new Set(list)));
+        }
+      })
       .catch(() => { if (!cancelled) setCategories([]); });
     return () => { cancelled = true; };
   }, []);
@@ -368,7 +376,14 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
             className="w-full rounded-xl border border-zinc-750 bg-zinc-950 px-3.5 py-3 text-sm font-medium text-zinc-200 outline-none focus:border-emerald-500"
           >
             <option value="">Todas as categorias ({categories.length})</option>
-            {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+            {categories.map((category, index) => {
+              const catName = typeof category === 'string' ? category : (category as any)?.name || `cat-${index}`;
+              return (
+                <option key={catName} value={catName}>
+                  {catName}
+                </option>
+              );
+            })}
           </select>
         </div>
 
@@ -673,21 +688,18 @@ export const ResultsScreen: React.FC<ResultsScreenProps> = ({
                           title="Abrir ficha do Google Maps"
                           className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
                         >
-                          <ExternalLink className="h-4 w-4" />{place.plus_code && (
-                        <span className="text-xs sm:text-sm text-zinc-400 font-medium">
-                          {place.plus_code}
-                        </span>
-                      )}{place.booking_url && (
+                          <ExternalLink className="h-4 w-4" />
+                        </a>
+                      )}
+                      {place.booking_url && (
                         <a
                           href={place.booking_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="rounded-lg p-2 text-emerald-400 hover:bg-emerald-800 hover:text-zinc-100 transition-colors"
+                          className="flex items-center gap-1 text-xs rounded-lg px-2.5 py-1.5 text-emerald-400 hover:bg-emerald-950/60 hover:text-emerald-300 border border-emerald-500/30 transition-colors"
                         >
                           <span>Agendar</span>
                           <ExternalLink className="w-3.5 h-3.5" />
-                        </a>
-                      )}
                         </a>
                       )}
                       <button

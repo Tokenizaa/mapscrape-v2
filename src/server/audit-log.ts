@@ -130,8 +130,8 @@ export async function listAuditLogs(options: {
 
   if (countError) throw countError;
 
-  const requestedLimit = Number.isFinite(options.limit) ? Math.max(1, Math.min(500, Math.floor(options.limit))) : 100;
-  const requestedOffset = Number.isFinite(options.offset) ? Math.max(0, Math.floor(options.offset)) : 0;
+  const requestedLimit = typeof options.limit === 'number' && Number.isFinite(options.limit) ? Math.max(1, Math.min(500, Math.floor(options.limit))) : 100;
+  const requestedOffset = typeof options.offset === 'number' && Number.isFinite(options.offset) ? Math.max(0, Math.floor(options.offset)) : 0;
   const limit = requestedLimit;
   const offset = requestedOffset;
 

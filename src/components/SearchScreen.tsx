@@ -8,12 +8,12 @@ import {
   ArrowRight,
   Building2,
   MapPin,
-  Hash,
   Sparkles,
   Compass,
 } from 'lucide-react';
-import { ScrapeJob } from '../shared/types';
+import { PlaceRecord, ScrapeJob } from '../shared/types';
 import { BRAZILIAN_STATES, POPULAR_CATEGORIES } from '../shared/brazilLocations';
+import { calculateScrapeProgressPercent } from '../shared/scrape-progress';
 
 // Requisições internas usam a sessão da conta; API keys ficam reservadas a integrações externas.
 async function accountFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
@@ -35,6 +35,8 @@ interface SearchScreenProps {
   onGoToResults: () => void;
   initialProjectName?: string;
   initialCategoryName?: string;
+  places: PlaceRecord[];
+  totalPlaces: number;
 }
 
 export const SearchScreen: React.FC<SearchScreenProps> = ({
@@ -46,12 +48,14 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
   onGoToResults,
   initialProjectName,
   initialCategoryName,
+  places,
+  totalPlaces,
 }) => {
   const [segment, setSegment] = useState(initialCategoryName || '');
   const [projectName, setProjectName] = useState(initialProjectName || '');
   const [categoryName, setCategoryName] = useState(initialCategoryName || '');
   const [projects, setProjects] = useState<Array<{id:string;name:string}>>([]);
-  const [categories, setCategories] = useState<Array<{id:string;name:string}>>([]);
+  const [categories, setCategories] = useState<Array<{id:string;name:string;project_id?:string}>>([]);
   const [catalogMessage, setCatalogMessage] = useState('');
   const [locationMode, setLocationMode] = useState<'brazil' | 'custom'>('brazil');
 
@@ -101,8 +105,18 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
       setProjects(
         Array.isArray(projectData.data) ? projectData.data : projectData.projects ?? [],
       );
+      // The API's `data` field contains saved categories linked to projects.
+      // `categories` is a separate legacy list of extracted Maps categories (strings),
+      // so it must not replace the project-linked catalog.
+      const rawCategories = Array.isArray(categoryData.data) ? categoryData.data : [];
       setCategories(
-        Array.isArray(categoryData.data) ? categoryData.data : categoryData.categories ?? [],
+        rawCategories
+          .filter((category: any) => category && typeof category === 'object' && category.name)
+          .map((category: any, i: number) => ({
+            id: String(category.id || `cat_${i}`),
+            name: String(category.name),
+            project_id: String(category.project_id || category.projectId || ''),
+          }))
       );
       setCatalogMessage('');
     }).catch((error) => {
@@ -111,53 +125,14 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
     return () => { active = false; };
   }, [apiReady]);
 
-  const createProject = async () => {
-    const name = projectName.trim();
-    if (!name) {
-      setCatalogMessage('Digite o nome do projeto antes de clicar em Criar projeto.');
-      return;
-    }
-    if (!apiReady) {
-      setCatalogMessage('Para salvar o projeto, conecte primeiro uma chave em “Conectar à API do MapScrape”, no início da página.');
-      return;
-    }
-    try {
-      const response = await accountFetch('/api/v1/projects', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
+  useEffect(() => {
+    if (isScraping && currentJob) {
+      const frame = window.requestAnimationFrame(() => {
+        progressRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      const project = data.data ?? data.project;
-      setProjects((current) => current.some((item) => item.id === project.id) ? current : [...current, project].sort((a,b) => a.name.localeCompare(b.name, 'pt-BR')));
-      setProjectName(project.name);
-      setCatalogMessage(`Projeto “${project.name}” pronto para uso.`);
-    } catch (error) { setCatalogMessage(error instanceof Error ? error.message : 'Falha ao criar projeto.'); }
-  };
-
-  const createCategory = async () => {
-    const name = categoryName.trim();
-    if (!name) {
-      setCatalogMessage('Digite o nome da categoria antes de clicar em Criar categoria.');
-      return;
+      return () => window.cancelAnimationFrame(frame);
     }
-    if (!apiReady) {
-      setCatalogMessage('Para salvar a categoria, conecte primeiro uma chave em “Conectar à API do MapScrape”, no início da página.');
-      return;
-    }
-    try {
-      const response = await accountFetch('/api/v1/categories', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }),
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
-      const category = data.data ?? data.category;
-      setCategories((current) => current.some((item) => item.id === category.id) ? current : [...current, category].sort((a,b) => a.name.localeCompare(b.name, 'pt-BR')));
-      setCategoryName(category.name);
-      if (!segment.trim()) setSegment(category.name);
-      setCatalogMessage(`Categoria “${category.name}” pronta para uso.`);
-    } catch (error) { setCatalogMessage(error instanceof Error ? error.message : 'Falha ao criar categoria.'); }
-  };
-
+  }, [isScraping, currentJob?.id]);
 
   // Find current state
   const currentState = BRAZILIAN_STATES.find((s) => s.uf === selectedUf) || BRAZILIAN_STATES[0];
@@ -189,6 +164,57 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
     return parts.join(', ');
   };
 
+  const createProject = async () => {
+    const name = projectName.trim();
+    if (!name) return;
+    try {
+      const response = await accountFetch('/api/v1/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Não foi possível criar o projeto.');
+      const project = payload.data || payload.project;
+      if (project) {
+        setProjects((current) => [project, ...current.filter((item) => item.id !== project.id)]);
+        setProjectName(project.name);
+        setCatalogMessage('Projeto criado e selecionado.');
+      }
+    } catch (error) {
+      setCatalogMessage(error instanceof Error ? error.message : 'Falha ao criar projeto.');
+    }
+  };
+
+  const createCategory = async () => {
+    const name = categoryName.trim();
+    const project = projects.find((item) => item.name.trim().toLocaleLowerCase('pt-BR') === projectName.trim().toLocaleLowerCase('pt-BR'));
+    if (!name || !projectName.trim()) return;
+    try {
+      const response = await accountFetch('/api/v1/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, projectId: project?.id, projectName: projectName.trim() }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || 'Não foi possível criar a categoria.');
+      const category = payload.data || payload.category;
+      const resolvedProject = payload.project || project;
+      if (resolvedProject) {
+        setProjects((current) => [resolvedProject, ...current.filter((item) => item.id !== resolvedProject.id)]);
+        setProjectName(resolvedProject.name);
+      }
+      if (category) {
+        setCategories((current) => [category, ...current.filter((item) => item.id !== category.id)]);
+        setCategoryName(category.name);
+        setSegment(category.name);
+        setCatalogMessage('Categoria criada e selecionada.');
+      }
+    } catch (error) {
+      setCatalogMessage(error instanceof Error ? error.message : 'Falha ao criar categoria.');
+    }
+  };
+
   const handleStart = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!segment.trim()) {
@@ -208,13 +234,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
   const limitPresets = [10, 20, 50, 100];
 
-  const calculateProgressPercent = (): number => {
-    if (!currentJob) return 0;
-    if (currentJob.status === 'completed') return 100;
-    const target = currentJob.limit_requested || 20;
-    const current = (currentJob.total_collected || 0) + (currentJob.total_duplicates || 0);
-    return Math.min(Math.round((current / target) * 100), 99);
-  };
+  const calculateProgressPercent = (): number => calculateScrapeProgressPercent(currentJob);
 
   return (
     <div className="max-w-5xl mx-auto py-2 sm:py-6 space-y-8">
@@ -228,7 +248,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
           Pesquisar no Google Maps
         </h1>
         <p className="mt-3 text-base sm:text-lg text-zinc-400 max-w-3xl leading-relaxed">
-          Selecione a categoria e a localização desejada.
+          Defina o projeto, o segmento, a localização e quantos novos estabelecimentos deseja cadastrar.
         </p>
       </div>
 
@@ -236,25 +256,45 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
       <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl shadow-xl shadow-black/40 p-6 sm:p-9 space-y-8 backdrop-blur-sm">
         <form onSubmit={handleStart} className="space-y-8">
           
-          <div className="space-y-3">
-            <label htmlFor="project-name" className="block text-base sm:text-lg font-semibold text-zinc-100">1. Projeto <span className="text-emerald-400">*</span></label>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input id="project-name" list="mapscrape-projects" value={projectName} onChange={(e) => setProjectName(e.target.value)} maxLength={120} placeholder="Selecione ou digite um nome de projeto" className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm sm:text-base text-zinc-100 outline-none focus:border-emerald-500" />
-              <datalist id="mapscrape-projects">{projects.map((project) => <option key={project.id} value={project.name} />)}</datalist>
-              <button type="button" onClick={() => void createProject()} className="rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar projeto</button>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="min-w-0 space-y-3">
+              <label htmlFor="project-name" className="block text-base sm:text-lg font-semibold text-zinc-100">1. Projeto <span className="text-emerald-400">*</span></label>
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] gap-2">
+                <select
+                  aria-label="Selecionar projeto existente"
+                  value={projects.some((project) => project.name === projectName) ? projectName : ''}
+                  onChange={(e) => { setProjectName(e.target.value); setCategoryName(''); }}
+                  disabled={isScraping || projects.length === 0}
+                  className="min-w-0 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm text-zinc-100 outline-none focus:border-emerald-500 disabled:opacity-50"
+                >
+                  <option value="">Selecionar projeto existente</option>
+                  {projects.map((project) => <option key={project.id} value={project.name}>{project.name}</option>)}
+                </select>
+                <input id="project-name" value={projectName} onChange={(e) => { setProjectName(e.target.value); setCategoryName(''); }} maxLength={120} placeholder="Ou digite um novo projeto" disabled={isScraping} className="min-w-0 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm text-zinc-100 outline-none focus:border-emerald-500 disabled:opacity-50" />
+                <button type="button" onClick={() => void createProject()} disabled={isScraping || !projectName.trim()} className="rounded-xl border border-emerald-500/40 px-3 py-3 text-xs sm:text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40">Criar projeto</button>
+              </div>
+              <p className="text-xs text-zinc-500">Projetos existentes são reutilizados; você também pode cadastrar um novo.</p>
             </div>
-            <p className="text-xs text-zinc-500">Projetos existentes são reutilizados; um nome novo é cadastrado automaticamente ao criar ou iniciar a coleta.</p>
-          </div>
 
-          <div className="space-y-3">
-            <label htmlFor="category-name" className="block text-base sm:text-lg font-semibold text-zinc-100">2. Categoria da pesquisa <span className="text-emerald-400">*</span></label>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input id="category-name" list="mapscrape-categories" value={categoryName} onChange={(e) => { setCategoryName(e.target.value); if (!segment.trim()) setSegment(e.target.value); }} maxLength={120} placeholder="Selecione ou digite uma categoria" className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-950 px-4 py-3 text-sm sm:text-base text-zinc-100 outline-none focus:border-emerald-500" />
-              <datalist id="mapscrape-categories">{categories.map((category) => <option key={category.id} value={category.name} />)}</datalist>
-              <button type="button" onClick={() => void createCategory()} className="rounded-xl border border-emerald-500/40 px-4 py-3 text-sm font-semibold text-emerald-300 disabled:opacity-40">Criar categoria</button>
+            <div className="min-w-0 space-y-3">
+              <label htmlFor="category-name" className="block text-base sm:text-lg font-semibold text-zinc-100">2. Categoria da pesquisa <span className="text-emerald-400">*</span></label>
+              <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)_auto] gap-2">
+                <select
+                  aria-label="Selecionar categoria do projeto"
+                  value={categories.some((category) => category.project_id === projects.find((project) => project.name.trim().toLocaleLowerCase('pt-BR') === projectName.trim().toLocaleLowerCase('pt-BR'))?.id && category.name === categoryName) ? categoryName : ''}
+                  onChange={(e) => { setCategoryName(e.target.value); if (e.target.value) setSegment(e.target.value); }}
+                  disabled={isScraping || !projects.some((project) => project.name.trim().toLocaleLowerCase('pt-BR') === projectName.trim().toLocaleLowerCase('pt-BR'))}
+                  className="min-w-0 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm text-zinc-100 outline-none focus:border-emerald-500 disabled:opacity-50"
+                >
+                  <option value="">Selecionar categoria existente</option>
+                  {categories.filter((category) => category.project_id === projects.find((project) => project.name.trim().toLocaleLowerCase('pt-BR') === projectName.trim().toLocaleLowerCase('pt-BR'))?.id).map((category) => <option key={category.id} value={category.name}>{category.name}</option>)}
+                </select>
+                <input id="category-name" value={categoryName} onChange={(e) => { setCategoryName(e.target.value); if (!segment.trim()) setSegment(e.target.value); }} maxLength={120} placeholder="Ou digite uma nova categoria" disabled={isScraping || !projectName.trim()} className="min-w-0 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-3 text-sm text-zinc-100 outline-none focus:border-emerald-500 disabled:opacity-50" />
+                <button type="button" onClick={() => void createCategory()} disabled={isScraping || !categoryName.trim() || !projectName.trim()} className="rounded-xl border border-emerald-500/40 px-3 py-3 text-xs sm:text-sm font-semibold text-emerald-300 hover:bg-emerald-500/10 disabled:opacity-40">Criar categoria</button>
+              </div>
+              <p className="text-xs text-zinc-500">A categoria é vinculada ao projeto selecionado.</p>
+              {catalogMessage && <p role="status" aria-live="polite" className="text-sm text-amber-300">{catalogMessage}</p>}
             </div>
-            <p className="text-xs text-zinc-500">A categoria é salva separadamente da categoria extraída de cada ficha do Google Maps.</p>
-            {catalogMessage && <p role="status" aria-live="polite" className="text-sm text-amber-300">{catalogMessage}</p>}
           </div>
 
           {/* Seção 1: Segmento do Estabelecimento */}
@@ -340,7 +380,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="block text-base sm:text-lg font-semibold text-zinc-100">
-                2. Localização <span className="text-emerald-400">*</span>
+                4. Localização <span className="text-emerald-400">*</span>
               </label>
 
               {/* Mode Switcher: Brazil Selector vs Custom */}
@@ -397,19 +437,18 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                   <label htmlFor="city-select" className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
                     Cidade
                   </label>
-                  <select
+                  <input
                     id="city-select"
+                    list="city-options"
                     value={selectedCity}
                     onChange={(e) => setSelectedCity(e.target.value)}
                     disabled={isScraping}
+                    placeholder="Digite ou selecione a cidade"
                     className="w-full py-3.5 px-3.5 bg-zinc-950 border border-zinc-750 rounded-xl text-zinc-100 text-sm sm:text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all"
-                  >
-                    {currentState.cities.map((city) => (
-                      <option key={city} value={city} className="bg-zinc-900 text-zinc-100">
-                        {city}
-                      </option>
-                    ))}
-                  </select>
+                  />
+                  <datalist id="city-options">
+                    {currentState.cities.map((city) => <option key={city} value={city} />)}
+                  </datalist>
                 </div>
 
                 {/* Bairro ou Região (Opcional) */}
@@ -456,52 +495,33 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             </div>
           </div>
 
-          {/* Seção 3: Limite de Resultados Desejado */}
+          {/* Etapa 5: Limite total da pesquisa */}
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label htmlFor="limit" className="block text-base sm:text-lg font-semibold text-zinc-100">
-                3. Quantidade de Resultados Desejada
+            <div>
+              <label className="block text-base sm:text-lg font-semibold text-zinc-100">
+                5. Meta de novos estabelecimentos
               </label>
-              <span className="text-xs sm:text-sm text-zinc-500">
-                Recomendado: 10 a 50 estabelecimentos por consulta
-              </span>
+              <p className="mt-1 text-sm text-zinc-500">
+                A meta é de novos cadastros. Fichas antigas são ignoradas; a pesquisa continua até atingir a meta ou esgotar os resultados.
+              </p>
             </div>
-
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative w-36">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-zinc-500">
-                  <Hash className="w-4 h-4" />
-                </div>
-                <input
-                  id="limit"
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={limit}
-                  onChange={(e) => setLimit(Math.max(1, Math.min(100, Number(e.target.value))))}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {limitPresets.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setLimit(preset)}
                   disabled={isScraping}
-                  className="w-full pl-10 pr-3 py-3 bg-zinc-950 border border-zinc-750 rounded-xl text-zinc-100 text-base font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500"
-                />
-              </div>
-
-              {/* Presets */}
-              <div className="flex items-center gap-2">
-                {limitPresets.map((preset) => (
-                  <button
-                    key={preset}
-                    type="button"
-                    onClick={() => setLimit(preset)}
-                    disabled={isScraping}
-                    className={`px-4 py-2.5 text-sm font-semibold rounded-xl border transition-all cursor-pointer ${
-                      limit === preset
-                        ? 'bg-zinc-800 text-zinc-100 border-zinc-650 shadow-xs'
-                        : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-850 hover:text-zinc-200'
-                    }`}
-                  >
-                    {preset} fichas
-                  </button>
-                ))}
-              </div>
+                  aria-pressed={limit === preset}
+                  className={`px-3 py-3.5 text-sm sm:text-base font-semibold rounded-xl border transition-all cursor-pointer ${
+                    limit === preset
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/50'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-850 hover:text-zinc-200'
+                  }`}
+                >
+                  {preset} novos
+                </button>
+              ))}
             </div>
           </div>
 
@@ -544,7 +564,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
       {/* Real-time Progress & Metrics Panel with Large Numbers */}
       {currentJob && (
-        <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl shadow-xl shadow-black/40 p-6 sm:p-9 space-y-6 backdrop-blur-sm">
+        <div ref={progressRef} className="scroll-mt-6 bg-zinc-900/90 border border-zinc-800 rounded-2xl shadow-xl shadow-black/40 p-6 sm:p-9 space-y-6 backdrop-blur-sm">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-zinc-800 pb-4">
             <div className="flex items-center gap-3">
               <h2 className="text-lg sm:text-xl font-bold text-zinc-100">Progresso da Coleta</h2>
@@ -575,7 +595,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
                 onClick={onGoToResults}
                 className="text-sm font-semibold text-zinc-200 hover:text-white bg-zinc-800 hover:bg-zinc-700 flex items-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-700 transition-all cursor-pointer"
               >
-                <span>Ver {currentJob.total_collected} resultados salvos</span>
+                <span>Ver {currentJob.total_collected} novos salvos</span>
                 <ArrowRight className="w-4 h-4 text-emerald-400" />
               </button>
             )}
@@ -583,27 +603,47 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
 
           {/* Progress Bar & Percentage */}
           <div>
-            <div className="flex justify-between items-baseline text-sm sm:text-base text-zinc-400 mb-2 font-medium">
-              <span className="truncate pr-4 text-zinc-200 font-medium">
-                {currentJob.current_step || 'Aguardando inicialização do navegador...'}
-              </span>
-              <span className="font-mono text-xl font-bold text-emerald-400 shrink-0 tabular-nums">
-                {calculateProgressPercent()}%
+            <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2 mb-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500 mb-1">Etapa atual</p>
+                <p className="truncate text-sm sm:text-base text-zinc-100 font-medium">
+                  {currentJob.current_step || 'Aguardando inicialização do navegador...'}
+                </p>
+              </div>
+              <span className="font-mono text-2xl font-bold text-emerald-400 shrink-0 tabular-nums">
+                {calculateProgressPercent()}<span className="text-sm text-zinc-500">%</span>
               </span>
             </div>
-            <div className="w-full bg-zinc-950 h-3 rounded-full overflow-hidden border border-zinc-800">
+            <div
+              role="progressbar"
+              aria-label="Progresso por etapa da coleta"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={calculateProgressPercent()}
+              className="relative w-full h-4 rounded-full overflow-hidden border border-zinc-800 bg-zinc-950 shadow-inner"
+            >
               <div
-                className={`h-full transition-all duration-300 ${
+                className={`relative h-full rounded-full transition-[width] duration-700 ease-out ${
                   currentJob.status === 'failed'
-                    ? 'bg-rose-500'
+                    ? 'bg-gradient-to-r from-rose-700 to-rose-400'
                     : currentJob.status === 'partial'
-                    ? 'bg-amber-500'
+                    ? 'bg-gradient-to-r from-amber-700 to-amber-400'
                     : currentJob.status === 'stopped'
-                    ? 'bg-zinc-600'
-                    : 'bg-emerald-500'
+                    ? 'bg-gradient-to-r from-zinc-700 to-zinc-500'
+                    : 'bg-gradient-to-r from-emerald-700 via-emerald-500 to-teal-300'
                 }`}
                 style={{ width: `${calculateProgressPercent()}%` }}
-              />
+              >
+                {currentJob.status === 'running' && (
+                  <span className="absolute inset-0 overflow-hidden rounded-full">
+                    <span className="absolute inset-y-0 w-1/3 -translate-x-full animate-[progress-shimmer_1.8s_ease-in-out_infinite] bg-gradient-to-r from-transparent via-white/35 to-transparent" />
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-between mt-2 text-[11px] text-zinc-500">
+              <span>{currentJob.total_collected.toLocaleString('pt-BR')} novos salvos</span>
+              <span>Meta de novos: {(currentJob.limit_requested || 20).toLocaleString('pt-BR')}</span>
             </div>
           </div>
 
@@ -612,7 +652,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             {/* Encontrados */}
             <div className="p-5 bg-zinc-950 border border-zinc-800 rounded-xl text-center">
               <span className="block text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-wider">
-                Encontrados
+                Fichas localizadas
               </span>
               <span className="block text-3xl sm:text-4xl font-extrabold text-zinc-100 mt-2 font-mono tabular-nums">
                 {currentJob.total_found}
@@ -622,7 +662,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             {/* Coletados */}
             <div className="p-5 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-center">
               <span className="block text-xs sm:text-sm font-bold text-emerald-400 uppercase tracking-wider">
-                Coletados
+                Novos salvos
               </span>
               <span className="block text-3xl sm:text-4xl font-extrabold text-emerald-300 mt-2 font-mono tabular-nums">
                 {currentJob.total_collected}
@@ -632,7 +672,7 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             {/* Duplicados */}
             <div className="p-5 bg-zinc-950 border border-zinc-800 rounded-xl text-center">
               <span className="block text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-wider">
-                Duplicados
+                Já cadastrados
               </span>
               <span className="block text-3xl sm:text-4xl font-extrabold text-zinc-300 mt-2 font-mono tabular-nums">
                 {currentJob.total_duplicates}
@@ -642,13 +682,16 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             {/* Erros */}
             <div className="p-5 bg-rose-500/10 border border-rose-500/30 rounded-xl text-center">
               <span className="block text-xs sm:text-sm font-bold text-rose-400 uppercase tracking-wider">
-                Erros
+                Falhas
               </span>
               <span className="block text-3xl sm:text-4xl font-extrabold text-rose-300 mt-2 font-mono tabular-nums">
                 {currentJob.total_errors}
               </span>
             </div>
           </div>
+          <p className="text-xs leading-relaxed text-zinc-500">
+            Os números representam somente esta execução. A meta é de novos cadastros: fichas já existentes são ignoradas e a busca continua procurando outras. “Fichas localizadas” inclui resultados novos e antigos encontrados no Google Maps.
+          </p>
 
           {/* Status Message */}
           {currentJob.status_message && (
@@ -664,6 +707,77 @@ export const SearchScreen: React.FC<SearchScreenProps> = ({
             </div>
           )}
         </div>
+      )}
+
+      {currentJob && (
+        <section className="space-y-4" aria-live="polite">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-bold text-zinc-100">
+                {currentJob.status === 'running' ? 'Estabelecimentos coletados até agora' : 'Resultado desta pesquisa'}
+              </h2>
+              <p className="mt-1 text-sm text-zinc-400">
+                {totalPlaces.toLocaleString('pt-BR')} estabelecimento(s) salvos nesta coleta
+                {currentJob.status === 'running' ? ' · atualizando automaticamente' : ''}
+              </p>
+            </div>
+            {places.length > 0 && (
+              <button type="button" onClick={onGoToResults} className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-300 hover:bg-emerald-500/15">
+                Ver base completa <ArrowRight className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+          {places.length === 0 ? (
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/70 p-6 text-sm text-zinc-400">
+              {currentJob.status === 'running'
+                ? 'Aguardando a primeira ficha ser salva. Os resultados aparecerão aqui durante a coleta.'
+                : currentJob.status === 'completed' || currentJob.status === 'partial'
+                  ? 'A coleta terminou, mas nenhum estabelecimento foi retornado para exibição.'
+                  : 'Esta coleta não gerou resultados.'}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+              {places.map((place) => {
+                const photoUrl = place.logo_url?.startsWith('http')
+                  ? place.logo_url
+                  : place.photos?.split(' | ').find((url) => url.startsWith('http'));
+                return (
+                  <article key={place.id} className="flex flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/90 shadow-lg shadow-black/20">
+                    {photoUrl ? (
+                      <div className="h-40 w-full overflow-hidden border-b border-zinc-800 bg-zinc-950">
+                        <img src={photoUrl} alt={place.name || 'Estabelecimento'} referrerPolicy="no-referrer" className="h-full w-full object-cover" loading="lazy" />
+                      </div>
+                    ) : null}
+                    <div className="flex flex-1 flex-col gap-3 p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-emerald-400">{place.category || 'Categoria não informada'}</p>
+                          <h3 className="mt-1 line-clamp-2 font-bold text-zinc-100">{place.name || 'Estabelecimento sem nome'}</h3>
+                        </div>
+                        {place.rating && <span className="shrink-0 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-sm font-bold text-amber-300">★ {place.rating}</span>}
+                      </div>
+                      <p className="line-clamp-2 text-sm text-zinc-400">{place.address || 'Endereço não informado'}</p>
+                      <div className="space-y-1 text-xs text-zinc-300">
+                        <p>{place.phone || 'Telefone não informado'}</p>
+                        {place.website ? <a href={place.website} target="_blank" rel="noopener noreferrer" className="block truncate text-emerald-400 hover:underline">{place.website.replace(/^https?:\/\//, '')}</a> : <p className="text-zinc-500">Site não informado</p>}
+                      </div>
+                      <div className="mt-auto flex items-center justify-between gap-2 border-t border-zinc-800 pt-3">
+                        <span className={`truncate rounded-md border px-2 py-1 text-xs ${/aberto|operacional/i.test(place.business_status || '') ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-zinc-700 bg-zinc-800 text-zinc-400'}`}>{place.business_status || 'Status não informado'}</span>
+                        {place.maps_url && <a href={place.maps_url} target="_blank" rel="noopener noreferrer" className="shrink-0 text-xs font-semibold text-emerald-400 hover:text-emerald-300">Abrir no Maps ↗</a>}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+              {totalPlaces > places.length && (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-zinc-700 bg-zinc-950/50 p-6 text-center text-sm text-zinc-400">
+                  <span>Exibindo {places.length} de {totalPlaces} fichas carregadas.</span>
+                  <button type="button" onClick={onGoToResults} className="mt-2 font-semibold text-emerald-400 hover:text-emerald-300">Abrir todos os resultados</button>
+                </div>
+              )}
+            </div>
+          )}
+        </section>
       )}
     </div>
   );

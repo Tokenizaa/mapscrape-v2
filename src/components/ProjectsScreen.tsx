@@ -28,7 +28,7 @@ async function accountFetch(input: RequestInfo | URL, init: RequestInit = {}): P
 }
 
 export type PersistedProject = { id: string; name: string; created_at: string; updated_at?: string };
-export type PersistedCategory = { id: string; name: string; created_at?: string };
+export type PersistedCategory = { id: string; name: string; project_id: string; created_at?: string };
 
 interface Props {
   jobs: ScrapeJob[];
@@ -41,6 +41,7 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
   const [query, setQuery] = useState('');
   const [newProjectName, setNewProjectName] = useState('');
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [categoryProjectId, setCategoryProjectId] = useState('');
   const [catalog, setCatalog] = useState<PersistedProject[]>([]);
   const [categories, setCategories] = useState<PersistedCategory[]>([]);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
@@ -69,8 +70,13 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
       setCatalog(
         Array.isArray(projectData.data) ? projectData.data : projectData.projects ?? [],
       );
+      const rawCategories = Array.isArray(categoryData.data) ? categoryData.data : categoryData.categories ?? [];
       setCategories(
-        Array.isArray(categoryData.data) ? categoryData.data : categoryData.categories ?? [],
+        rawCategories.map((c: any, i: number) =>
+          typeof c === 'string'
+            ? { id: `cat_${i}_${c}`, name: c, created_at: new Date().toISOString() }
+            : { id: c?.id || `cat_${i}`, name: c?.name || '', project_id: c?.project_id || '', created_at: c?.created_at || new Date().toISOString() }
+        )
       );
     } catch (error) {
       setMessage({
@@ -164,14 +170,14 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
   const createCategory = async (event: React.FormEvent) => {
     event.preventDefault();
     const name = newCategoryName.trim();
-    if (!name || !apiReady || isSavingCategory) return;
+    if (!name || !categoryProjectId || !apiReady || isSavingCategory) return;
     setIsSavingCategory(true);
     setMessage(null);
     try {
       const response = await accountFetch('/api/v1/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, projectId: categoryProjectId }),
       });
       const data = await response.json();
       if (!response.ok || !data.data?.id && !data.category?.id) {
@@ -205,7 +211,7 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
       const response = await accountFetch(`/api/v1/categories/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, projectId: categoryProjectId }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || data.error || `HTTP ${response.status}`);
@@ -369,6 +375,15 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
           </div>
 
           <form onSubmit={(e) => void createCategory(e)} className="flex flex-col gap-2 sm:flex-row">
+            <select
+              value={categoryProjectId}
+              onChange={(e) => setCategoryProjectId(e.target.value)}
+              aria-label="Projeto da categoria"
+              className="min-w-0 rounded-xl border border-zinc-700 bg-zinc-950 px-3 py-2.5 text-sm text-zinc-100 outline-none focus:border-emerald-500"
+            >
+              <option value="">Selecione o projeto</option>
+              {catalog.map((project) => <option key={project.id} value={project.id}>{project.name}</option>)}
+            </select>
             <input
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
@@ -379,7 +394,7 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
             />
             <button
               type="submit"
-              disabled={!apiReady || !newCategoryName.trim() || isSavingCategory}
+              disabled={!apiReady || !categoryProjectId || !newCategoryName.trim() || isSavingCategory}
               className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-emerald-500/40 hover:bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-300 disabled:opacity-40 transition-colors"
             >
               <Plus className="h-4 w-4" />
@@ -421,10 +436,10 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
                     </div>
                   ) : (
                     <>
-                      <span className="font-medium">{cat.name}</span>
+                      <span className="font-medium">{cat.name}</span><span className="text-zinc-500">· {catalog.find((project) => project.id === cat.project_id)?.name || "Projeto"}</span>
                       <button
                         type="button"
-                        onClick={() => onNewScrape(undefined, cat.name)}
+                        onClick={() => onNewScrape(catalog.find((project) => project.id === cat.project_id)?.name, cat.name)}
                         className="text-emerald-400 hover:text-emerald-300 ml-1 p-0.5"
                         title="Pesquisar nesta categoria"
                       >
@@ -577,39 +592,50 @@ export const ProjectsScreen: React.FC<Props> = ({ jobs, apiReady, onOpenJob, onN
                 <div className="mt-4 space-y-2 flex-1">
                   <p className="text-xs font-medium uppercase tracking-wider text-zinc-500">Últimas coletas</p>
                   <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                    {project.jobs.map((job) => (
-                      <div
-                        key={job.id}
-                        className="flex items-center justify-between gap-3 rounded-xl bg-zinc-950/80 border border-zinc-800/60 px-3.5 py-2.5"
-                      >
-                        <div className="min-w-0">
-                          <p className="truncate text-xs font-medium text-zinc-200">{job.segment}</p>
-                          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-zinc-400">
-                            <MapPin className="h-3 w-3 shrink-0" />
-                            {job.location}
-                          </p>
-                          <p className="mt-0.5 text-xs text-zinc-400">
-                            <span
-                              className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${
-                                job.status === 'completed'
-                                  ? 'bg-emerald-400'
-                                  : job.status === 'running'
-                                  ? 'bg-amber-400 animate-ping'
-                                  : 'bg-zinc-500'
-                              }`}
-                            />
-                            {job.status === 'completed' ? 'Concluída' : job.status} · {job.total_collected} salvos
-                          </p>
+                    {Array.from(new Set(project.jobs.map((job) => categories.find((cat) => cat.id === job.category_id)?.name || 'Sem categoria'))).map((categoryName) => (
+                      <section key={categoryName} className="rounded-xl border border-zinc-800/80 bg-zinc-900/50 p-2.5 space-y-2">
+                        <div className="flex items-center gap-2 px-1 text-xs font-semibold text-emerald-300">
+                          <FolderOpen className="h-3.5 w-3.5" />
+                          <span>{categoryName}</span>
+                          <span className="ml-auto text-zinc-500 font-normal">
+                            {project.jobs.filter((job) => (categories.find((cat) => cat.id === job.category_id)?.name || 'Sem categoria') === categoryName).length} raspagem(ns)
+                          </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => onOpenJob(job.id)}
-                          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-zinc-700 hover:border-emerald-500 hover:text-emerald-300 px-2.5 py-1.5 text-xs font-semibold text-zinc-300 transition-colors"
-                        >
-                          <span>Abrir</span>
-                          <ArrowRight className="h-3 w-3" />
-                        </button>
-                      </div>
+                        {project.jobs.filter((job) => (categories.find((cat) => cat.id === job.category_id)?.name || 'Sem categoria') === categoryName).map((job) => (
+                          <div
+                            key={job.id}
+                            className="flex items-center justify-between gap-3 rounded-xl bg-zinc-950/80 border border-zinc-800/60 px-3.5 py-2.5"
+                          >
+                            <div className="min-w-0">
+                              <p className="truncate text-xs font-medium text-zinc-200">{job.segment}</p>
+                              <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-zinc-400">
+                                <MapPin className="h-3 w-3 shrink-0" />
+                                {job.location}
+                              </p>
+                              <p className="mt-0.5 text-xs text-zinc-400">
+                                <span
+                                  className={`inline-block w-1.5 h-1.5 rounded-full mr-1.5 ${
+                                    job.status === 'completed'
+                                      ? 'bg-emerald-400'
+                                      : job.status === 'running'
+                                      ? 'bg-amber-400 animate-ping'
+                                      : 'bg-zinc-500'
+                                  }`}
+                                />
+                                {job.status === 'completed' ? 'Concluída' : job.status} · {job.total_collected} salvos
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onOpenJob(job.id)}
+                              className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-zinc-700 hover:border-emerald-500 hover:text-emerald-300 px-2.5 py-1.5 text-xs font-semibold text-zinc-300 transition-colors"
+                            >
+                              <span>Ver resultados</span>
+                              <ArrowRight className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </section>
                     ))}
                   </div>
                 </div>

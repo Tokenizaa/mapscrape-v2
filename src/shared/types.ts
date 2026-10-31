@@ -4,6 +4,8 @@ export interface PlaceRecord {
   name: string;
   category: string;
   address: string;
+  /** Neighborhood explicitly present in the displayed address, when separable. */
+  neighborhood?: string;
   phone: string;
   website: string;
   rating: string;
@@ -82,6 +84,24 @@ export interface ScrapeJob {
   total_duplicates: number;
   total_errors: number;
   current_step?: string;
+  /** Stable user/search-scope session shared by successive jobs. */
+  search_session_id?: string;
+  /** Persisted worker phase; discovery and extraction run in separate Vercel invocations. */
+  phase?: 'discovering' | 'processing';
+  /** Durable navigation checkpoint; URLs are also mirrored to scrape_candidates. */
+  discovery_checkpoint?: {
+    version?: number;
+    scroll_round?: number;
+    last_seen_source_key?: string;
+    last_seen_url?: string;
+    last_checkpoint_at?: string;
+    stagnant_rounds?: number;
+    [key: string]: unknown;
+  };
+  candidate_urls?: string[];
+  candidate_cursor?: number;
+  retry_count?: number;
+  heartbeat_at?: string;
   created_at: string;
   completed_at?: string;
 }
@@ -102,7 +122,8 @@ export interface ExportCsvPayload {
 export const EXPORTABLE_FIELDS: { key: keyof PlaceRecord; label: string; description: string }[] = [
   { key: 'name', label: 'Nome do estabelecimento', description: 'Nome exibido na ficha' },
   { key: 'category', label: 'Categoria', description: 'Categoria exibida' },
-  { key: 'address', label: 'Endereço', description: 'Endereço exibido' },
+  { key: 'address', label: 'Endereço', description: 'Endereço completo exibido na ficha' },
+  { key: 'neighborhood', label: 'Bairro', description: 'Bairro separado do endereço quando explicitamente identificável' },
   { key: 'phone', label: 'Telefone', description: 'Telefone exibido' },
   { key: 'website', label: 'Site', description: 'URL apresentada na ficha' },
   { key: 'rating', label: 'Nota', description: 'Avaliação exibida' },

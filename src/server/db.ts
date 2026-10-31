@@ -674,7 +674,7 @@ export async function listPlaceCategories(consumerProject?: string): Promise<str
     // Extract distinct categories
     const categories = userPlaces?.map((p: any) => String(p.category || '')).filter(Boolean) || [];
     // Return unique categories
-    return [...new Set(categories)];
+    return Array.from(new Set(categories));
   }
 
   // Without consumerProject, get all distinct categories
@@ -683,7 +683,7 @@ export async function listPlaceCategories(consumerProject?: string): Promise<str
   if (error) throw error;
   // Extract distinct categories
   const categories = data?.map((row: any) => String(row.category || '')).filter(Boolean) || [];
-  return [...new Set(categories)];
+  return Array.from(new Set(categories));
 }
 
 export async function countPlaces(): Promise<number> {

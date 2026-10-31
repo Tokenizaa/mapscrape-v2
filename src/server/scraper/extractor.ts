@@ -1,11 +1,11 @@
-import { Page } from 'puppeteer';
-import { PlaceRecord } from '../../shared/types';
+import type { Page } from 'puppeteer-core';
+import type { PlaceRecord } from '../../shared/types.js';
 import {
   cleanText, normalizeAddress, normalizePhone, normalizeWebsite, normalizeCategory,
   normalizeRating, normalizeReviewCount, normalizePriceRange, normalizeBusinessStatus,
   extractCoordinates, parseAddressComponents, extractSourcePlaceId,
-} from './normalizer';
-import { SELECTORS } from './selectors';
+} from './normalizer.js';
+import { SELECTORS } from './selectors.js';
 
 /**
  * Extract only values actually rendered on the public Maps place sheet.
@@ -553,9 +553,10 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
         title: '',
       })),
     ];
-    const plusCodeNode = Array.from(document.querySelectorAll('[aria-label*="Plus code"],[aria-label*="Plus Code"],[data-item-id*="oloc"]'))
-      .find((node) => /plus code/i.test(node.getAttribute('aria-label') || ''));
-    const plus_code = plusCodeNode?.getAttribute('aria-label')?.replace(/^plus code:\s*/i, '') || '';
+    const plusCodeNode = Array.from(document.querySelectorAll('[aria-label*="Plus code"],[aria-label*="Plus Code"],[aria-label*="Código Plus"],[data-item-id*="oloc"]'))
+      .find((node) => /plus code|código plus/i.test([attr(node, 'aria-label'), text(node)].join(' ')));
+    const plusCodeLabel = plusCodeNode ? (attr(plusCodeNode, 'aria-label') || text(plusCodeNode)) : '';
+    const plus_code = plusCodeLabel.replace(/^(plus code|código plus)\s*:\s*/i, '').trim();
 
     // Extract only visible popular-times labels/bars; do not infer data from graph shape.
     const popularTimesNodes = Array.from(document.querySelectorAll(
@@ -639,7 +640,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
   const sourceUrl = targetUrl || finalUrl;
   const collectedAt = new Date().toISOString();
   const fieldValues: Record<string, unknown> = {
-    name: raw.name, category: raw.category, address, phone: raw.phone, website: raw.website,
+    name: raw.name, category: raw.category, address, neighborhood: addressComponents.neighborhood, phone: raw.phone, website: raw.website,
     rating: raw.rating, review_count: raw.review_count, price_range: raw.price_range,
     opening_hours: raw.opening_hours, business_status: raw.business_status,
     latitude: coords.latitude, longitude: coords.longitude, maps_url: finalUrl,
@@ -665,6 +666,7 @@ export async function extractPlaceDetails(page: Page, jobId: string, targetUrl: 
     name: cleanText(raw.name),
     category: normalizeCategory(raw.category),
     address,
+    neighborhood: cleanText(addressComponents.neighborhood),
     phone: normalizePhone(raw.phone),
     website: normalizeWebsite(raw.website),
     rating: normalizeRating(raw.rating),
